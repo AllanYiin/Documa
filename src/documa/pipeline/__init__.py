@@ -2,6 +2,7 @@
 
 from documa.pipeline.base import PipelineContext, PipelineStage, StageResult
 from documa.pipeline.captions import CaptionLinkingStage
+from documa.pipeline.chunking import ChunkingStage
 from documa.pipeline.footnotes import FootnoteLinkingStage
 from documa.pipeline.images import ImageNormalizationStage
 from documa.pipeline.inline_semantics import InlineSemanticsStage
@@ -14,6 +15,7 @@ from documa.pipeline.toc import TocLinkingStage
 
 __all__ = [
     "CaptionLinkingStage",
+    "ChunkingStage",
     "FootnoteLinkingStage",
     "ImageNormalizationStage",
     "InlineSemanticsStage",

@@ -13,6 +13,9 @@ from documa.adapters.base import ParseOptions
 from documa.adapters.pymupdf_adapter import PyMuPDFAdapter
 from documa.core.errors import DocumaError
 from documa.core.ir import to_plain_data
+from documa.core.serialization import document_from_plain_data
+from documa.exporters import ExportOptions, JsonExporter, MarkdownExporter, RagJsonExporter
+from documa.pipeline import ChunkingStage, PipelineContext, ProvenanceLinkingStage
 
 
 def _emit_json(data: dict[str, Any], *, exit_code: int = 0) -> int:
@@ -39,11 +42,45 @@ def build_parser() -> argparse.ArgumentParser:
     export_cmd = subparsers.add_parser("export", help="Export a Documa IR document.")
     export_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
     export_cmd.add_argument("--format", choices=["json", "markdown", "rag-json"], default="json")
+    export_cmd.add_argument("--out", help="Output file path.")
+    export_cmd.add_argument("--max-chars", type=int, default=1200, help="Target max characters per generated chunk.")
 
-    subparsers.add_parser("inspect", help="Inspect a Documa IR document.")
+    inspect_cmd = subparsers.add_parser("inspect", help="Inspect a Documa IR document.")
+    inspect_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
     subparsers.add_parser("benchmark", help="Run Documa benchmark fixtures.")
 
     return parser
+
+
+def _load_document(path: str) -> Any:
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    return document_from_plain_data(payload)
+
+
+def _write_export(path: str, payload: Any) -> None:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if isinstance(payload, str):
+        output_path.write_text(payload, encoding="utf-8", newline="\n")
+    else:
+        output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8", newline="\n")
+
+
+def _inspect_document(document) -> dict[str, Any]:
+    image_count = sum(len(page.images) for page in document.pages)
+    block_count = sum(len(page.blocks) for page in document.pages)
+    return {
+        "status": "ok",
+        "document_id": document.id,
+        "source_name": document.source_name,
+        "parser": document.parser,
+        "page_count": document.page_count,
+        "block_count": block_count,
+        "table_count": len(document.tables),
+        "image_count": image_count,
+        "relation_count": len(document.relations),
+        "chunk_count": len(document.chunks),
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -91,7 +128,46 @@ def main(argv: list[str] | None = None) -> int:
             }
         )
 
-    if args.command in {"export", "inspect", "benchmark"}:
+    if args.command == "export":
+        try:
+            document = _load_document(args.ir_path)
+        except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
+            return _emit_json({"status": "error", "message": str(exc)}, exit_code=1)
+
+        if args.format == "rag-json" and not document.chunks:
+            context = PipelineContext(settings={"max_chars": args.max_chars})
+            ChunkingStage().run(document, context)
+            ProvenanceLinkingStage().run(document, context)
+
+        exporters = {
+            "json": JsonExporter(),
+            "markdown": MarkdownExporter(),
+            "rag-json": RagJsonExporter(),
+        }
+        payload = exporters[args.format].export(document, ExportOptions())
+        output_path = None
+        if args.out:
+            _write_export(args.out, payload)
+            output_path = args.out
+
+        return _emit_json(
+            {
+                "status": "ok",
+                "format": args.format,
+                "document_id": document.id,
+                "output_path": output_path,
+                "content": None if output_path else payload,
+            }
+        )
+
+    if args.command == "inspect":
+        try:
+            document = _load_document(args.ir_path)
+        except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
+            return _emit_json({"status": "error", "message": str(exc)}, exit_code=1)
+        return _emit_json(_inspect_document(document))
+
+    if args.command == "benchmark":
         return _emit_json(
             {
                 "status": "not_implemented",

@@ -52,3 +52,20 @@ The stages prefer explicit adapter evidence and conservative layout proximity.
 When a target cannot be confirmed, they create `UNRESOLVED` relations instead of
 silently dropping evidence or inventing links. This keeps the IR useful for
 agent workflows that need traceability and repair loops.
+
+## Stage 5 RAG And Tooling Baseline
+
+Stage 5 turns Documa IR into agent-consumable outputs:
+
+- `ChunkingStage` creates RAG/RLM-ready chunks with source block ids, page refs,
+  bbox refs, heading paths, asset refs, and metadata.
+- `JsonExporter`, `MarkdownExporter`, and `RagJsonExporter` expose IR, readable
+  Markdown, and chunk records compatible with common ingestion patterns.
+- CLI `export` and `inspect` now return structured JSON. `rag-json` export can
+  auto-create chunks when an IR file has not been chunked yet.
+- `documa_tool_schemas()` provides JSON Schema descriptors that can be wrapped
+  by MCP servers or direct LLM tool-calling integrations.
+
+The baseline intentionally does not implement a full MCP server yet. It keeps
+the stable schema layer separate so MCP, CLI, and SDK wrappers can reuse the
+same contract.
