@@ -37,3 +37,18 @@ Stage 3 introduces testable, parser-neutral pipeline stages:
 These stages are conservative baselines. They attach confidence and metadata,
 preserve source references, and avoid pretending that heuristic output is a
 fully solved document understanding model.
+
+## Stage 4 Relation Pipeline Baseline
+
+Stage 4 materializes document relations that downstream RAG, RLM, MCP, CLI, and
+tool-calling consumers need:
+
+- `FootnoteLinkingStage`
+- `TocLinkingStage`
+- `CaptionLinkingStage`
+- `ProvenanceLinkingStage`
+
+The stages prefer explicit adapter evidence and conservative layout proximity.
+When a target cannot be confirmed, they create `UNRESOLVED` relations instead of
+silently dropping evidence or inventing links. This keeps the IR useful for
+agent workflows that need traceability and repair loops.

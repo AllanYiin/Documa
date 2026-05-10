@@ -1,21 +1,29 @@
 """Documa pipeline interfaces."""
 
 from documa.pipeline.base import PipelineContext, PipelineStage, StageResult
+from documa.pipeline.captions import CaptionLinkingStage
+from documa.pipeline.footnotes import FootnoteLinkingStage
 from documa.pipeline.images import ImageNormalizationStage
 from documa.pipeline.inline_semantics import InlineSemanticsStage
 from documa.pipeline.layout import LayoutClassificationStage
 from documa.pipeline.paragraphs import ParagraphGroupingStage
+from documa.pipeline.provenance import ProvenanceLinkingStage
 from documa.pipeline.reading_order import ReadingOrderStage
 from documa.pipeline.tables import TableNormalizationStage
+from documa.pipeline.toc import TocLinkingStage
 
 __all__ = [
+    "CaptionLinkingStage",
+    "FootnoteLinkingStage",
     "ImageNormalizationStage",
     "InlineSemanticsStage",
     "LayoutClassificationStage",
     "ParagraphGroupingStage",
     "PipelineContext",
     "PipelineStage",
+    "ProvenanceLinkingStage",
     "ReadingOrderStage",
     "StageResult",
     "TableNormalizationStage",
+    "TocLinkingStage",
 ]
