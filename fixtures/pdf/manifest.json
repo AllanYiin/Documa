@@ -1,0 +1,117 @@
+{
+  "version": "0.1",
+  "cases": [
+    {
+      "id": "inline-superscript-style-001",
+      "title": "Inline superscript and font style preservation",
+      "issue_type": "inline_superscript_and_style",
+      "description": "Covers superscript markers, bold/emphasis spans, and font-size changes inside the same visual row.",
+      "expected_capabilities": [
+        "preserve_raw_text",
+        "mark_superscript_spans",
+        "keep_inline_span_order",
+        "record_font_metadata"
+      ],
+      "file": null
+    },
+    {
+      "id": "reading-order-multicolumn-001",
+      "title": "Human reading order for multi-column pages",
+      "issue_type": "human_reading_order",
+      "description": "Covers pages where visual order differs from naive top-to-bottom, left-to-right extraction.",
+      "expected_capabilities": [
+        "resolve_column_order",
+        "emit_order_index",
+        "keep_original_parser_order"
+      ],
+      "file": null
+    },
+    {
+      "id": "non-text-objects-001",
+      "title": "Non-text object understanding",
+      "issue_type": "non_text_object_understanding",
+      "description": "Covers figures, charts, lines, rectangles, and other non-text objects that must not be dropped.",
+      "expected_capabilities": [
+        "extract_object_bbox",
+        "classify_image_or_chart_candidate",
+        "link_nearby_caption"
+      ],
+      "file": null
+    },
+    {
+      "id": "paragraph-grouping-001",
+      "title": "Multi-line paragraph grouping",
+      "issue_type": "paragraph_grouping",
+      "description": "Covers paragraphs split across multiple visual rows that should become one paragraph block.",
+      "expected_capabilities": [
+        "group_rows_into_paragraph",
+        "preserve_line_evidence",
+        "handle_cjk_punctuation"
+      ],
+      "file": null
+    },
+    {
+      "id": "table-structure-001",
+      "title": "Table structure normalization",
+      "issue_type": "table_structure",
+      "description": "Covers tables with headers, row/column relationships, merged cells, and multi-line cells.",
+      "expected_capabilities": [
+        "emit_structured_cells",
+        "emit_markdown_table",
+        "retain_table_crop_when_low_confidence"
+      ],
+      "file": null
+    },
+    {
+      "id": "rag-rlm-chunking-001",
+      "title": "RAG/RLM-ready chunking",
+      "issue_type": "rag_rlm_chunking",
+      "description": "Covers layout-aware chunking with heading path, page references, bbox references, and source block ids.",
+      "expected_capabilities": [
+        "emit_chunk_source_block_ids",
+        "emit_heading_path",
+        "preserve_asset_refs",
+        "preserve_relation_refs"
+      ],
+      "file": null
+    },
+    {
+      "id": "footnote-linking-001",
+      "title": "Footnote marker and body linking",
+      "issue_type": "footnote_linking",
+      "description": "Covers superscript markers and footnote body text that must remain connected after parsing.",
+      "expected_capabilities": [
+        "detect_footnote_marker",
+        "detect_footnote_body",
+        "emit_relation_or_unresolved_relation"
+      ],
+      "file": null
+    },
+    {
+      "id": "toc-linking-001",
+      "title": "Table of contents linking",
+      "issue_type": "toc_linking",
+      "description": "Covers visual TOC entries and PDF outline items linked to target headings or pages.",
+      "expected_capabilities": [
+        "parse_toc_items",
+        "link_toc_to_heading_or_page",
+        "preserve_unresolved_toc_items"
+      ],
+      "file": null
+    },
+    {
+      "id": "image-chart-asset-extraction-001",
+      "title": "Image and chart asset extraction",
+      "issue_type": "image_chart_asset_extraction",
+      "description": "Covers embedded images and chart candidates that must be normalized into Pillow-compatible assets.",
+      "expected_capabilities": [
+        "emit_image_asset_ref",
+        "emit_page_bbox",
+        "support_pillow_compatible_output",
+        "preserve_chart_candidate_label"
+      ],
+      "file": null
+    }
+  ]
+}
+
