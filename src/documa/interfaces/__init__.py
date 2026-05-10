@@ -1,6 +1,19 @@
 """Interfaces for agent and tool integrations."""
 
 from documa.interfaces.tool_schemas import documa_tool_schemas
+from documa.interfaces.tools import (
+    call_documa_tool,
+    export_document_tool,
+    inspect_document_tool,
+    list_documa_tools,
+    parse_document_tool,
+)
 
-__all__ = ["documa_tool_schemas"]
-
+__all__ = [
+    "call_documa_tool",
+    "documa_tool_schemas",
+    "export_document_tool",
+    "inspect_document_tool",
+    "list_documa_tools",
+    "parse_document_tool",
+]

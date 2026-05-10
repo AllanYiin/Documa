@@ -35,6 +35,7 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
                 "required": ["source"],
             },
             "outputSchema": _status_output_schema(),
+            "annotations": {"readOnlyHint": False},
         },
         {
             "name": "documa_export",
@@ -51,6 +52,7 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
                 "required": ["ir_path"],
             },
             "outputSchema": _status_output_schema(),
+            "annotations": {"readOnlyHint": False},
         },
         {
             "name": "documa_inspect",
@@ -72,6 +74,6 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
                 },
                 "required": ["status", "document_id"],
             },
+            "annotations": {"readOnlyHint": True},
         },
     ]
-

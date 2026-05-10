@@ -69,3 +69,20 @@ Stage 5 turns Documa IR into agent-consumable outputs:
 The baseline intentionally does not implement a full MCP server yet. It keeps
 the stable schema layer separate so MCP, CLI, and SDK wrappers can reuse the
 same contract.
+
+## Stage 6 Tool Execution Baseline
+
+Stage 6 adds a shared tool execution layer for agents:
+
+- `parse_document_tool`, `export_document_tool`, and `inspect_document_tool`
+  are plain Python functions that return structured JSON payloads.
+- `call_documa_tool()` wraps those functions in an MCP-compatible result shape
+  with `content`, `structuredContent`, and `isError`.
+- CLI commands now call the same tool service layer as MCP/tool-calling
+  integrations, reducing drift between interfaces.
+- `documa tools` prints the current tool schemas.
+- `documa-mcp` is an optional MCP server entry point. It requires installing the
+  `mcp` extra, keeping the core package free of runtime MCP dependencies.
+
+This stage is still parser-adapter based. It does not introduce a UI, a custom
+PDF parser, or LLM inference.

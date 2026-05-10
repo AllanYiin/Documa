@@ -4,18 +4,11 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 import sys
 from typing import Any
 
 from documa import __version__
-from documa.adapters.base import ParseOptions
-from documa.adapters.pymupdf_adapter import PyMuPDFAdapter
-from documa.core.errors import DocumaError
-from documa.core.ir import to_plain_data
-from documa.core.serialization import document_from_plain_data
-from documa.exporters import ExportOptions, JsonExporter, MarkdownExporter, RagJsonExporter
-from documa.pipeline import ChunkingStage, PipelineContext, ProvenanceLinkingStage
+from documa.interfaces import export_document_tool, inspect_document_tool, list_documa_tools, parse_document_tool
 
 
 def _emit_json(data: dict[str, Any], *, exit_code: int = 0) -> int:
@@ -47,40 +40,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     inspect_cmd = subparsers.add_parser("inspect", help="Inspect a Documa IR document.")
     inspect_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
+    subparsers.add_parser("tools", help="List Documa tool-calling schemas.")
     subparsers.add_parser("benchmark", help="Run Documa benchmark fixtures.")
 
     return parser
-
-
-def _load_document(path: str) -> Any:
-    payload = json.loads(Path(path).read_text(encoding="utf-8"))
-    return document_from_plain_data(payload)
-
-
-def _write_export(path: str, payload: Any) -> None:
-    output_path = Path(path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    if isinstance(payload, str):
-        output_path.write_text(payload, encoding="utf-8", newline="\n")
-    else:
-        output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8", newline="\n")
-
-
-def _inspect_document(document) -> dict[str, Any]:
-    image_count = sum(len(page.images) for page in document.pages)
-    block_count = sum(len(page.blocks) for page in document.pages)
-    return {
-        "status": "ok",
-        "document_id": document.id,
-        "source_name": document.source_name,
-        "parser": document.parser,
-        "page_count": document.page_count,
-        "block_count": block_count,
-        "table_count": len(document.tables),
-        "image_count": image_count,
-        "relation_count": len(document.relations),
-        "chunk_count": len(document.chunks),
-    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -91,81 +54,24 @@ def main(argv: list[str] | None = None) -> int:
         return _emit_json({"documa_version": __version__})
 
     if args.command == "parse":
-        output_dir = Path(args.out) if args.out else None
-        asset_dir = output_dir / "assets" if output_dir else None
-        languages = [part.strip() for part in args.lang.split(",") if part.strip()]
-        try:
-            document = PyMuPDFAdapter().parse(
-                args.source,
-                ParseOptions(
-                    languages=languages or ["auto"],
-                    asset_dir=asset_dir,
-                    metadata={"progress": args.progress},
-                ),
-            )
-        except DocumaError as exc:
-            return _emit_json(exc.to_dict(), exit_code=1)
-
-        payload = to_plain_data(document)
-        output_path = None
-        if output_dir:
-            output_dir.mkdir(parents=True, exist_ok=True)
-            output_path = output_dir / "documa.ir.json"
-            output_path.write_text(
-                json.dumps(payload, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-                newline="\n",
-            )
-
-        return _emit_json(
-            {
-                "status": "ok",
-                "document_id": document.id,
-                "page_count": document.page_count,
-                "parser": document.parser,
-                "output_path": str(output_path) if output_path else None,
-                "document": None if output_path else payload,
-            }
-        )
+        payload = parse_document_tool(source=args.source, out=args.out, lang=args.lang, progress=args.progress)
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
     if args.command == "export":
-        try:
-            document = _load_document(args.ir_path)
-        except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
-            return _emit_json({"status": "error", "message": str(exc)}, exit_code=1)
-
-        if args.format == "rag-json" and not document.chunks:
-            context = PipelineContext(settings={"max_chars": args.max_chars})
-            ChunkingStage().run(document, context)
-            ProvenanceLinkingStage().run(document, context)
-
-        exporters = {
-            "json": JsonExporter(),
-            "markdown": MarkdownExporter(),
-            "rag-json": RagJsonExporter(),
-        }
-        payload = exporters[args.format].export(document, ExportOptions())
-        output_path = None
-        if args.out:
-            _write_export(args.out, payload)
-            output_path = args.out
-
-        return _emit_json(
-            {
-                "status": "ok",
-                "format": args.format,
-                "document_id": document.id,
-                "output_path": output_path,
-                "content": None if output_path else payload,
-            }
+        payload = export_document_tool(
+            ir_path=args.ir_path,
+            format=args.format,
+            out=args.out,
+            max_chars=args.max_chars,
         )
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
     if args.command == "inspect":
-        try:
-            document = _load_document(args.ir_path)
-        except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
-            return _emit_json({"status": "error", "message": str(exc)}, exit_code=1)
-        return _emit_json(_inspect_document(document))
+        payload = inspect_document_tool(args.ir_path)
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "tools":
+        return _emit_json({"status": "ok", "tools": list_documa_tools()})
 
     if args.command == "benchmark":
         return _emit_json(

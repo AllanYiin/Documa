@@ -15,9 +15,11 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pytest>=8"]
 pdf = ["PyMuPDF>=1.24"]
+mcp = ["mcp>=1.0"]
 
 [project.scripts]
 documa = "documa.cli:main"
+documa-mcp = "documa.interfaces.mcp_server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

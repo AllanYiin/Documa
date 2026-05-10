@@ -51,3 +51,19 @@ Useful formats:
 - `json`: full Documa IR.
 - `markdown`: readable Markdown with page markers.
 - `rag-json`: chunk records with `page_content` and traceable metadata.
+
+## Stage 6 Tool Interfaces
+
+List tool-calling schemas:
+
+```powershell
+$env:PYTHONPATH="src"
+python -m documa.cli tools
+```
+
+Run the optional MCP server after installing the extra:
+
+```powershell
+pip install "documa[mcp]"
+documa-mcp
+```
