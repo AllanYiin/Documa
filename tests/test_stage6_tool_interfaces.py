@@ -5,7 +5,7 @@ from pathlib import Path
 
 from documa.cli import main
 from documa.core.ir import BlockIR, BlockType, DocumentIR, PageIR, TextContent, to_plain_data
-from documa.interfaces import call_documa_tool, list_documa_tools
+from documa.interfaces import call_documa_tool, list_documa_tools, openai_tool_schemas
 
 
 def make_ir_file(tmp: str) -> Path:
@@ -46,6 +46,12 @@ class Stage6ToolInterfaceTests(unittest.TestCase):
         self.assertEqual(result["structuredContent"]["status"], "error")
         self.assertIn("Unknown Documa tool", result["content"][0]["text"])
 
+    def test_direct_tool_call_wraps_invalid_arguments_as_error(self):
+        result = call_documa_tool("documa_export", {"ir_path": []})
+
+        self.assertTrue(result["isError"])
+        self.assertEqual(result["structuredContent"]["status"], "error")
+
     def test_export_tool_can_write_rag_json(self):
         with tempfile.TemporaryDirectory() as tmp:
             ir_path = make_ir_file(tmp)
@@ -84,7 +90,16 @@ class Stage6ToolInterfaceTests(unittest.TestCase):
         self.assertIn("outputSchema", schemas["documa_parse"])
         self.assertIn("inputSchema", schemas["documa_export"])
 
+    def test_openai_tool_schemas_use_function_shape(self):
+        tools = {tool["function"]["name"]: tool for tool in openai_tool_schemas(strict=True)}
+
+        self.assertIn("documa_process", tools)
+        self.assertEqual(tools["documa_process"]["type"], "function")
+        self.assertTrue(tools["documa_process"]["function"]["strict"])
+        parameters = tools["documa_process"]["function"]["parameters"]
+        self.assertFalse(parameters["additionalProperties"])
+        self.assertIn("source", parameters["required"])
+
 
 if __name__ == "__main__":
     unittest.main()
-

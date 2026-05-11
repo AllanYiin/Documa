@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from documa.interfaces.tools import export_document_tool, inspect_document_tool, parse_document_tool, process_document_tool
+from documa.interfaces.tools import (
+    benchmark_tool,
+    doctor_tool,
+    export_document_tool,
+    inspect_document_tool,
+    parse_document_tool,
+    process_document_tool,
+)
 
 
 def create_mcp_server() -> Any:
@@ -30,10 +37,17 @@ def create_mcp_server() -> Any:
         out: str | None = None,
         lang: str = "auto",
         max_chars: int = 1200,
+        export_formats: list[str] | None = None,
     ) -> dict[str, Any]:
         """Parse a document and run the default Documa processing pipeline."""
 
-        return process_document_tool(source=source, out=out, lang=lang, max_chars=max_chars)
+        return process_document_tool(
+            source=source,
+            out=out,
+            lang=lang,
+            max_chars=max_chars,
+            export_formats=export_formats,
+        )
 
     @mcp.tool()
     def documa_export(
@@ -51,6 +65,28 @@ def create_mcp_server() -> Any:
         """Inspect a Documa IR file."""
 
         return inspect_document_tool(ir_path=ir_path)
+
+    @mcp.tool()
+    def documa_benchmark(
+        manifest_path: str = "fixtures/pdf/manifest.json",
+        fixtures_dir: str = "fixtures/pdf",
+        out: str | None = None,
+        require_files: bool = False,
+    ) -> dict[str, Any]:
+        """Run the Documa fixture benchmark."""
+
+        return benchmark_tool(
+            manifest_path=manifest_path,
+            fixtures_dir=fixtures_dir,
+            out=out,
+            require_files=require_files,
+        )
+
+    @mcp.tool()
+    def documa_doctor(project_root: str = ".", include_benchmark: bool = True) -> dict[str, Any]:
+        """Run Documa environment diagnostics."""
+
+        return doctor_tool(project_root=project_root, include_benchmark=include_benchmark)
 
     return mcp
 

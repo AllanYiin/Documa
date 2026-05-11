@@ -61,6 +61,14 @@ $env:PYTHONPATH="src"
 python -m documa.cli tools
 ```
 
+Python callers can also request OpenAI function-tool descriptors:
+
+```python
+from documa.interfaces import openai_tool_schemas
+
+tools = openai_tool_schemas(strict=True)
+```
+
 Run the optional MCP server after installing the extra:
 
 ```powershell

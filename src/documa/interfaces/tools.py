@@ -101,11 +101,13 @@ def process_document_tool(
     out: str | None = None,
     lang: str = "auto",
     max_chars: int = 1200,
-    export_formats: list[str] | None = None,
+    export_formats: list[str] | str | None = None,
 ) -> ToolPayload:
     output_dir = Path(out) if out else None
     asset_dir = output_dir / "assets" if output_dir else None
     languages = [part.strip() for part in lang.split(",") if part.strip()]
+    if isinstance(export_formats, str):
+        export_formats = [export_formats]
     export_formats = export_formats or []
 
     try:
@@ -261,6 +263,9 @@ def call_documa_tool(name: str, arguments: dict[str, Any] | None = None) -> dict
         payload = registry[name](**arguments)
     except TypeError as exc:
         payload = {"status": "error", "message": str(exc)}
+        return _tool_result(payload, is_error=True)
+    except Exception as exc:  # pragma: no cover - last-resort tool boundary guard
+        payload = {"status": "error", "message": f"Tool execution failed: {exc}"}
         return _tool_result(payload, is_error=True)
 
     return _tool_result(payload, is_error=payload.get("status") == "error" or "error" in payload)

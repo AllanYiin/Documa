@@ -57,6 +57,15 @@ class Stage9ProcessingPipelineTests(unittest.TestCase):
         self.assertIn("documa_process", schemas)
         self.assertIn("export_formats", schemas["documa_process"]["inputSchema"]["properties"])
 
+    def test_process_tool_accepts_single_export_format_string(self):
+        result = call_documa_tool(
+            "documa_process",
+            {"source": "missing.pdf", "export_formats": "rag-json"},
+        )
+
+        self.assertTrue(result["isError"])
+        self.assertEqual(result["structuredContent"]["status"], "error")
+
     def test_process_tool_unknown_file_reports_error(self):
         result = call_documa_tool("documa_process", {"source": "missing.pdf"})
 
@@ -105,4 +114,3 @@ class Stage9ProcessingPipelineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Any
 
 
@@ -156,3 +157,49 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
             "annotations": {"readOnlyHint": True},
         },
     ]
+
+
+def _with_no_extra_properties(schema: dict[str, Any], *, require_all: bool) -> dict[str, Any]:
+    schema = deepcopy(schema)
+    if schema.get("type") == "object":
+        schema.setdefault("additionalProperties", False)
+        properties = schema.get("properties", {})
+        if require_all:
+            schema["required"] = list(properties)
+        for value in properties.values():
+            if isinstance(value, dict):
+                _apply_no_extra_properties(value, require_all=require_all)
+    return schema
+
+
+def _apply_no_extra_properties(schema: dict[str, Any], *, require_all: bool) -> None:
+    if schema.get("type") == "object":
+        schema.setdefault("additionalProperties", False)
+        properties = schema.get("properties", {})
+        if require_all:
+            schema["required"] = list(properties)
+        for value in properties.values():
+            if isinstance(value, dict):
+                _apply_no_extra_properties(value, require_all=require_all)
+    if schema.get("type") == "array" and isinstance(schema.get("items"), dict):
+        _apply_no_extra_properties(schema["items"], require_all=require_all)
+
+
+def openai_tool_schemas(*, strict: bool = False) -> list[dict[str, Any]]:
+    """Return OpenAI function-tool descriptors derived from Documa schemas."""
+
+    tools = []
+    for descriptor in documa_tool_schemas():
+        parameters = _with_no_extra_properties(descriptor["inputSchema"], require_all=strict)
+        tools.append(
+            {
+                "type": "function",
+                "function": {
+                    "name": descriptor["name"],
+                    "description": descriptor["description"],
+                    "parameters": parameters,
+                    "strict": strict,
+                },
+            }
+        )
+    return tools
