@@ -14,6 +14,7 @@ from documa.core.serialization import document_from_plain_data
 from documa.exporters import ExportOptions, JsonExporter, MarkdownExporter, RagJsonExporter
 from documa.interfaces.tool_schemas import documa_tool_schemas
 from documa.pipeline import ChunkingStage, PipelineContext, ProvenanceLinkingStage
+from documa.quality import BenchmarkOptions, run_fixture_benchmark
 
 
 ToolPayload = dict[str, Any]
@@ -136,6 +137,31 @@ def inspect_document_tool(ir_path: str) -> ToolPayload:
     return inspect_document(document)
 
 
+def benchmark_tool(
+    manifest_path: str = "fixtures/pdf/manifest.json",
+    fixtures_dir: str = "fixtures/pdf",
+    out: str | None = None,
+    require_files: bool = False,
+) -> ToolPayload:
+    try:
+        payload = run_fixture_benchmark(
+            BenchmarkOptions(
+                manifest_path=Path(manifest_path),
+                fixtures_dir=Path(fixtures_dir),
+                require_files=require_files,
+            )
+        )
+    except (OSError, KeyError, ValueError) as exc:
+        return {"status": "error", "message": str(exc)}
+
+    if out:
+        write_payload(out, payload)
+        payload["output_path"] = out
+    else:
+        payload["output_path"] = None
+    return payload
+
+
 def list_documa_tools() -> list[dict[str, Any]]:
     return documa_tool_schemas()
 
@@ -145,6 +171,7 @@ def _tool_registry() -> dict[str, Callable[..., ToolPayload]]:
         "documa_parse": parse_document_tool,
         "documa_export": export_document_tool,
         "documa_inspect": inspect_document_tool,
+        "documa_benchmark": benchmark_tool,
     }
 
 
@@ -173,4 +200,3 @@ def _tool_result(payload: ToolPayload, *, is_error: bool = False) -> dict[str, A
         "structuredContent": payload,
         "isError": is_error,
     }
-

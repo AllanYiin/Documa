@@ -67,3 +67,14 @@ Run the optional MCP server after installing the extra:
 pip install "documa[mcp]"
 documa-mcp
 ```
+
+## Stage 7 Benchmark
+
+Run the fixture readiness benchmark:
+
+```powershell
+$env:PYTHONPATH="src"
+python -m documa.cli benchmark --out "D:\tmp\documa-benchmark.json"
+```
+
+Use `--require-files` when fixture PDFs must exist for a release gate.

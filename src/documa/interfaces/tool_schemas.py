@@ -76,4 +76,29 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
             },
             "annotations": {"readOnlyHint": True},
         },
+        {
+            "name": "documa_benchmark",
+            "title": "Run Documa fixture benchmark",
+            "description": "Validate the fixture manifest and report benchmark readiness for Documa parsing risks.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "manifest_path": {"type": "string", "default": "fixtures/pdf/manifest.json"},
+                    "fixtures_dir": {"type": "string", "default": "fixtures/pdf"},
+                    "out": {"type": ["string", "null"]},
+                    "require_files": {"type": "boolean", "default": False},
+                },
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "summary": {"type": "object"},
+                    "cases": {"type": "array"},
+                    "output_path": {"type": ["string", "null"]},
+                },
+                "required": ["status", "summary", "cases"],
+            },
+            "annotations": {"readOnlyHint": True},
+        },
     ]

@@ -86,3 +86,21 @@ Stage 6 adds a shared tool execution layer for agents:
 
 This stage is still parser-adapter based. It does not introduce a UI, a custom
 PDF parser, or LLM inference.
+
+## Stage 7 Benchmark Baseline
+
+Stage 7 adds an executable quality harness for the nine original PDF parsing
+risks:
+
+- `run_fixture_benchmark()` validates the fixture manifest and produces
+  per-case structured results.
+- Missing fixture files are `skipped` by default so the benchmark can run before
+  real PDFs are checked in.
+- `--require-files` turns missing declarations or files into failed cases for
+  release gates.
+- `documa benchmark` and `documa_benchmark` expose the same structured result
+  through CLI and tool-calling.
+
+This is a readiness and regression harness, not yet a full document-quality
+score. As real fixtures are added, capability-specific checks can be attached to
+the existing per-case result format.

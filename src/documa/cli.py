@@ -8,7 +8,7 @@ import sys
 from typing import Any
 
 from documa import __version__
-from documa.interfaces import export_document_tool, inspect_document_tool, list_documa_tools, parse_document_tool
+from documa.interfaces import benchmark_tool, export_document_tool, inspect_document_tool, list_documa_tools, parse_document_tool
 
 
 def _emit_json(data: dict[str, Any], *, exit_code: int = 0) -> int:
@@ -41,7 +41,11 @@ def build_parser() -> argparse.ArgumentParser:
     inspect_cmd = subparsers.add_parser("inspect", help="Inspect a Documa IR document.")
     inspect_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
     subparsers.add_parser("tools", help="List Documa tool-calling schemas.")
-    subparsers.add_parser("benchmark", help="Run Documa benchmark fixtures.")
+    benchmark_cmd = subparsers.add_parser("benchmark", help="Run Documa benchmark fixtures.")
+    benchmark_cmd.add_argument("--manifest", default="fixtures/pdf/manifest.json", help="Path to fixture manifest JSON.")
+    benchmark_cmd.add_argument("--fixtures-dir", default="fixtures/pdf", help="Directory containing fixture files.")
+    benchmark_cmd.add_argument("--out", help="Output JSON file path.")
+    benchmark_cmd.add_argument("--require-files", action="store_true", help="Fail cases with missing fixture files.")
 
     return parser
 
@@ -74,13 +78,13 @@ def main(argv: list[str] | None = None) -> int:
         return _emit_json({"status": "ok", "tools": list_documa_tools()})
 
     if args.command == "benchmark":
-        return _emit_json(
-            {
-                "status": "not_implemented",
-                "message": f"The '{args.command}' command is reserved by the Stage 0 CLI skeleton.",
-            },
-            exit_code=2,
+        payload = benchmark_tool(
+            manifest_path=args.manifest,
+            fixtures_dir=args.fixtures_dir,
+            out=args.out,
+            require_files=args.require_files,
         )
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
     parser.print_help()
     return 0
