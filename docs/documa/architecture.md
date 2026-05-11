@@ -104,3 +104,19 @@ risks:
 This is a readiness and regression harness, not yet a full document-quality
 score. As real fixtures are added, capability-specific checks can be attached to
 the existing per-case result format.
+
+## Stage 8 Release Readiness Baseline
+
+Stage 8 adds install and release readiness checks:
+
+- `run_doctor()` validates Python version, package importability, optional
+  dependency availability, core project files, and fixture benchmark readiness.
+- `documa doctor` and `documa_doctor` expose the same structured diagnostics
+  through CLI and tool-calling.
+- `pyproject.toml` now carries package keywords, classifiers, project URLs, and
+  optional extras for PDF and MCP integrations.
+- GitHub Actions CI installs the package, runs the unit tests, and executes
+  `documa doctor` across Python 3.10, 3.11, and 3.12.
+
+The doctor treats optional integrations such as PyMuPDF and MCP as warnings
+when absent. Core package readiness should remain usable without those extras.

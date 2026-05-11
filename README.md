@@ -78,3 +78,15 @@ python -m documa.cli benchmark --out "D:\tmp\documa-benchmark.json"
 ```
 
 Use `--require-files` when fixture PDFs must exist for a release gate.
+
+## Stage 8 Doctor
+
+Check local package readiness:
+
+```powershell
+$env:PYTHONPATH="src"
+python -m documa.cli doctor
+```
+
+The doctor reports core failures separately from optional dependency warnings
+for PDF and MCP integrations.

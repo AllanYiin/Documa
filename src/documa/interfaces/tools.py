@@ -14,7 +14,7 @@ from documa.core.serialization import document_from_plain_data
 from documa.exporters import ExportOptions, JsonExporter, MarkdownExporter, RagJsonExporter
 from documa.interfaces.tool_schemas import documa_tool_schemas
 from documa.pipeline import ChunkingStage, PipelineContext, ProvenanceLinkingStage
-from documa.quality import BenchmarkOptions, run_fixture_benchmark
+from documa.quality import BenchmarkOptions, DoctorOptions, run_doctor, run_fixture_benchmark
 
 
 ToolPayload = dict[str, Any]
@@ -162,6 +162,13 @@ def benchmark_tool(
     return payload
 
 
+def doctor_tool(project_root: str = ".", include_benchmark: bool = True) -> ToolPayload:
+    try:
+        return run_doctor(DoctorOptions(project_root=Path(project_root), include_benchmark=include_benchmark))
+    except (OSError, KeyError, ValueError) as exc:
+        return {"status": "error", "message": str(exc)}
+
+
 def list_documa_tools() -> list[dict[str, Any]]:
     return documa_tool_schemas()
 
@@ -172,6 +179,7 @@ def _tool_registry() -> dict[str, Callable[..., ToolPayload]]:
         "documa_export": export_document_tool,
         "documa_inspect": inspect_document_tool,
         "documa_benchmark": benchmark_tool,
+        "documa_doctor": doctor_tool,
     }
 
 

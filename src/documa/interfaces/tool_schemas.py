@@ -101,4 +101,27 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
             },
             "annotations": {"readOnlyHint": True},
         },
+        {
+            "name": "documa_doctor",
+            "title": "Run Documa environment diagnostics",
+            "description": "Check package, optional dependency, and fixture readiness for Documa.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project_root": {"type": "string", "default": "."},
+                    "include_benchmark": {"type": "boolean", "default": True},
+                },
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "documa_version": {"type": "string"},
+                    "summary": {"type": "object"},
+                    "checks": {"type": "array"},
+                },
+                "required": ["status", "summary", "checks"],
+            },
+            "annotations": {"readOnlyHint": True},
+        },
     ]

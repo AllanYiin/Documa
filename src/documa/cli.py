@@ -8,7 +8,14 @@ import sys
 from typing import Any
 
 from documa import __version__
-from documa.interfaces import benchmark_tool, export_document_tool, inspect_document_tool, list_documa_tools, parse_document_tool
+from documa.interfaces import (
+    benchmark_tool,
+    doctor_tool,
+    export_document_tool,
+    inspect_document_tool,
+    list_documa_tools,
+    parse_document_tool,
+)
 
 
 def _emit_json(data: dict[str, Any], *, exit_code: int = 0) -> int:
@@ -47,6 +54,10 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_cmd.add_argument("--out", help="Output JSON file path.")
     benchmark_cmd.add_argument("--require-files", action="store_true", help="Fail cases with missing fixture files.")
 
+    doctor_cmd = subparsers.add_parser("doctor", help="Run Documa environment diagnostics.")
+    doctor_cmd.add_argument("--project-root", default=".", help="Project root for local readiness checks.")
+    doctor_cmd.add_argument("--no-benchmark", action="store_true", help="Skip fixture benchmark readiness checks.")
+
     return parser
 
 
@@ -84,6 +95,10 @@ def main(argv: list[str] | None = None) -> int:
             out=args.out,
             require_files=args.require_files,
         )
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "doctor":
+        payload = doctor_tool(project_root=args.project_root, include_benchmark=not args.no_benchmark)
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
     parser.print_help()
