@@ -10,6 +10,7 @@ from documa.pipeline.layout import LayoutClassificationStage
 from documa.pipeline.paragraphs import ParagraphGroupingStage
 from documa.pipeline.provenance import ProvenanceLinkingStage
 from documa.pipeline.reading_order import ReadingOrderStage
+from documa.pipeline.runner import PipelineRun, default_pipeline_stages, run_default_pipeline, run_pipeline
 from documa.pipeline.tables import TableNormalizationStage
 from documa.pipeline.toc import TocLinkingStage
 
@@ -22,10 +23,14 @@ __all__ = [
     "LayoutClassificationStage",
     "ParagraphGroupingStage",
     "PipelineContext",
+    "PipelineRun",
     "PipelineStage",
     "ProvenanceLinkingStage",
     "ReadingOrderStage",
     "StageResult",
     "TableNormalizationStage",
     "TocLinkingStage",
+    "default_pipeline_stages",
+    "run_default_pipeline",
+    "run_pipeline",
 ]

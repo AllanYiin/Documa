@@ -9,6 +9,7 @@ from documa.interfaces.tools import (
     inspect_document_tool,
     list_documa_tools,
     parse_document_tool,
+    process_document_tool,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "inspect_document_tool",
     "list_documa_tools",
     "parse_document_tool",
+    "process_document_tool",
 ]

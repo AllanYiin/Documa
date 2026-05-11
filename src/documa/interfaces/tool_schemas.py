@@ -55,6 +55,37 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
             "annotations": {"readOnlyHint": False},
         },
         {
+            "name": "documa_process",
+            "title": "Parse and process document",
+            "description": "Parse a document, run the default Documa understanding pipeline, and optionally export agent-ready outputs.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "source": {"type": "string"},
+                    "out": {"type": ["string", "null"]},
+                    "lang": {"type": "string", "default": "auto"},
+                    "max_chars": {"type": "integer", "minimum": 1, "default": 1200},
+                    "export_formats": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": ["json", "markdown", "rag-json"]},
+                    },
+                },
+                "required": ["source"],
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "document_id": {"type": "string"},
+                    "output_path": {"type": ["string", "null"]},
+                    "export_paths": {"type": "object"},
+                    "pipeline": {"type": "object"},
+                },
+                "required": ["status"],
+            },
+            "annotations": {"readOnlyHint": False},
+        },
+        {
             "name": "documa_inspect",
             "title": "Inspect Documa IR",
             "description": "Return a structured summary of pages, chunks, relations, tables, and images.",

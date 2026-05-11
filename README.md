@@ -90,3 +90,15 @@ python -m documa.cli doctor
 
 The doctor reports core failures separately from optional dependency warnings
 for PDF and MCP integrations.
+
+## Stage 9 Process
+
+Run parse plus the default understanding pipeline:
+
+```powershell
+$env:PYTHONPATH="src"
+python -m documa.cli process "D:\文件\報告.pdf" --out "D:\tmp\documa-process" --lang zh-Hant,en
+```
+
+The command writes `documa.ir.json` and a default `documa.rag.json` retrieval
+export when `--out` is provided.

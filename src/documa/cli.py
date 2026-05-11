@@ -15,6 +15,7 @@ from documa.interfaces import (
     inspect_document_tool,
     list_documa_tools,
     parse_document_tool,
+    process_document_tool,
 )
 
 
@@ -38,6 +39,19 @@ def build_parser() -> argparse.ArgumentParser:
     parse_cmd.add_argument("--out", help="Output directory.")
     parse_cmd.add_argument("--lang", default="auto", help="Comma-separated language hints.")
     parse_cmd.add_argument("--progress", choices=["text", "jsonl"], default="text")
+
+    process_cmd = subparsers.add_parser("process", help="Parse and run the default Documa pipeline.")
+    process_cmd.add_argument("source", help="Path to the source document.")
+    process_cmd.add_argument("--out", help="Output directory.")
+    process_cmd.add_argument("--lang", default="auto", help="Comma-separated language hints.")
+    process_cmd.add_argument("--max-chars", type=int, default=1200, help="Target max characters per generated chunk.")
+    process_cmd.add_argument(
+        "--export-format",
+        action="append",
+        choices=["json", "markdown", "rag-json"],
+        dest="export_formats",
+        help="Additional export format to write when --out is provided. Can be repeated.",
+    )
 
     export_cmd = subparsers.add_parser("export", help="Export a Documa IR document.")
     export_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
@@ -70,6 +84,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "parse":
         payload = parse_document_tool(source=args.source, out=args.out, lang=args.lang, progress=args.progress)
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "process":
+        payload = process_document_tool(
+            source=args.source,
+            out=args.out,
+            lang=args.lang,
+            max_chars=args.max_chars,
+            export_formats=args.export_formats,
+        )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
     if args.command == "export":

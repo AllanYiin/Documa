@@ -120,3 +120,19 @@ Stage 8 adds install and release readiness checks:
 
 The doctor treats optional integrations such as PyMuPDF and MCP as warnings
 when absent. Core package readiness should remain usable without those extras.
+
+## Stage 9 End-To-End Processing Baseline
+
+Stage 9 adds an orchestration layer:
+
+- `run_default_pipeline()` applies the default Documa transformations in order:
+  reading order, inline semantics, layout, paragraphs, tables, images,
+  relations, chunking, and provenance.
+- `documa process` parses a document and runs the full pipeline in one command.
+- `documa_process` exposes the same capability for direct tool-calling and MCP
+  wrappers.
+- When `--out` is provided, processing writes `documa.ir.json` plus a default
+  `documa.rag.json` export for retrieval ingestion.
+
+`parse` remains the low-level adapter boundary. `process` is the high-level
+agent ingestion entry point.

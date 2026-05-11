@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from documa.interfaces.tools import export_document_tool, inspect_document_tool, parse_document_tool
+from documa.interfaces.tools import export_document_tool, inspect_document_tool, parse_document_tool, process_document_tool
 
 
 def create_mcp_server() -> Any:
@@ -23,6 +23,17 @@ def create_mcp_server() -> Any:
         """Parse a document into Documa IR."""
 
         return parse_document_tool(source=source, out=out, lang=lang)
+
+    @mcp.tool()
+    def documa_process(
+        source: str,
+        out: str | None = None,
+        lang: str = "auto",
+        max_chars: int = 1200,
+    ) -> dict[str, Any]:
+        """Parse a document and run the default Documa processing pipeline."""
+
+        return process_document_tool(source=source, out=out, lang=lang, max_chars=max_chars)
 
     @mcp.tool()
     def documa_export(
@@ -50,4 +61,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
