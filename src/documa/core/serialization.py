@@ -9,6 +9,8 @@ from documa.core.ir import (
     BlockType,
     ChunkIR,
     Confidence,
+    DocumentBlockIR,
+    DocumentBlockType,
     DocumentIR,
     ImageIR,
     PageIR,
@@ -141,11 +143,32 @@ def chunk_from_plain_data(data: dict[str, Any]) -> ChunkIR:
         id=str(data["id"]),
         text=_text(data.get("text")) or TextContent(""),
         source_block_ids=[str(item) for item in data.get("source_block_ids", [])],
+        parent_block_id=None if data.get("parent_block_id") is None else str(data.get("parent_block_id")),
         heading_path=[str(item) for item in data.get("heading_path", [])],
         page_refs=[int(item) for item in data.get("page_refs", [])],
         bbox_refs=[bbox for item in data.get("bbox_refs", []) if (bbox := _bbox(item)) is not None],
         asset_refs=[str(item) for item in data.get("asset_refs", [])],
         relation_ids=[str(item) for item in data.get("relation_ids", [])],
+        metadata=dict(data.get("metadata", {})),
+    )
+
+
+def document_block_from_plain_data(data: dict[str, Any]) -> DocumentBlockIR:
+    return DocumentBlockIR(
+        id=str(data["id"]),
+        type=_coerce_enum(DocumentBlockType, data.get("type"), DocumentBlockType.UNKNOWN),
+        title=None if data.get("title") is None else str(data.get("title")),
+        parent_id=None if data.get("parent_id") is None else str(data.get("parent_id")),
+        child_ids=[str(item) for item in data.get("child_ids", [])],
+        source_block_ids=[str(item) for item in data.get("source_block_ids", [])],
+        source_chunk_ids=[str(item) for item in data.get("source_chunk_ids", [])],
+        page_refs=[int(item) for item in data.get("page_refs", [])],
+        bbox_refs=[bbox for item in data.get("bbox_refs", []) if (bbox := _bbox(item)) is not None],
+        text_preview=data.get("text_preview"),
+        content_hash=data.get("content_hash"),
+        depth=int(data.get("depth", 0)),
+        order_index=data.get("order_index"),
+        confidence=_coerce_enum(Confidence, data.get("confidence"), Confidence.UNKNOWN),
         metadata=dict(data.get("metadata", {})),
     )
 
@@ -172,7 +195,7 @@ def document_from_plain_data(data: dict[str, Any]) -> DocumentIR:
         pages=[page_from_plain_data(item) for item in data.get("pages", [])],
         tables=[table_from_plain_data(item) for item in data.get("tables", [])],
         relations=[relation_from_plain_data(item) for item in data.get("relations", [])],
+        document_blocks=[document_block_from_plain_data(item) for item in data.get("document_blocks", [])],
         chunks=[chunk_from_plain_data(item) for item in data.get("chunks", [])],
         metadata=dict(data.get("metadata", {})),
     )
-

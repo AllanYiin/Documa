@@ -8,14 +8,21 @@ import sys
 from typing import Any
 
 from documa import __version__
+from documa.demo import run_block_reading_demo
 from documa.interfaces import (
     benchmark_tool,
+    block_tree_tool,
+    block_xref_tool,
     doctor_tool,
     export_document_tool,
+    inspect_block_tool,
     inspect_document_tool,
+    list_blocks_tool,
     list_documa_tools,
     parse_document_tool,
     process_document_tool,
+    read_block_tool,
+    search_blocks_tool,
 )
 
 
@@ -48,19 +55,67 @@ def build_parser() -> argparse.ArgumentParser:
     process_cmd.add_argument(
         "--export-format",
         action="append",
-        choices=["json", "markdown", "rag-json"],
+        choices=["json", "markdown", "rag-json", "block-json"],
         dest="export_formats",
         help="Additional export format to write when --out is provided. Can be repeated.",
     )
 
     export_cmd = subparsers.add_parser("export", help="Export a Documa IR document.")
     export_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
-    export_cmd.add_argument("--format", choices=["json", "markdown", "rag-json"], default="json")
+    export_cmd.add_argument("--format", choices=["json", "markdown", "rag-json", "block-json"], default="json")
     export_cmd.add_argument("--out", help="Output file path.")
     export_cmd.add_argument("--max-chars", type=int, default=1200, help="Target max characters per generated chunk.")
 
     inspect_cmd = subparsers.add_parser("inspect", help="Inspect a Documa IR document.")
     inspect_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
+
+    blocks_cmd = subparsers.add_parser("blocks", help="List Documa document blocks.")
+    blocks_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
+    blocks_cmd.add_argument("--depth", type=int, help="Maximum block depth to return.")
+    blocks_cmd.add_argument("--parent-id", help="Only return direct children of this block id.")
+    blocks_cmd.add_argument("--no-metadata-summary", action="store_true", help="Omit keyword metadata summaries.")
+
+    block_cmd = subparsers.add_parser("block", help="Inspect or read a Documa document block.")
+    block_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
+    block_cmd.add_argument("--id", required=True, dest="block_id", help="Document block id.")
+    block_cmd.add_argument("--read", action="store_true", help="Read block body instead of metadata.")
+    block_cmd.add_argument("--include-children", action="store_true", help="Include descendant block bodies when reading.")
+    block_cmd.add_argument("--max-chars", type=int, help="Limit returned body text.")
+
+    search_blocks_cmd = subparsers.add_parser("search-blocks", help="Search Documa document blocks.")
+    search_blocks_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
+    search_blocks_cmd.add_argument("--query", required=True, help="Lexical query.")
+    search_blocks_cmd.add_argument("--limit", type=int, default=10, help="Maximum result count.")
+    search_blocks_cmd.add_argument("--term", action="append", dest="any_of", help="Additional OR search term.")
+    search_blocks_cmd.add_argument("--field", action="append", dest="fields", help="Restrict searched fields. Repeatable.")
+    search_blocks_cmd.add_argument("--snippet-field", action="append", dest="snippet_fields", help="Field allowed to produce snippets. Repeatable.")
+    search_blocks_cmd.add_argument("--verbosity", choices=["compact", "standard", "debug"], default="compact", help="Search result detail level.")
+    search_blocks_cmd.add_argument("--no-snippets", action="store_true", help="Return matches without snippet context.")
+    search_blocks_cmd.add_argument("--no-body", action="store_true", help="Do not search full block body text.")
+    search_blocks_cmd.add_argument("--max-snippets-per-block", type=int, default=5, help="Maximum snippets per result block.")
+    search_blocks_cmd.add_argument("--context-chars", type=int, default=24, help="CJK characters around snippet matches.")
+    search_blocks_cmd.add_argument("--context-words", type=int, default=8, help="ASCII words around snippet matches.")
+
+    block_tree_cmd = subparsers.add_parser("block-tree", help="Return the full Documa document block tree.")
+    block_tree_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
+
+    block_xref_cmd = subparsers.add_parser("block-xref", help="Return parent, children, source, and relation refs.")
+    block_xref_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
+    block_xref_cmd.add_argument("--id", required=True, dest="block_id", help="Document block id.")
+
+    demo_cmd = subparsers.add_parser("block-demo", help="Run a block-based reading trace demo for a PDF.")
+    demo_cmd.add_argument("source", help="Path to the source PDF.")
+    demo_cmd.add_argument("--question", required=True, help="Question to answer through block-based reading.")
+    demo_cmd.add_argument("--out", help="Output directory for IR, blocks, and trace JSON.")
+    demo_cmd.add_argument("--lang", default="auto", help="Comma-separated language hints.")
+    demo_cmd.add_argument("--top-k", type=int, default=3, help="Number of metadata-selected blocks to read.")
+    demo_cmd.add_argument(
+        "--max-chars-per-block",
+        type=int,
+        default=2000,
+        help="Maximum body characters loaded for each selected block.",
+    )
+
     subparsers.add_parser("tools", help="List Documa tool-calling schemas.")
     benchmark_cmd = subparsers.add_parser("benchmark", help="Run Documa benchmark fixtures.")
     benchmark_cmd.add_argument("--manifest", default="fixtures/pdf/manifest.json", help="Path to fixture manifest JSON.")
@@ -107,6 +162,63 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "inspect":
         payload = inspect_document_tool(args.ir_path)
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "blocks":
+        payload = list_blocks_tool(
+            ir_path=args.ir_path,
+            depth=args.depth,
+            parent_id=args.parent_id,
+            include_metadata_summary=not args.no_metadata_summary,
+        )
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "block":
+        if args.read:
+            payload = read_block_tool(
+                ir_path=args.ir_path,
+                block_id=args.block_id,
+                include_children=args.include_children,
+                max_chars=args.max_chars,
+            )
+        else:
+            payload = inspect_block_tool(ir_path=args.ir_path, block_id=args.block_id)
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "search-blocks":
+        payload = search_blocks_tool(
+            ir_path=args.ir_path,
+            query=args.query,
+            limit=args.limit,
+            any_of=args.any_of,
+            fields=args.fields,
+            snippet_fields=args.snippet_fields,
+            verbosity=args.verbosity,
+            include_snippets=not args.no_snippets,
+            max_snippets_per_block=args.max_snippets_per_block,
+            search_body=not args.no_body,
+            context_chars=args.context_chars,
+            context_words=args.context_words,
+        )
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "block-tree":
+        payload = block_tree_tool(ir_path=args.ir_path)
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "block-xref":
+        payload = block_xref_tool(ir_path=args.ir_path, block_id=args.block_id)
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "block-demo":
+        payload = run_block_reading_demo(
+            source=args.source,
+            question=args.question,
+            out=args.out,
+            lang=args.lang,
+            top_k=args.top_k,
+            max_chars_per_block=args.max_chars_per_block,
+        )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
     if args.command == "tools":

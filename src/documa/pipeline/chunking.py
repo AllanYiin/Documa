@@ -1,11 +1,12 @@
-"""RAG/RLM-ready chunking stage."""
+"""Optional intra-block retrieval views."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from documa.core.ir import BlockIR, BlockType, ChunkIR, DocumentIR, TextContent
+from documa.core.ir import BlockIR, BlockType, ChunkIR, DocumentBlockIR, DocumentBlockType, DocumentIR, TextContent
 from documa.pipeline.base import PipelineContext, PipelineStage, StageResult
+from documa.pipeline.block_tree import document_block_text
 from documa.pipeline.relations import block_text
 
 
@@ -38,9 +39,79 @@ def _block_chunk_text(document: DocumentIR, block: BlockIR) -> str:
     return block_text(block)
 
 
+def _block_by_id(document: DocumentIR) -> dict[str, BlockIR]:
+    return {block.id: block for page in document.pages for block in page.blocks}
+
+
+def _document_block_by_id(document: DocumentIR) -> dict[str, DocumentBlockIR]:
+    return {block.id: block for block in document.document_blocks}
+
+
+def _block_path(block: DocumentBlockIR, by_id: dict[str, DocumentBlockIR]) -> list[str]:
+    path: list[str] = []
+    current: DocumentBlockIR | None = block
+    while current is not None:
+        if current.type == DocumentBlockType.SECTION and current.title:
+            path.append(current.title)
+        current = by_id.get(current.parent_id) if current.parent_id else None
+    return list(reversed(path))
+
+
+def _source_table(document: DocumentIR, source_block_ids: list[str]):
+    for table in document.tables:
+        if table.block_id in source_block_ids:
+            return table
+    return None
+
+
+def _table_context(document: DocumentIR, block: DocumentBlockIR, heading_path: list[str]) -> tuple[str, str]:
+    table = _source_table(document, block.source_block_ids)
+    source_blocks = _block_by_id(document)
+    source = source_blocks.get(block.source_block_ids[0]) if block.source_block_ids else None
+    title = block.title or (source.metadata.get("table_title") if source else None)
+    caption = source.metadata.get("caption") if source else None
+    notes = (source.metadata.get("table_notes") or source.metadata.get("unit")) if source else None
+    table_text = table.markdown if table and table.markdown else document_block_text(document, block)
+    context_lines = []
+    if heading_path:
+        context_lines.append("Section: " + " > ".join(heading_path))
+    if title:
+        context_lines.append("Table: " + str(title))
+    if caption:
+        context_lines.append("Caption: " + str(caption))
+    if notes:
+        context_lines.append("Notes: " + str(notes))
+    return "\n".join(context_lines).strip(), table_text
+
+
+def _split_text_within_block(text: str, max_chars: int) -> list[str]:
+    text = text.strip()
+    if not text or len(text) <= max_chars:
+        return [text] if text else []
+    pieces = []
+    active = ""
+    for part in text.replace("\r\n", "\n").split("\n"):
+        part = part.strip()
+        if not part:
+            continue
+        candidate = f"{active}\n{part}".strip() if active else part
+        if len(candidate) <= max_chars:
+            active = candidate
+            continue
+        if active:
+            pieces.append(active)
+        while len(part) > max_chars:
+            pieces.append(part[:max_chars])
+            part = part[max_chars:]
+        active = part
+    if active:
+        pieces.append(active)
+    return pieces
+
+
 @dataclass(slots=True)
 class ChunkingStage(PipelineStage):
-    """Create layout-aware chunks with source ids, page refs, and headings."""
+    """Create optional retrieval chunks that never cross document block boundaries."""
 
     name: str = "rag_chunking"
     default_max_chars: int = 1200
@@ -59,6 +130,9 @@ class ChunkingStage(PipelineStage):
         if force:
             document.chunks.clear()
 
+        if document.document_blocks:
+            return self._run_document_block_chunks(document, max_chars)
+
         chunks_created = 0
         heading_path: list[str] = []
         buffer_texts: list[str] = []
@@ -76,6 +150,7 @@ class ChunkingStage(PipelineStage):
                 id=f"chunk_{document.id}_{chunks_created:04d}",
                 text=TextContent(text),
                 source_block_ids=[block.id for block in buffer_blocks],
+                parent_block_id=None,
                 heading_path=list(heading_path),
                 page_refs=_unique([block.page_number for block in buffer_blocks]),
                 bbox_refs=_unique([block.bbox for block in buffer_blocks if block.bbox]),
@@ -138,6 +213,7 @@ class ChunkingStage(PipelineStage):
                         id=f"chunk_{document.id}_{chunks_created:04d}",
                         text=TextContent(str(image_text)),
                         source_block_ids=[],
+                        parent_block_id=None,
                         heading_path=[],
                         page_refs=[page.page_number],
                         bbox_refs=[image.bbox] if image.bbox else [],
@@ -153,3 +229,136 @@ class ChunkingStage(PipelineStage):
             report={"chunks_created": chunks_created, "image_chunks": image_chunks},
         )
 
+    def _run_document_block_chunks(self, document: DocumentIR, max_chars: int) -> StageResult:
+        chunks_created = 0
+        by_id = _document_block_by_id(document)
+        source_blocks = _block_by_id(document)
+        leaves = [
+            block
+            for block in sorted(document.document_blocks, key=lambda item: (item.order_index is None, item.order_index or 0))
+            if not block.child_ids
+            and block.type
+            in {
+                DocumentBlockType.PARAGRAPH,
+                DocumentBlockType.TABLE,
+                DocumentBlockType.IMAGE,
+                DocumentBlockType.FOOTNOTE,
+            }
+        ]
+
+        def append_chunk(block: DocumentBlockIR, text: str, kind: str, extra_metadata: dict | None = None) -> None:
+            nonlocal chunks_created
+            if not text.strip():
+                return
+            chunks_created += 1
+            source_ids = block.source_block_ids
+            source_types = [
+                source_blocks[source_id].type.value
+                for source_id in source_ids
+                if source_id in source_blocks
+            ]
+            metadata = {
+                "stage": self.name,
+                "chunk_kind": kind,
+                "parent_block_id": block.id,
+                "block_path": _block_path(block, by_id),
+                "block_types": _unique(source_types),
+                "intra_block_view": True,
+            }
+            metadata.update(extra_metadata or {})
+            document.chunks.append(
+                ChunkIR(
+                    id=f"chunk_{document.id}_{chunks_created:04d}",
+                    text=TextContent(text),
+                    source_block_ids=source_ids,
+                    parent_block_id=block.id,
+                    heading_path=metadata["block_path"],
+                    page_refs=block.page_refs,
+                    bbox_refs=block.bbox_refs,
+                    metadata=metadata,
+                )
+            )
+
+        for block in leaves:
+            heading_path = _block_path(block, by_id)
+            if block.type == DocumentBlockType.TABLE:
+                context, table_text = _table_context(document, block, heading_path)
+                lines = [line for line in table_text.splitlines() if line.strip()]
+                if context and table_text.startswith(context):
+                    table_body = table_text
+                elif context:
+                    table_body = f"{context}\n{table_text}".strip()
+                else:
+                    table_body = table_text
+                if len(table_body) <= max_chars:
+                    append_chunk(
+                        block,
+                        table_body,
+                        "table",
+                        {
+                            "table_context_included": bool(context),
+                            "repeated_fields": ["section_path", "table_title", "table_caption", "column_headers"],
+                        },
+                    )
+                    continue
+
+                header_lines = []
+                body_lines = lines
+                if len(lines) >= 2 and lines[0].lstrip().startswith("|") and set(lines[1].replace("|", "").strip()) <= {
+                    "-",
+                    ":",
+                    " ",
+                }:
+                    header_lines = lines[:2]
+                    body_lines = lines[2:]
+                active_rows: list[str] = []
+                row_start = 1
+                for row_index, row in enumerate(body_lines, start=1):
+                    prefix = "\n".join([item for item in [context, *header_lines] if item])
+                    candidate = "\n".join([item for item in [prefix, *active_rows, row] if item]).strip()
+                    if active_rows and len(candidate) > max_chars:
+                        text = "\n".join([item for item in [prefix, *active_rows] if item]).strip()
+                        append_chunk(
+                            block,
+                            text,
+                            "table_row_group",
+                            {
+                                "table_context_included": bool(prefix),
+                                "row_range": [row_start, row_index - 1],
+                                "repeated_fields": ["section_path", "table_title", "table_caption", "column_headers"],
+                            },
+                        )
+                        active_rows = [row]
+                        row_start = row_index
+                    else:
+                        active_rows.append(row)
+                if active_rows:
+                    prefix = "\n".join([item for item in [context, *header_lines] if item])
+                    text = "\n".join([item for item in [prefix, *active_rows] if item]).strip()
+                    append_chunk(
+                        block,
+                        text,
+                        "table_row_group",
+                        {
+                            "table_context_included": bool(prefix),
+                            "row_range": [row_start, row_start + len(active_rows) - 1],
+                            "repeated_fields": ["section_path", "table_title", "table_caption", "column_headers"],
+                        },
+                    )
+                continue
+
+            text = document_block_text(document, block)
+            for index, piece in enumerate(_split_text_within_block(text, max_chars), start=1):
+                append_chunk(
+                    block,
+                    piece,
+                    block.type.value,
+                    {"split_index": index} if len(text) > max_chars else None,
+                )
+
+        return StageResult(
+            document=document,
+            stage_name=self.name,
+            changed=chunks_created > 0,
+            report={"chunks_created": chunks_created, "strategy": "intra_block"},
+        )

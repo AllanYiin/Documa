@@ -136,3 +136,59 @@ Stage 9 adds an orchestration layer:
 
 `parse` remains the low-level adapter boundary. `process` is the high-level
 agent ingestion entry point.
+
+## Stage 10 Progressive Block Reading Baseline
+
+Stage 10 promotes hierarchical document blocks to the primary agent reading
+interface. Rows, lines, spans, and parser-native blocks remain evidence at the
+adapter boundary, while `DocumentBlockIR` provides a progressive-disclosure
+tree that agents can traverse as document, section, page, paragraph, table,
+image, footnote, or metadata blocks.
+
+The default pipeline now builds `document_blocks` after relations and before
+optional retrieval chunking:
+
+- `BlockTreeBuildingStage` creates a body tree from headings, page boundaries,
+  and page-local blocks. Page headers, footers, and page numbers are preserved
+  as furniture metadata instead of being mixed into body text.
+- `BlockKeywordExtractionStage` computes keyword metadata bottom-up. Leaf
+  blocks collect bounded term statistics; parent blocks aggregate child
+  counters and use dynamic support/frequency thresholds rather than rescanning
+  raw text at every level.
+- `ChunkingStage` is now an optional intra-block retrieval view when
+  `document_blocks` exist. Chunks carry `parent_block_id` and must not create
+  new cross-block semantic boundaries. Table chunks repeat table context such
+  as section path, caption, notes, and column headers when a table must be split.
+
+New progressive-reading tools expose the same behavior through CLI and
+tool-calling:
+
+- `documa_list_blocks`
+- `documa_inspect_block`
+- `documa_read_block`
+- `documa_search_blocks`
+
+`rag-json` remains backward compatible and includes additive block metadata.
+`block-json` exports the block tree directly for workflows that do not need
+retrieval chunks.
+
+## Stage 11 Block Reading Demo
+
+Stage 11 adds a CLI demonstration workflow for the block-based reading model.
+`documa block-demo` parses a PDF, runs the understanding pipeline without
+retrieval chunking, records the full block list and metadata, ranks blocks from
+metadata and previews, reads only selected block bodies, and synthesizes an
+extractive answer from loaded evidence.
+
+The trace is written as structured JSON and includes:
+
+- each logical call and returned payload,
+- elapsed time for every step,
+- token usage for call and returned content,
+- selected block ids and scoring details,
+- loaded block body excerpts,
+- deterministic answer synthesis and evidence.
+
+The demo is intentionally offline and deterministic. It does not require an LLM
+provider or network access. Token accounting uses `tiktoken` when available and
+falls back to a clearly labeled heuristic otherwise.

@@ -26,6 +26,7 @@ class RagJsonExporter(Exporter):
                         "document_id": document.id,
                         "source_name": document.source_name,
                         "source_block_ids": chunk.source_block_ids,
+                        "parent_block_id": chunk.parent_block_id,
                         "heading_path": chunk.heading_path,
                         "page_refs": chunk.page_refs,
                         "bbox_refs": chunk.bbox_refs,
@@ -42,4 +43,3 @@ class RagJsonExporter(Exporter):
             "chunk_count": len(records),
             "chunks": records,
         }
-

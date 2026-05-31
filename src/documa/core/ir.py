@@ -35,6 +35,19 @@ class BlockType(SerializableEnum):
     UNKNOWN = "unknown"
 
 
+class DocumentBlockType(SerializableEnum):
+    DOCUMENT = "document"
+    SECTION = "section"
+    PAGE = "page"
+    PARAGRAPH = "paragraph"
+    TABLE = "table"
+    IMAGE = "image"
+    FOOTNOTE = "footnote"
+    TOC = "table_of_content"
+    METADATA = "metadata"
+    UNKNOWN = "unknown"
+
+
 class SpanStyle(SerializableEnum):
     BOLD = "bold"
     ITALIC = "italic"
@@ -50,6 +63,8 @@ class RelationType(SerializableEnum):
     CAPTION_TO_IMAGE = "caption_to_image"
     CAPTION_TO_TABLE = "caption_to_table"
     CHUNK_TO_SOURCE = "chunk_to_source"
+    BLOCK_PARENT_CHILD = "block_parent_child"
+    BLOCK_TO_SOURCE = "block_to_source"
     NEXT_IN_READING_ORDER = "next_in_reading_order"
     UNRESOLVED = "unresolved"
 
@@ -167,6 +182,7 @@ class ChunkIR:
     id: str
     text: TextContent
     source_block_ids: list[str]
+    parent_block_id: str | None = None
     heading_path: list[str] = field(default_factory=list)
     page_refs: list[int] = field(default_factory=list)
     bbox_refs: list[BBox] = field(default_factory=list)
@@ -188,6 +204,25 @@ class PageIR:
 
 
 @dataclass(slots=True)
+class DocumentBlockIR:
+    id: str
+    type: DocumentBlockType
+    title: str | None = None
+    parent_id: str | None = None
+    child_ids: list[str] = field(default_factory=list)
+    source_block_ids: list[str] = field(default_factory=list)
+    source_chunk_ids: list[str] = field(default_factory=list)
+    page_refs: list[int] = field(default_factory=list)
+    bbox_refs: list[BBox] = field(default_factory=list)
+    text_preview: str | None = None
+    content_hash: str | None = None
+    depth: int = 0
+    order_index: int | None = None
+    confidence: Confidence = Confidence.UNKNOWN
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
 class DocumentIR:
     id: str
     source_name: str
@@ -196,6 +231,7 @@ class DocumentIR:
     pages: list[PageIR] = field(default_factory=list)
     tables: list[TableIR] = field(default_factory=list)
     relations: list[RelationIR] = field(default_factory=list)
+    document_blocks: list[DocumentBlockIR] = field(default_factory=list)
     chunks: list[ChunkIR] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
 

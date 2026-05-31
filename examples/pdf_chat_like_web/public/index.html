@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documa PDF Chat Example</title>
+<style>
+:root {
+  --bg: #f7f8fb;
+  --surface: #ffffff;
+  --surface-2: #eef2f7;
+  --surface-3: #e1e7ef;
+  --border: #d9e1ea;
+  --border-strong: #b9c6d4;
+  --text: #17202a;
+  --muted: #526174;
+  --faint: #8794a6;
+  --accent: #2563eb;
+  --accent-deep: #1e40af;
+  --accent-soft: #e8f0ff;
+  --ok: #15803d;
+  --err: #c2410c;
+  --call: #0f766e;
+  --code-bg: #111827;
+  --code-text: #e5e7eb;
+  --shadow: 0 10px 28px rgba(15, 23, 42, 0.10);
+  --font: Inter, "Segoe UI", "Noto Sans TC", "PingFang TC", system-ui, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", Consolas, ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 var(--font);
+  overflow: hidden;
+}
+button, textarea, input { font: inherit; }
+.shell {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+.topbar {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 18px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.brand {
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.health {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.health.ok { color: var(--ok); }
+.health.err { color: var(--err); }
+.main {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.chat {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto auto;
+  background: var(--surface);
+}
+.docbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: #fbfcfe;
+}
+.file-button,
+.file-input::file-selector-button {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.file-button:hover,
+.file-input::file-selector-button:hover { border-color: var(--accent); color: var(--accent-deep); }
+.file-button:disabled { opacity: .55; cursor: not-allowed; }
+.file-input {
+  display: none;
+}
+.docstats {
+  min-width: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dropzone {
+  display: none;
+  margin: 10px 14px 0;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  background: #fbfcfe;
+  color: var(--muted);
+  padding: 10px 12px;
+}
+.dropzone.active {
+  display: block;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+.keyword-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: #fbfcfe;
+  overflow-x: auto;
+}
+.keyword-strip[hidden] { display: none; }
+.keyword-label {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font: 12px/1.4 var(--mono);
+}
+.keyword-chip {
+  flex: 0 0 auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 4px 9px;
+  cursor: pointer;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.keyword-chip:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+.messages {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.placeholder {
+  margin: auto;
+  width: min(540px, 100%);
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  background: #fbfcfe;
+  padding: 24px;
+  color: var(--muted);
+}
+.placeholder h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  line-height: 1.25;
+  color: var(--text);
+}
+.placeholder p { margin: 0; }
+.msg {
+  display: flex;
+  gap: 10px;
+  max-width: 100%;
+}
+.role {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 700 11px/1 var(--mono);
+}
+.msg.user .role { background: var(--accent); color: white; }
+.msg.assistant .role { background: var(--surface-2); color: var(--accent-deep); }
+.bubble {
+  min-width: 0;
+  max-width: 960px;
+  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.msg.user .bubble { background: var(--accent-soft); border-color: #c8d8ff; }
+.tool-card {
+  margin-left: 38px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--call);
+  border-radius: 7px;
+  background: var(--surface-2);
+  font-size: 12px;
+}
+.tool-card.result { border-left-color: var(--ok); }
+.tool-card summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 7px 10px;
+  font-family: var(--mono);
+}
+.tool-card summary::-webkit-details-marker { display: none; }
+.tool-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tool-row::before {
+  content: "▸";
+  color: var(--faint);
+  transition: transform 120ms ease;
+}
+.tool-card[open] .tool-row::before { transform: rotate(90deg); }
+.kind {
+  color: var(--call);
+  font-weight: 800;
+  font-size: 10px;
+  letter-spacing: .06em;
+}
+.tool-card.result .kind { color: var(--ok); }
+.tool-name { font-weight: 700; color: var(--text); }
+.tool-inline {
+  margin-left: auto;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.tool-token {
+  flex: 0 0 auto;
+  color: var(--accent-deep);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 1px 7px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.tool-body {
+  max-height: 280px;
+  overflow: auto;
+  padding: 10px;
+  border-top: 1px solid var(--border);
+  background: var(--code-bg);
+  color: var(--code-text);
+  font: 11.5px/1.55 var(--mono);
+  white-space: pre;
+  border-radius: 0 0 6px 6px;
+}
+.statusline {
+  min-height: 24px;
+  padding: 2px 18px 8px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+}
+textarea {
+  min-height: 48px;
+  max-height: 140px;
+  resize: vertical;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  padding: 9px 11px;
+  outline: none;
+}
+textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+button.primary {
+  align-self: end;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: white;
+  border-radius: 7px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-weight: 700;
+}
+button.primary:disabled, textarea:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+@media (max-width: 860px) {
+  body { overflow: auto; }
+  .shell { min-height: 100vh; height: auto; }
+  .main { grid-template-columns: 1fr; }
+  .chat { min-height: calc(100vh - 52px); }
+  .topbar { padding: 10px 12px; }
+  .brand { font-size: 16px; }
+  .docbar { flex-wrap: wrap; align-items: flex-start; }
+  .tool-inline { max-width: none; }
+  .composer { grid-template-columns: 1fr; }
+  button.primary { width: 100%; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <div class="brand">Documa PDF Chat</div>
+    <div class="health" id="health">checking…</div>
+  </header>
+  <main class="main">
+    <section class="chat" aria-label="PDF chat workspace">
+      <div class="docbar">
+        <button class="file-button" id="loadPdf" type="button">匯入 PDF</button>
+        <input class="file-input" id="fileInput" type="file" accept="application/pdf,.pdf" aria-label="選擇 PDF" hidden>
+        <div class="docstats" id="docstats">未載入文件</div>
+      </div>
+      <div class="dropzone" id="dropzone">把 PDF 拖到這裡也可以載入</div>
+      <div class="keyword-strip" id="keywordStrip" hidden></div>
+      <div class="messages" id="messages">
+        <div class="placeholder">
+          <h1>上傳 PDF 後直接提問</h1>
+          <p>Documa 會先用自動關鍵字與 metadata 找相關 blocks，再讀取候選內容並用證據回答。</p>
+        </div>
+      </div>
+      <div class="statusline" id="status"></div>
+      <form class="composer" id="form">
+        <textarea id="question" placeholder="先載入 PDF，再輸入問題…" disabled></textarea>
+        <button class="primary" id="send" type="submit" disabled>送出</button>
+      </form>
+    </section>
+  </main>
+</div>
+<script>
+const state = { sessionId: null, fileName: "", busy: false };
+const $ = (id) => document.getElementById(id);
+const health = $("health");
+const loadPdf = $("loadPdf");
+const fileInput = $("fileInput");
+const dropzone = $("dropzone");
+const docstats = $("docstats");
+const messages = $("messages");
+const statusLine = $("status");
+const question = $("question");
+const send = $("send");
+const form = $("form");
+const keywordStrip = $("keywordStrip");
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[ch]));
+}
+
+function clearPlaceholder() {
+  const placeholder = messages.querySelector(".placeholder");
+  if (placeholder) placeholder.remove();
+}
+
+function addMessage(role, text) {
+  clearPlaceholder();
+  const wrap = document.createElement("div");
+  wrap.className = `msg ${role}`;
+  wrap.innerHTML = `<div class="role">${role === "user" ? "U" : "AI"}</div><div class="bubble">${esc(text)}</div>`;
+  messages.appendChild(wrap);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function shortJson(value) {
+  const text = JSON.stringify(value);
+  return text.length > 140 ? text.slice(0, 140) + "…" : text;
+}
+
+function tokenBadge(usage, fallbackTokenCount) {
+  const source = usage?.source || "local_estimate";
+  const total = Number(usage?.total_tokens ?? fallbackTokenCount);
+  const cached = Number(usage?.cached_tokens ?? 0);
+  const input = Number(usage?.input_tokens ?? 0);
+  const minInput = Number(usage?.cache_min_input_tokens ?? 1024);
+  const totalText = Number.isFinite(total) && total > 0 ? total.toLocaleString() : "?";
+  const cachedText = Number.isFinite(cached) ? cached.toLocaleString() : "?";
+  const prefix = source === "response_api" ? "" : "est ";
+  const cacheHint = source === "response_api" && Number.isFinite(input) && input > 0 && input < minInput
+    ? ` · cache ineligible ${input.toLocaleString()}/${minInput.toLocaleString()} in`
+    : "";
+  return `${prefix}${totalText} tok · cached ${cachedText}${cacheHint}`;
+}
+
+function estimateTokens(value) {
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  if (!text) return 1;
+  let cjk = 0;
+  for (const ch of text) {
+    if (ch >= "\u4e00" && ch <= "\u9fff") cjk += 1;
+  }
+  const nonCjk = Math.max(text.length - cjk, 0);
+  return Math.max(1, Math.ceil(cjk * 0.8 + nonCjk / 4));
+}
+
+function localTokenUsage(tokenCount) {
+  return {
+    source: "local_estimate",
+    estimated: true,
+    input_tokens: 0,
+    cached_tokens: 0,
+    cache_eligible: false,
+    cache_min_input_tokens: 1024,
+    output_tokens: 0,
+    reasoning_tokens: 0,
+    total_tokens: tokenCount,
+  };
+}
+
+function addToolCard(kind, name, payload, tokenCount, tokenUsage) {
+  clearPlaceholder();
+  const card = document.createElement("details");
+  const isResult = kind === "RESULT";
+  const effectiveTokenCount = tokenCount ?? estimateTokens(payload);
+  const effectiveUsage = tokenUsage || localTokenUsage(effectiveTokenCount);
+  card.className = `tool-card${isResult ? " result" : ""}`;
+  card.innerHTML = `
+    <summary>
+      <span class="tool-row">
+        <span class="kind">${kind}</span>
+        <span class="tool-name">${esc(name)}</span>
+        <span class="tool-inline">${esc(shortJson(payload))}</span>
+        <span class="tool-token" title="token usage">${esc(tokenBadge(effectiveUsage, effectiveTokenCount))}</span>
+      </span>
+    </summary>
+    <div class="tool-body">${esc(JSON.stringify(payload, null, 2))}</div>`;
+  messages.appendChild(card);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function formatTokens(usage) {
+  const total = Number(usage?.total_tokens || 0);
+  if (!Number.isFinite(total) || total <= 0) return "tokens ?";
+  const cached = Number(usage?.cached_tokens ?? usage?.input_tokens_details?.cached_tokens ?? 0);
+  const prefix = usage?.source && usage.source !== "response_api" ? "≈" : "";
+  return `${prefix}${total.toLocaleString()} tokens · cached ${Number.isFinite(cached) ? cached.toLocaleString() : "?"}`;
+}
+
+function renderKeywordGroups(groups) {
+  const rows = Array.isArray(groups) ? groups.slice(0, 18) : [];
+  if (!rows.length) {
+    keywordStrip.hidden = true;
+    keywordStrip.innerHTML = "";
+    return;
+  }
+  keywordStrip.hidden = false;
+  keywordStrip.innerHTML = `
+    <span class="keyword-label">關鍵字</span>
+    ${rows.map((item) => {
+      const pages = (item.page_refs || []).join(",");
+      const title = pages ? `${item.term} · p.${pages}` : item.term;
+      return `<button class="keyword-chip" type="button" title="${esc(title)}" data-keyword="${esc(item.term)}">${esc(item.term)}</button>`;
+    }).join("")}
+  `;
+}
+
+function setReady(ready) {
+  question.disabled = !ready || state.busy;
+  send.disabled = !ready || state.busy;
+  loadPdf.disabled = state.busy;
+  question.placeholder = ready ? "基於 PDF 內容提問…（Ctrl/Cmd + Enter 送出）" : "先載入 PDF，再輸入問題…";
+}
+
+async function loadHealth() {
+  try {
+    const res = await fetch("/api/health");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || res.statusText);
+    health.textContent = `服務就緒 · ${data.service} · ${data.llm_available ? "LLM" : "deterministic"}`;
+    health.className = "health ok";
+  } catch (err) {
+    health.textContent = `服務未就緒 · ${err.message}`;
+    health.className = "health err";
+  }
+}
+
+loadPdf.addEventListener("click", () => {
+  if (!state.busy) {
+    statusLine.textContent = "等待選擇 PDF…";
+    fileInput.click();
+  }
+});
+
+async function loadFile(file) {
+  if (!file) return;
+  state.busy = true;
+  setReady(false);
+  statusLine.textContent = "載入 PDF 並建立 Documa blocks…";
+  docstats.textContent = `${file.name} · parsing…`;
+  try {
+    const res = await fetch(`/api/load?name=${encodeURIComponent(file.name)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/pdf" },
+      body: await file.arrayBuffer()
+    });
+    const data = await res.json();
+    if (!res.ok || data.status !== "ok") throw new Error(data.message || "載入失敗");
+    state.sessionId = data.session_id;
+    state.fileName = data.filename;
+    docstats.textContent = `${data.filename} · ${data.page_count} pages · ${data.document_block_count} blocks · ${formatTokens(data.document_token_usage)}`;
+    renderKeywordGroups(data.keyword_groups);
+    messages.innerHTML = "";
+    addMessage("assistant", `已載入 ${data.filename}。你可以開始提問。`);
+    statusLine.textContent = "完成載入";
+  } catch (err) {
+    statusLine.textContent = `錯誤：${err.message}`;
+    docstats.textContent = "載入失敗";
+    renderKeywordGroups([]);
+  } finally {
+    state.busy = false;
+    setReady(!!state.sessionId);
+    fileInput.value = "";
+    question.focus();
+  }
+}
+
+fileInput.addEventListener("change", async () => {
+  const file = fileInput.files && fileInput.files[0];
+  await loadFile(file);
+});
+
+document.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  dropzone.classList.add("active");
+});
+
+document.addEventListener("dragleave", (event) => {
+  if (event.clientX <= 0 || event.clientY <= 0 || event.clientX >= window.innerWidth || event.clientY >= window.innerHeight) {
+    dropzone.classList.remove("active");
+  }
+});
+
+document.addEventListener("drop", async (event) => {
+  event.preventDefault();
+  dropzone.classList.remove("active");
+  const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+  await loadFile(file);
+});
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const text = question.value.trim();
+  if (!text || !state.sessionId || state.busy) return;
+  addMessage("user", text);
+  question.value = "";
+  state.busy = true;
+  setReady(true);
+  statusLine.textContent = "規劃搜尋、讀取相關 blocks 並產生回答…";
+  try {
+    const res = await fetch("/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: state.sessionId, question: text, use_llm: true })
+    });
+    const data = await res.json();
+    if (!res.ok || data.status !== "ok") throw new Error(data.message || "提問失敗");
+    for (const event of data.turn.events || []) {
+      if (event.type === "tool_call") addToolCard("CALL", event.name, event.payload, event.token_count, event.token_usage);
+      if (event.type === "tool_result") addToolCard("RESULT", event.name, event.payload, event.token_count, event.token_usage);
+      if (event.type === "answer") addMessage("assistant", event.payload.text || "");
+    }
+    const cumulative = data.turn.cumulative_token_usage;
+    const cumulativeText = cumulative && Number(cumulative.total_tokens || 0) > 0
+      ? ` · 對話累計 ${formatTokens(cumulative)}`
+      : "";
+    statusLine.textContent = `本輪完成 · ${formatTokens(data.turn.token_usage)}${cumulativeText} (${data.turn.token_usage.counter})`;
+  } catch (err) {
+    addMessage("assistant", `錯誤：${err.message}`);
+    statusLine.textContent = "提問失敗";
+  } finally {
+    state.busy = false;
+    setReady(true);
+    question.focus();
+  }
+});
+
+question.addEventListener("keydown", (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+    event.preventDefault();
+    form.requestSubmit();
+  }
+});
+
+loadHealth();
+
+keywordStrip.addEventListener("click", (event) => {
+  const button = event.target.closest(".keyword-chip");
+  if (!button) return;
+  const term = button.dataset.keyword || button.textContent || "";
+  question.value = term;
+  question.focus();
+});
+</script>
+</body>
+</html>

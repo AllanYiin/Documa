@@ -1,6 +1,8 @@
 """Documa pipeline interfaces."""
 
 from documa.pipeline.base import PipelineContext, PipelineStage, StageResult
+from documa.pipeline.block_keywords import BlockKeywordExtractionStage
+from documa.pipeline.block_tree import BlockTreeBuildingStage
 from documa.pipeline.captions import CaptionLinkingStage
 from documa.pipeline.chunking import ChunkingStage
 from documa.pipeline.footnotes import FootnoteLinkingStage
@@ -15,6 +17,8 @@ from documa.pipeline.tables import TableNormalizationStage
 from documa.pipeline.toc import TocLinkingStage
 
 __all__ = [
+    "BlockKeywordExtractionStage",
+    "BlockTreeBuildingStage",
     "CaptionLinkingStage",
     "ChunkingStage",
     "FootnoteLinkingStage",

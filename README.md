@@ -51,6 +51,7 @@ Useful formats:
 - `json`: full Documa IR.
 - `markdown`: readable Markdown with page markers.
 - `rag-json`: chunk records with `page_content` and traceable metadata.
+- `block-json`: progressive-disclosure document block tree.
 
 ## Stage 6 Tool Interfaces
 
@@ -110,3 +111,87 @@ python -m documa.cli process "D:\文件\報告.pdf" --out "D:\tmp\documa-process
 
 The command writes `documa.ir.json` and a default `documa.rag.json` retrieval
 export when `--out` is provided.
+
+## Stage 10 Block Reading
+
+Documa now exposes document blocks as the primary progressive-reading surface.
+Agents can list the block tree, inspect metadata, and read only the selected
+block body:
+
+```powershell
+$env:PYTHONPATH="src"
+python -m documa.cli blocks "D:\tmp\documa-process\documa.ir.json"
+python -m documa.cli block "D:\tmp\documa-process\documa.ir.json" --id db_doc_p1
+python -m documa.cli block "D:\tmp\documa-process\documa.ir.json" --id db_doc_p1 --read
+python -m documa.cli search-blocks "D:\tmp\documa-process\documa.ir.json" --query "資料科學"
+```
+
+Chunks remain available for compatibility and retrieval export, but when a
+block tree exists they are generated only as intra-block retrieval views with a
+`parent_block_id`.
+
+## Stage 11 Block Reading Demo
+
+Run an end-to-end CLI demo that parses a PDF, builds block metadata and
+keywords, answers a question through progressive block reading, and records each
+step with token usage:
+
+```powershell
+$env:PYTHONPATH="src"
+python -m documa.cli block-demo "D:\文件\報告.pdf" --question "這份文件的主要風險是什麼？" --out "D:\tmp\documa-demo"
+```
+
+The demo writes:
+
+- `documa.ir.json`: processed Documa IR.
+- `documa.blocks.json`: block tree export.
+- `documa.block_demo.trace.json`: full trace with calls, returned content,
+  selected blocks, synthesized answer, elapsed time, and token accounting.
+
+The demo is deterministic and offline. It does not call an external LLM; answer
+synthesis is extractive so the trace remains reproducible. If `tiktoken` is
+installed it is used for token counts; otherwise Documa marks the count as a
+heuristic estimate.
+
+## Examples
+
+The `examples/` directory contains runnable workflows built on top of Documa's
+public package surface. These examples are not product UI; they show how an app
+or agent can compose Documa tools.
+
+### PDF Chat-Like Progressive Reading
+
+`examples/pdf_chat_like/` demonstrates a Markdown+ chat-style mechanism for
+PDFs. It loads one PDF, builds document blocks, then answers questions through
+traceable tool-like events:
+
+```text
+list_blocks -> search_blocks -> read_block -> synthesize_answer
+```
+
+Run it from a repository checkout:
+
+```powershell
+$env:PYTHONPATH="src"
+python examples\pdf_chat_like\pdf_chat_example.py "D:\文件\report.pdf" `
+  --question "這份文件的主要風險是什麼？" `
+  --out "D:\tmp\documa-pdf-chat"
+```
+
+The example writes `documa.ir.json`, `documa.blocks.json`, and
+`pdf_chat_trace.json`. See
+`examples/pdf_chat_like/README.md` for multi-question and interactive usage.
+
+### PDF Chat Web Interface
+
+`examples/pdf_chat_like_web/` provides a local browser UI similar to the
+Markdown+ chat page, but it reads PDFs through Documa:
+
+```powershell
+$env:PYTHONPATH="src"
+python examples\pdf_chat_like_web\server.py --port 8765
+```
+
+Then open `http://127.0.0.1:8765`, upload a PDF, and ask questions. The page
+shows each `list_blocks`, `search_blocks`, and `read_block` step as collapsible
+tool cards before displaying the evidence-backed answer.

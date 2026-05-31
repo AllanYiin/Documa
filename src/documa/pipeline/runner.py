@@ -7,6 +7,8 @@ from typing import Iterable
 
 from documa.core.ir import DocumentIR
 from documa.pipeline.base import PipelineContext, PipelineStage, StageResult
+from documa.pipeline.block_keywords import BlockKeywordExtractionStage
+from documa.pipeline.block_tree import BlockTreeBuildingStage
 from documa.pipeline.captions import CaptionLinkingStage
 from documa.pipeline.chunking import ChunkingStage
 from documa.pipeline.footnotes import FootnoteLinkingStage
@@ -50,6 +52,8 @@ def default_pipeline_stages(*, include_chunking: bool = True) -> list[PipelineSt
         FootnoteLinkingStage(),
         TocLinkingStage(),
         CaptionLinkingStage(),
+        BlockTreeBuildingStage(),
+        BlockKeywordExtractionStage(),
     ]
     if include_chunking:
         stages.extend([ChunkingStage(), ProvenanceLinkingStage()])
@@ -78,4 +82,3 @@ def run_default_pipeline(
     include_chunking: bool = True,
 ) -> PipelineRun:
     return run_pipeline(document, default_pipeline_stages(include_chunking=include_chunking), context)
-
