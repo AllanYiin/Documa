@@ -212,6 +212,259 @@ class PdfChatLikeExampleTests(unittest.TestCase):
             self.assertTrue(all(event["payload"]["source"] == "responses_api_function_call" for event in tool_calls))
             self.assertIn("Deployment risk", turn["answer"]["text"])
 
+    def test_pdf_chat_tool_calling_can_batch_read_candidate_blocks(self):
+        try:
+            import pymupdf  # type: ignore
+        except ImportError:
+            try:
+                import fitz as pymupdf  # type: ignore
+            except ImportError:
+                self.skipTest("PyMuPDF is required")
+
+        module = load_example_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            pdf_path = tmp_path / "batch-read.pdf"
+            pdf = pymupdf.open()
+            page = pdf.new_page(width=360, height=220)
+            page.insert_text((24, 40), "Deployment Risk", fontsize=18)
+            page.insert_text((24, 90), "Deployment risk includes rollback planning and monitoring.", fontsize=12)
+            pdf.save(pdf_path)
+            pdf.close()
+
+            session = module.PdfBlockChatExample.load(pdf_path)
+            block_id = next(block.id for block in session.document.document_blocks if block.source_block_ids)
+            responses = [
+                {
+                    "response_id": "resp_search",
+                    "model": "fake-model",
+                    "text": "",
+                    "output": [
+                        {
+                            "type": "function_call",
+                            "call_id": "call_search",
+                            "name": "search_blocks",
+                            "arguments": json.dumps({"query": "deployment risk", "limit": 5, "max_snippets_per_block": 5}),
+                        }
+                    ],
+                    "usage": {"input_tokens": 20, "output_tokens": 5, "total_tokens": 25},
+                },
+                {
+                    "response_id": "resp_read",
+                    "model": "fake-model",
+                    "text": "",
+                    "output": [
+                        {
+                            "type": "function_call",
+                            "call_id": "call_read_blocks",
+                            "name": "read_blocks",
+                            "arguments": json.dumps({"block_ids": [block_id], "max_chars_per_block": 1000}),
+                        }
+                    ],
+                    "usage": {"input_tokens": 30, "output_tokens": 6, "total_tokens": 36},
+                },
+                {
+                    "response_id": "resp_final",
+                    "model": "fake-model",
+                    "text": "回答：Deployment risk 包含 rollback planning and monitoring。",
+                    "output": [],
+                    "usage": {"input_tokens": 40, "output_tokens": 10, "total_tokens": 50},
+                },
+            ]
+
+            class FakeOpenAIResponsesClient:
+                def __init__(self, *args, **kwargs):
+                    pass
+
+                def create(self, **kwargs):
+                    return responses.pop(0)
+
+            original_client = module.OpenAIResponsesClient
+            module.OpenAIResponsesClient = FakeOpenAIResponsesClient
+            try:
+                turn = session.answer("What deployment risk is mentioned?", use_llm=True)
+            finally:
+                module.OpenAIResponsesClient = original_client
+
+            tool_calls = [event["name"] for event in turn["events"] if event["type"] == "tool_call"]
+            self.assertEqual(tool_calls, ["search_blocks", "read_blocks"])
+            search_result = next(event for event in turn["events"] if event["type"] == "tool_result" and event["name"] == "search_blocks")
+            self.assertEqual(search_result["payload"]["snippet_policy"]["max_snippets_per_block"], 2)
+            self.assertEqual(search_result["payload"]["retrieval_policy"]["next_recommended_tool"], "read_blocks")
+            self.assertLessEqual(len(search_result["payload"]["retrieval_policy"]["candidate_block_ids"]), 2)
+            self.assertEqual(search_result["payload"]["retrieval_policy"]["recommended_args"]["max_blocks"], 4)
+            read_result = next(event for event in turn["events"] if event["type"] == "tool_result" and event["name"] == "read_blocks")
+            self.assertEqual(read_result["payload"]["status"], "ok")
+            self.assertTrue(read_result["payload"]["blocks"])
+            self.assertTrue(turn["answer"]["evidence"])
+
+    def test_retrieval_policy_reads_primary_before_secondary_candidates(self):
+        module = load_example_module()
+        candidates = [
+            {
+                "id": "p6_para1",
+                "type": "paragraph",
+                "title": "ABSTRACT",
+                "page_refs": [6],
+                "matched": ["rlm", "produce"],
+                "matched_terms_count": 2,
+                "score": 32.25,
+                "rank": 1,
+            },
+            {
+                "id": "p24_page",
+                "type": "page",
+                "title": "Page 24",
+                "page_refs": [24],
+                "matched": ["rlm"],
+                "matched_terms_count": 1,
+                "score": 19,
+                "rank": 2,
+            },
+            {
+                "id": "p13_para1",
+                "type": "paragraph",
+                "title": "ABSTRACT",
+                "page_refs": [13],
+                "matched": ["rlm"],
+                "matched_terms_count": 1,
+                "score": 18.25,
+                "rank": 3,
+            },
+        ]
+
+        policy = module.read_next_policy(candidates)
+
+        self.assertEqual(policy["candidate_block_ids"], ["p6_para1"])
+        self.assertEqual(policy["primary_block_ids"], ["p6_para1"])
+        self.assertEqual(policy["secondary_block_ids"], ["p24_page", "p13_para1"])
+        self.assertEqual(policy["recommended_args"]["block_ids"], ["p6_para1"])
+        self.assertEqual(policy["recommended_args"]["max_blocks"], 4)
+        self.assertFalse(policy["low_confidence"])
+
+    def test_retrieval_policy_marks_single_term_matches_as_low_confidence(self):
+        module = load_example_module()
+        candidates = [
+            {
+                "id": "p24_page",
+                "type": "page",
+                "title": "Page 24",
+                "page_refs": [24],
+                "matched": ["rlm"],
+                "matched_terms_count": 1,
+                "score": 19,
+                "rank": 1,
+            },
+            {
+                "id": "p13_para1",
+                "type": "paragraph",
+                "title": "ABSTRACT",
+                "page_refs": [13],
+                "matched": ["rlm"],
+                "matched_terms_count": 1,
+                "score": 18.25,
+                "rank": 2,
+            },
+            {
+                "id": "p5_para1",
+                "type": "paragraph",
+                "title": "ABSTRACT",
+                "page_refs": [5],
+                "matched": ["rlm"],
+                "matched_terms_count": 1,
+                "score": 17.25,
+                "rank": 3,
+            },
+        ]
+
+        policy = module.read_next_policy(candidates)
+
+        self.assertEqual(policy["candidate_block_ids"], ["p13_para1", "p5_para1"])
+        self.assertEqual(policy["recommended_args"]["block_ids"], ["p13_para1", "p5_para1"])
+        self.assertTrue(policy["low_confidence"])
+        self.assertTrue(policy["allow_refined_search_after_primary_read"])
+
+    def test_pdf_chat_tool_calling_blocks_repeated_search_before_reading(self):
+        try:
+            import pymupdf  # type: ignore
+        except ImportError:
+            try:
+                import fitz as pymupdf  # type: ignore
+            except ImportError:
+                self.skipTest("PyMuPDF is required")
+
+        module = load_example_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            pdf_path = tmp_path / "repeat-search.pdf"
+            pdf = pymupdf.open()
+            page = pdf.new_page(width=360, height=220)
+            page.insert_text((24, 40), "Deployment Risk", fontsize=18)
+            page.insert_text((24, 90), "Deployment risk includes rollback planning.", fontsize=12)
+            pdf.save(pdf_path)
+            pdf.close()
+
+            session = module.PdfBlockChatExample.load(pdf_path)
+            responses = [
+                {
+                    "response_id": "resp_search",
+                    "model": "fake-model",
+                    "text": "",
+                    "output": [
+                        {
+                            "type": "function_call",
+                            "call_id": "call_search",
+                            "name": "search_blocks",
+                            "arguments": json.dumps({"query": "deployment risk", "limit": 5}),
+                        }
+                    ],
+                    "usage": {"input_tokens": 20, "output_tokens": 5, "total_tokens": 25},
+                },
+                {
+                    "response_id": "resp_repeat",
+                    "model": "fake-model",
+                    "text": "",
+                    "output": [
+                        {
+                            "type": "function_call",
+                            "call_id": "call_repeat",
+                            "name": "search_blocks",
+                            "arguments": json.dumps({"query": "rollback planning", "limit": 5}),
+                        }
+                    ],
+                    "usage": {"input_tokens": 30, "output_tokens": 6, "total_tokens": 36},
+                },
+                {
+                    "response_id": "resp_final",
+                    "model": "fake-model",
+                    "text": "回答：Deployment risk 包含 rollback planning。",
+                    "output": [],
+                    "usage": {"input_tokens": 40, "output_tokens": 10, "total_tokens": 50},
+                },
+            ]
+
+            class FakeOpenAIResponsesClient:
+                def __init__(self, *args, **kwargs):
+                    pass
+
+                def create(self, **kwargs):
+                    return responses.pop(0)
+
+            original_client = module.OpenAIResponsesClient
+            module.OpenAIResponsesClient = FakeOpenAIResponsesClient
+            try:
+                turn = session.answer("What deployment risk is mentioned?", use_llm=True)
+            finally:
+                module.OpenAIResponsesClient = original_client
+
+            search_results = [
+                event for event in turn["events"] if event["type"] == "tool_result" and event["name"] == "search_blocks"
+            ]
+            self.assertEqual(len(search_results), 2)
+            self.assertEqual(search_results[1]["payload"]["status"], "policy_blocked")
+            self.assertEqual(search_results[1]["payload"]["recommended_tool"], "read_blocks")
+            self.assertEqual(turn["answer"]["mode"], "llm_responses_api_tool_calling_insufficient_evidence")
+
     def test_tfidf_keyword_index_filters_common_block_terms(self):
         try:
             import pymupdf  # type: ignore

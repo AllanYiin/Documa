@@ -127,9 +127,12 @@ LLM_SEARCH_TERMS_PROMPT = (
 LLM_TOOL_CALLING_PROMPT = (
     SYSTEM_PROMPT_ZH_HANT
     + "\n你正在使用標準 function tool calling 閱讀一份 PDF。文件全文尚未直接提供給你。"
-    + "請自己決定何時呼叫 search_blocks、read_block、list_blocks。"
-    + "建議先呼叫 search_blocks 找候選 block；snippet 不足時再 read_block。"
-    + "回答必須根據工具回傳內容，並標明頁碼與 block id；不要捏造未在工具結果中的內容。"
+    + "策略是先用少量精準關鍵字呼叫一次 search_blocks 定位可能落點，limit 不超過 5，"
+    + "再用 read_blocks 或 read_block 讀取候選 block 與其子分塊正文。"
+    + "search_blocks 的 snippets 只能用來選落點，不能當最終證據；已有候選結果時不要連續 search_blocks。"
+    + "若 search_blocks 回傳 retrieval_policy，先照 recommended_args 只讀 primary blocks；"
+    + "secondary blocks 只有在 primary 證據不足時才讀。"
+    + "回答前至少要讀取一個 block 的正文，並根據工具回傳內容標明頁碼與 block id；不要捏造未在工具結果中的內容。"
 )
 _ZH_EN_QUERY_EXPANSIONS = [
     (re.compile(r"(論文|文章|文件|paper|document).*(主要|大意|摘要|講|說|內容|主題)|"
@@ -455,6 +458,22 @@ def local_tool_definitions() -> list[dict[str, Any]]:
         },
         {
             "type": "function",
+            "name": "read_blocks",
+            "description": "Read full body text for selected blocks and their child content. Prefer this after search_blocks returns candidates.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "block_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 4},
+                    "max_chars_per_block": {"type": "integer", "minimum": 1, "maximum": 8000, "default": 2200},
+                    "include_children": {"type": "boolean", "default": True},
+                    "max_blocks": {"type": "integer", "minimum": 1, "maximum": 8, "default": 4},
+                },
+                "required": ["block_ids"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "type": "function",
             "name": "read_block",
             "description": "Read the full body text for one selected document block.",
             "parameters": {
@@ -513,6 +532,147 @@ def search_snippet(text: str, start: int, end: int, keyword: str, *, chars: int 
 def normalized_search_verbosity(value: str | None) -> str:
     verbosity = (value or "compact").casefold()
     return verbosity if verbosity in _SEARCH_VERBOSITIES else "compact"
+
+
+def bounded_int(value: Any, default: int, *, minimum: int, maximum: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    return max(minimum, min(maximum, parsed))
+
+
+def bool_arg(value: Any, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    if isinstance(value, str):
+        folded = value.strip().casefold()
+        if folded in {"1", "true", "yes", "on"}:
+            return True
+        if folded in {"0", "false", "no", "off"}:
+            return False
+    return bool(value)
+
+
+def search_call_signature(args: dict[str, Any]) -> str:
+    raw_terms = args.get("terms")
+    terms = []
+    if isinstance(raw_terms, list):
+        terms = sorted({str(term).strip().casefold() for term in raw_terms if str(term).strip()})
+    return json.dumps(
+        {
+            "query": str(args.get("query") or "").strip().casefold(),
+            "terms": terms,
+            "search_body": bool_arg(args.get("search_body"), True),
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+
+
+def search_candidate_summary(results: list[dict[str, Any]], *, limit: int = 5) -> list[dict[str, Any]]:
+    summary = []
+    for index, row in enumerate(results[:limit], start=1):
+        matched = [str(item) for item in row.get("matched", []) if str(item)]
+        summary.append(
+            {
+                "id": row.get("id"),
+                "type": row.get("type"),
+                "title": row.get("title"),
+                "page_refs": row.get("page_refs", []),
+                "matched": matched,
+                "matched_terms_count": len(set(matched)),
+                "score": row.get("score"),
+                "rank": index,
+            }
+        )
+    return summary
+
+
+def _candidate_score(row: dict[str, Any]) -> float:
+    try:
+        return float(row.get("score") or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _candidate_id(row: dict[str, Any]) -> str | None:
+    block_id = str(row.get("id") or "").strip()
+    return block_id or None
+
+
+def _is_content_candidate(row: dict[str, Any]) -> bool:
+    return row.get("type") in {"paragraph", "table", "footnote"}
+
+
+def select_primary_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if not candidates:
+        return []
+    top = candidates[0]
+    second_score = _candidate_score(candidates[1]) if len(candidates) > 1 else 0.0
+    top_score = _candidate_score(top)
+    top_matched_count = int(top.get("matched_terms_count") or 0)
+    confident_top = top_matched_count >= 2 or (second_score > 0 and top_score >= second_score * 1.35)
+    primary_limit = 1 if confident_top else 2
+    has_nearby_content = any(_is_content_candidate(row) and _candidate_score(row) >= top_score * 0.6 for row in candidates[:4])
+
+    selected: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in candidates:
+        block_id = _candidate_id(row)
+        if not block_id or block_id in seen:
+            continue
+        if has_nearby_content and not _is_content_candidate(row):
+            continue
+        selected.append(row)
+        seen.add(block_id)
+        if len(selected) >= primary_limit:
+            break
+    if selected:
+        return selected
+
+    for row in candidates:
+        block_id = _candidate_id(row)
+        if block_id:
+            return [row]
+    return []
+
+
+def read_next_policy(candidates: list[dict[str, Any]]) -> dict[str, Any]:
+    primary = select_primary_candidates(candidates)
+    primary_ids = [str(row.get("id")) for row in primary if row.get("id")]
+    secondary_ids = [str(row.get("id")) for row in candidates if row.get("id") and str(row.get("id")) not in set(primary_ids)]
+    low_confidence = bool(candidates) and int(candidates[0].get("matched_terms_count") or 0) < 2
+    return {
+        "next_recommended_tool": "read_blocks",
+        "candidate_block_ids": primary_ids,
+        "primary_block_ids": primary_ids,
+        "secondary_block_ids": secondary_ids,
+        "recommended_args": {
+            "block_ids": primary_ids,
+            "include_children": True,
+            "max_blocks": 4,
+        },
+        "low_confidence": low_confidence,
+        "allow_refined_search_after_primary_read": low_confidence,
+        "reason": "search_blocks is only for landing-point discovery; read primary candidates first, then use secondary candidates only if evidence is insufficient.",
+    }
+
+
+def blocked_repeated_search(candidates: list[dict[str, Any]], reason: str) -> dict[str, Any]:
+    policy = read_next_policy(candidates)
+    return {
+        "status": "policy_blocked",
+        "message": reason,
+        "recommended_tool": "read_blocks",
+        "candidate_summary": candidates,
+        "candidate_block_ids": policy["candidate_block_ids"],
+        "primary_block_ids": policy["primary_block_ids"],
+        "secondary_block_ids": policy["secondary_block_ids"],
+        "recommended_args": policy["recommended_args"],
+    }
 
 
 def evidence_line(item: dict[str, Any]) -> str:
@@ -1056,6 +1216,52 @@ class PdfBlockChatExample:
             "truncated": len(content) > max_chars,
         }
 
+    def read_blocks(
+        self,
+        block_ids: list[str],
+        *,
+        max_chars_per_block: int = 2000,
+        include_children: bool = True,
+        max_blocks: int = 4,
+    ) -> dict[str, Any]:
+        requested_ids = []
+        unknown_ids = []
+        seen_requested: set[str] = set()
+        for block_id in block_ids:
+            block_id = str(block_id)
+            if not block_id or block_id in seen_requested:
+                continue
+            seen_requested.add(block_id)
+            if block_id in self.by_id:
+                requested_ids.append(block_id)
+            else:
+                unknown_ids.append(block_id)
+        if not requested_ids:
+            return {
+                "status": "error",
+                "message": "No known block_ids were provided.",
+                "requested_block_ids": list(seen_requested),
+                "unknown_block_ids": unknown_ids,
+                "blocks": [],
+            }
+
+        if include_children:
+            rows = [{"id": block_id} for block_id in requested_ids]
+            selected_rows = self.expand_context_blocks(rows, max_blocks=max_blocks)
+            selected_ids = [str(row["id"]) for row in selected_rows]
+        else:
+            selected_ids = requested_ids[:max_blocks]
+
+        blocks = [self.read_block(block_id, max_chars=max_chars_per_block) for block_id in selected_ids if block_id in self.by_id]
+        return {
+            "status": "ok",
+            "requested_block_ids": requested_ids,
+            "unknown_block_ids": unknown_ids,
+            "include_children": include_children,
+            "max_chars_per_block": max_chars_per_block,
+            "blocks": blocks,
+        }
+
     def prompt_cache_key(self, step: str) -> str:
         digest = hashlib.sha256(str(self.document.id).encode("utf-8")).hexdigest()[:24]
         return f"documa-pdf-chat:{step}:{digest}"
@@ -1100,21 +1306,38 @@ class PdfBlockChatExample:
     def execute_local_tool(self, name: str, args: dict[str, Any], *, max_chars_per_block: int) -> dict[str, Any]:
         if name == "search_blocks":
             raw_terms = args.get("terms")
-            terms = [str(term) for term in raw_terms] if isinstance(raw_terms, list) else None
+            terms = [str(term) for term in raw_terms if str(term).strip()][:6] if isinstance(raw_terms, list) else None
             return self.search_blocks(
                 str(args.get("query") or ""),
-                limit=int(args.get("limit") or 5),
+                limit=bounded_int(args.get("limit"), 5, minimum=1, maximum=5),
                 terms=terms,
                 terms_source="llm_tool_call",
-                search_body=bool(args.get("search_body", True)),
-                max_snippets_per_block=int(args.get("max_snippets_per_block") or 3),
+                search_body=bool_arg(args.get("search_body"), True),
+                max_snippets_per_block=bounded_int(args.get("max_snippets_per_block"), 2, minimum=0, maximum=2),
                 verbosity=str(args.get("verbosity") or "compact"),
+            )
+        if name == "read_blocks":
+            raw_block_ids = args.get("block_ids")
+            block_ids = [str(block_id) for block_id in raw_block_ids] if isinstance(raw_block_ids, list) else []
+            return self.read_blocks(
+                block_ids,
+                max_chars_per_block=bounded_int(
+                    args.get("max_chars_per_block"),
+                    max_chars_per_block,
+                    minimum=1,
+                    maximum=8000,
+                ),
+                include_children=bool_arg(args.get("include_children"), True),
+                max_blocks=bounded_int(args.get("max_blocks"), 4, minimum=1, maximum=8),
             )
         if name == "read_block":
             block_id = str(args.get("block_id") or "")
             if block_id not in self.by_id:
                 return {"status": "error", "message": f"Unknown block_id: {block_id}"}
-            return self.read_block(block_id, max_chars=int(args.get("max_chars") or max_chars_per_block))
+            return self.read_block(
+                block_id,
+                max_chars=bounded_int(args.get("max_chars"), max_chars_per_block, minimum=1, maximum=8000),
+            )
         if name == "list_blocks":
             depth_value = args.get("depth", 2)
             depth = int(depth_value) if depth_value is not None else None
@@ -1155,6 +1378,9 @@ class PdfBlockChatExample:
         tools = local_tool_definitions()
         evidence: list[dict[str, Any]] = []
         final_response: dict[str, Any] | None = None
+        search_signatures: set[str] = set()
+        last_search_candidates: list[dict[str, Any]] = []
+        consecutive_searches = 0
 
         for iteration in range(1, max_iterations + 1):
             started = time.perf_counter()
@@ -1182,8 +1408,15 @@ class PdfBlockChatExample:
             tool_calls = [item for item in response.get("output", []) if item.get("type") == "function_call"]
             if not tool_calls:
                 text = response["text"].strip()
+                mode = "llm_responses_api_tool_calling"
+                if not evidence:
+                    mode = "llm_responses_api_tool_calling_insufficient_evidence"
+                    text = (
+                        "回答：目前只有搜尋候選，尚未讀取完整 block 正文，無法形成可靠回答。"
+                        "請先使用 read_blocks 或 read_block 取得可引用證據。"
+                    )
                 answer = {
-                    "mode": "llm_responses_api_tool_calling",
+                    "mode": mode,
                     "system_prompt": SYSTEM_PROMPT_ZH_HANT,
                     "language": "zh-Hant",
                     "question": question,
@@ -1218,8 +1451,45 @@ class PdfBlockChatExample:
                     },
                 )
                 started = time.perf_counter()
-                result = self.execute_local_tool(name, args, max_chars_per_block=max_chars_per_block)
+                if name == "search_blocks":
+                    signature = search_call_signature(args)
+                    if last_search_candidates and consecutive_searches >= 1:
+                        result = blocked_repeated_search(
+                            last_search_candidates,
+                            "A previous search already returned candidate blocks. Read them before running another search.",
+                        )
+                    elif signature in search_signatures:
+                        result = blocked_repeated_search(
+                            last_search_candidates,
+                            "This search is duplicated or too similar to a previous search. Read candidate blocks instead.",
+                        )
+                    else:
+                        result = self.execute_local_tool(name, args, max_chars_per_block=max_chars_per_block)
+                        search_signatures.add(signature)
+                        consecutive_searches += 1
+                        if isinstance(result, dict):
+                            candidates = search_candidate_summary(result.get("results", []))
+                            if candidates:
+                                last_search_candidates = candidates
+                                result = {**result, "retrieval_policy": read_next_policy(candidates)}
+                else:
+                    result = self.execute_local_tool(name, args, max_chars_per_block=max_chars_per_block)
+
+                if name == "read_blocks" and isinstance(result, dict):
+                    consecutive_searches = 0
+                    for block in result.get("blocks", []):
+                        if not isinstance(block, dict):
+                            continue
+                        evidence.append(
+                            {
+                                "block_id": block.get("id"),
+                                "block_path": block.get("block_path", []),
+                                "page_refs": block.get("page_refs", []),
+                                "quote": str(block.get("content", ""))[:500],
+                            }
+                        )
                 if name == "read_block" and isinstance(result, dict):
+                    consecutive_searches = 0
                     evidence.append(
                         {
                             "block_id": result.get("id"),
