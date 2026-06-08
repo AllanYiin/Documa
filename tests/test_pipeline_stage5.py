@@ -75,6 +75,26 @@ class Stage5ChunkExportTests(unittest.TestCase):
         self.assertIn("# 報告.pdf", markdown)
         self.assertIn("# 標題", markdown)
 
+    def test_markdown_exporter_marks_page_furniture_as_comments(self):
+        page = PageIR(
+            id="p1",
+            page_number=1,
+            width=400,
+            height=500,
+            blocks=[
+                block("header", "固定抬頭", block_type=BlockType.PAGE_HEADER, order_index=1),
+                block("body", "正文內容", order_index=2),
+                block("footer", "1", block_type=BlockType.PAGE_FOOTER, order_index=3),
+            ],
+        )
+        doc = DocumentIR(id="d1", source_name="報告.pdf", pages=[page])
+
+        markdown = MarkdownExporter().export(doc)
+
+        self.assertIn("<!-- page-header: 固定抬頭 -->", markdown)
+        self.assertIn("正文內容", markdown)
+        self.assertIn("<!-- page-footer: 1 -->", markdown)
+
     def test_cli_export_rag_json_auto_chunks_ir_file(self):
         from io import StringIO
         import sys
@@ -112,4 +132,3 @@ class Stage5ChunkExportTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

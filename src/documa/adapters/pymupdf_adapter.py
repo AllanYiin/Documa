@@ -6,6 +6,8 @@ receives only Documa IR dataclasses and asset references.
 
 from __future__ import annotations
 
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 from typing import Any
 import uuid
@@ -105,6 +107,71 @@ def _json_safe(value: Any) -> Any:
     return str(value)
 
 
+def _rect_area(rect: tuple[float, float, float, float] | None) -> float:
+    if rect is None:
+        return 0.0
+    return max(0.0, rect[2] - rect[0]) * max(0.0, rect[3] - rect[1])
+
+
+def _intersection_area(
+    left: tuple[float, float, float, float] | None,
+    right: tuple[float, float, float, float] | None,
+) -> float:
+    if left is None or right is None:
+        return 0.0
+    x0 = max(left[0], right[0])
+    y0 = max(left[1], right[1])
+    x1 = min(left[2], right[2])
+    y1 = min(left[3], right[3])
+    return max(0.0, x1 - x0) * max(0.0, y1 - y0)
+
+
+def _overlap_ratio(
+    block_bbox: tuple[float, float, float, float] | None,
+    table_bbox: tuple[float, float, float, float] | None,
+) -> float:
+    area = _rect_area(block_bbox)
+    if area <= 0:
+        return 0.0
+    return _intersection_area(block_bbox, table_bbox) / area
+
+
+def _cell_text(cell: str | None) -> str:
+    return "" if cell is None else str(cell).strip()
+
+
+def _clean_table_rows(rows: Any) -> list[list[str | None]]:
+    cleaned: list[list[str | None]] = []
+    for row in rows or []:
+        if not isinstance(row, (list, tuple)):
+            continue
+        cells = [None if cell is None else str(cell).strip() for cell in row]
+        if any(_cell_text(cell) for cell in cells):
+            cleaned.append(cells)
+    if not cleaned:
+        return []
+    width = max(len(row) for row in cleaned)
+    if width < 2 or len(cleaned) < 2:
+        return []
+    return [row + [None] * (width - len(row)) for row in cleaned]
+
+
+def _table_text(rows: list[list[str | None]]) -> str:
+    return "\n".join(" | ".join(_cell_text(cell) for cell in row) for row in rows)
+
+
+def _find_page_tables(page: Any) -> list[Any]:
+    if not hasattr(page, "find_tables"):
+        return []
+    try:
+        stdout = StringIO()
+        with redirect_stdout(stdout):
+            finder = page.find_tables()
+    except Exception:
+        return []
+    return list(getattr(finder, "tables", []) or [])
+
+
 class PyMuPDFAdapter(ParserAdapter):
     """Parse PDFs into Documa IR primitives using PyMuPDF."""
 
@@ -178,6 +245,7 @@ class PyMuPDFAdapter(ParserAdapter):
             )
 
         self._parse_text_blocks(page, page_ir, options)
+        self._parse_tables(page, page_ir)
         if options.extract_images:
             self._parse_images(page, page_ir, asset_store)
         self._parse_annotations(page, page_ir)
@@ -240,6 +308,67 @@ class PyMuPDFAdapter(ParserAdapter):
                     source_refs=[f"pymupdf:block:{page_ir.page_number}:{block_order}"],
                     metadata={"source_type": "pymupdf_text_block"},
                 )
+            )
+
+    def _parse_tables(self, page: Any, page_ir: PageIR) -> None:
+        table_blocks: list[BlockIR] = []
+        remaining_blocks = list(page_ir.blocks)
+        for table_index, table in enumerate(_find_page_tables(page), start=1):
+            rows = _clean_table_rows(table.extract() if hasattr(table, "extract") else [])
+            bbox = _bbox(getattr(table, "bbox", None))
+            if not rows or bbox is None:
+                continue
+
+            overlapping = [
+                block
+                for block in remaining_blocks
+                if block.type == BlockType.TEXT and _overlap_ratio(block.bbox, bbox) >= 0.75
+            ]
+            overlapping_ids = {block.id for block in overlapping}
+            remaining_blocks = [block for block in remaining_blocks if block.id not in overlapping_ids]
+            source_order = min(
+                (block.order_index for block in overlapping if block.order_index is not None),
+                default=len(remaining_blocks) + len(table_blocks) + 1,
+            )
+            source_refs = [ref for block in overlapping for ref in block.source_refs]
+            source_blocks = [
+                {
+                    "id": block.id,
+                    "bbox": block.bbox,
+                    "text": block.text.raw_text if block.text else "",
+                    "source_refs": block.source_refs,
+                }
+                for block in overlapping
+            ]
+            table_blocks.append(
+                BlockIR(
+                    id=f"p{page_ir.page_number}_table{table_index}",
+                    type=BlockType.TABLE,
+                    page_number=page_ir.page_number,
+                    text=TextContent(_table_text(rows)),
+                    bbox=bbox,
+                    confidence=Confidence.MEDIUM,
+                    order_index=source_order,
+                    source_refs=source_refs or [f"pymupdf:table:{page_ir.page_number}:{table_index}"],
+                    metadata={
+                        "source_type": "pymupdf_table",
+                        "table_rows": rows,
+                        "source_block_ids": [block.id for block in overlapping],
+                        "source_blocks": source_blocks,
+                        "extraction_strategy": "pymupdf_find_tables",
+                    },
+                )
+            )
+
+        if table_blocks:
+            page_ir.blocks = sorted(
+                [*remaining_blocks, *table_blocks],
+                key=lambda block: (
+                    block.order_index is None,
+                    block.order_index or 0,
+                    block.bbox[1] if block.bbox else 0.0,
+                    block.bbox[0] if block.bbox else 0.0,
+                ),
             )
 
     def _parse_images(self, page: Any, page_ir: PageIR, asset_store: AssetStore | None) -> None:
@@ -322,4 +451,3 @@ def build_page_link_relations(document: DocumentIR) -> list[RelationIR]:
                 )
             )
     return relations
-

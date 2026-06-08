@@ -37,6 +37,24 @@ class PyMuPDFAdapterTests(unittest.TestCase):
         doc.save(path)
         doc.close()
 
+    def _create_table_pdf(self, path: Path) -> None:
+        pymupdf = _load_pymupdf()
+        doc = pymupdf.open()
+        page = doc.new_page(width=300, height=220)
+        x0, y0, x1, y1 = 40, 50, 260, 150
+        page.draw_rect(pymupdf.Rect(x0, y0, x1, y1))
+        page.draw_line((100, y0), (100, y1))
+        page.draw_line((x0, 80), (x1, 80))
+        page.draw_line((x0, 115), (x1, 115))
+        page.insert_text((50, 70), "Rate", fontsize=10)
+        page.insert_text((130, 70), "Item", fontsize=10)
+        page.insert_text((50, 100), "100%", fontsize=10)
+        page.insert_text((130, 100), "Capital", fontsize=10)
+        page.insert_text((50, 140), "90%", fontsize=10)
+        page.insert_text((130, 140), "Stable deposits", fontsize=10)
+        doc.save(path)
+        doc.close()
+
     def test_parse_pdf_extracts_text_preview_and_image_assets(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -74,3 +92,23 @@ class PyMuPDFAdapterTests(unittest.TestCase):
             self.assertNotIn("preview_asset_ref", doc.pages[0].metadata)
             self.assertEqual(doc.pages[0].images, [])
             self.assertTrue(all(not hasattr(block, "get_text") for block in doc.pages[0].blocks))
+
+    def test_parse_pdf_emits_table_candidates_without_duplicate_text_blocks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pdf_path = Path(tmp) / "table.pdf"
+            self._create_table_pdf(pdf_path)
+
+            doc = PyMuPDFAdapter().parse(pdf_path, ParseOptions(extract_images=False))
+
+            table_blocks = [block for block in doc.pages[0].blocks if block.type == BlockType.TABLE]
+            self.assertEqual(len(table_blocks), 1)
+            table_block = table_blocks[0]
+            self.assertEqual(table_block.metadata["table_rows"][0], ["Rate", "Item"])
+            self.assertEqual(table_block.metadata["table_rows"][1], ["100%", "Capital"])
+            self.assertTrue(table_block.metadata["source_block_ids"])
+            non_table_text = " ".join(
+                block.text.raw_text
+                for block in doc.pages[0].blocks
+                if block.type != BlockType.TABLE and block.text
+            )
+            self.assertNotIn("Stable deposits", non_table_text)

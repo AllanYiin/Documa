@@ -59,10 +59,18 @@ def load_document(path: str | Path) -> DocumentIR:
 def write_payload(path: str | Path, payload: Any) -> None:
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    if isinstance(payload, str):
-        output_path.write_text(payload, encoding="utf-8", newline="\n")
-    else:
-        output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8", newline="\n")
+    text = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False, indent=2)
+    temp_path = output_path.with_name(f"{output_path.name}.tmp")
+    try:
+        with temp_path.open("w", encoding="utf-8", newline="\n") as handle:
+            handle.write(text)
+        temp_path.replace(output_path)
+    except Exception:
+        try:
+            temp_path.unlink()
+        except OSError:
+            pass
+        raise
 
 
 def _adapter_for_source(source: str | Path):

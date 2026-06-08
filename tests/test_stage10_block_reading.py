@@ -17,6 +17,7 @@ from documa.core.ir import (
     TextContent,
     to_plain_data,
 )
+from documa.exporters import BlockJsonExporter
 from documa.interfaces import call_documa_tool
 from documa.pipeline import BlockKeywordExtractionStage, BlockTreeBuildingStage, ChunkingStage, PipelineContext
 
@@ -61,6 +62,45 @@ class Stage10BlockReadingTests(unittest.TestCase):
         self.assertTrue(any(item.source_block_ids == ["p1"] for item in doc.document_blocks))
         root = next(item for item in doc.document_blocks if item.parent_id is None)
         self.assertEqual(len(root.metadata["furniture"]), 2)
+
+    def test_block_json_export_omits_page_furniture(self):
+        header_text = "固定頁首重複文字"
+        footer_text = "固定頁尾頁碼"
+        doc = DocumentIR(
+            id="d1",
+            source_name="block.pdf",
+            pages=[
+                PageIR(
+                    id="p1",
+                    page_number=1,
+                    width=400,
+                    height=500,
+                    blocks=[
+                        block("header", header_text, BlockType.PAGE_HEADER, order_index=1),
+                        block("p1", f"{header_text} 段落內容", order_index=2),
+                        block("footer", footer_text, BlockType.PAGE_FOOTER, order_index=3),
+                    ],
+                )
+            ],
+        )
+        BlockTreeBuildingStage().run(doc)
+        root = next(item for item in doc.document_blocks if item.parent_id is None)
+        paragraph = next(item for item in doc.document_blocks if item.source_block_ids == ["p1"])
+        root.metadata["search_terms"] = [header_text, "段落內容"]
+        paragraph.metadata["keyword_terms"] = [header_text, "段落內容"]
+        paragraph.metadata["keyword_stats"] = {"child_support": {header_text: 1, "段落內容": 1}}
+        paragraph.metadata["new_word_terms"] = [{"term": header_text, "count": 1}, {"term": "段落內容", "count": 1}]
+
+        payload = BlockJsonExporter().export(doc)
+        serialized = json.dumps(payload, ensure_ascii=False)
+
+        self.assertEqual(len(root.metadata["furniture"]), 2)
+        self.assertNotIn("furniture", payload["blocks"][0]["metadata"])
+        self.assertNotIn("page_header", serialized)
+        self.assertNotIn("page_footer", serialized)
+        self.assertNotIn(header_text, serialized)
+        self.assertNotIn(footer_text, serialized)
+        self.assertIn("段落內容", serialized)
 
     def test_keyword_stage_aggregates_bottom_up_with_dynamic_thresholds(self):
         doc = DocumentIR(

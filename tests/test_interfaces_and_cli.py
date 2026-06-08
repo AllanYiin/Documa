@@ -6,6 +6,7 @@ from pathlib import Path
 from documa.adapters.base import ParseOptions, ParserAdapter
 from documa.cli import main
 from documa.core.ir import DocumentIR
+from documa.interfaces.tools import write_payload
 from documa.pipeline.base import PipelineContext, PipelineStage, StageResult
 
 
@@ -88,6 +89,16 @@ class InterfaceTests(unittest.TestCase):
             self.assertTrue(ir_path.exists())
             ir_text = ir_path.read_text(encoding="utf-8")
             self.assertIn("English text", ir_text)
+
+    def test_write_payload_replaces_existing_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "payload.json"
+            path.write_text("old", encoding="utf-8")
+
+            write_payload(path, {"message": "金融研究發展基金"})
+
+            self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["message"], "金融研究發展基金")
+            self.assertFalse(path.with_name("payload.json.tmp").exists())
 
 
 if __name__ == "__main__":

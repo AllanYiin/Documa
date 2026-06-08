@@ -24,11 +24,11 @@ def span(text, bbox, font_size=12.0):
     return SpanIR(id=f"s_{text}", text=TextContent(text), bbox=bbox, font_size=font_size)
 
 
-def block(block_id, text, bbox, font_size=12.0, order_index=None, metadata=None):
+def block(block_id, text, bbox, font_size=12.0, order_index=None, metadata=None, page_number=1):
     return BlockIR(
         id=block_id,
         type=BlockType.TEXT,
-        page_number=1,
+        page_number=page_number,
         text=TextContent(text),
         bbox=bbox,
         spans=[span(text, bbox, font_size)],
@@ -107,6 +107,75 @@ class Stage3PipelineTests(unittest.TestCase):
         self.assertEqual(page.blocks[1].type, BlockType.HEADING)
         self.assertEqual(page.blocks[3].type, BlockType.PAGE_FOOTER)
 
+    def test_layout_classification_marks_repeated_second_header_line(self):
+        pages = []
+        for page_number in range(1, 5):
+            pages.append(
+                PageIR(
+                    id=f"p{page_number}",
+                    page_number=page_number,
+                    width=400,
+                    height=500,
+                    blocks=[
+                        block(
+                            f"title_{page_number}",
+                            "Document title",
+                            (30, 5, 220, 18),
+                            font_size=9,
+                            page_number=page_number,
+                        ),
+                        block(
+                            f"publisher_{page_number}",
+                            "Publisher and translator",
+                            (40, 38, 320, 50),
+                            font_size=9,
+                            page_number=page_number,
+                        ),
+                        block(
+                            f"body_{page_number}",
+                            f"Unique body {page_number}",
+                            (40, 76, 320, 96),
+                            font_size=9,
+                            page_number=page_number,
+                        ),
+                    ],
+                )
+            )
+        doc = DocumentIR(id="d1", source_name="fixture.pdf", pages=pages)
+
+        result = LayoutClassificationStage().run(doc)
+
+        self.assertTrue(result.changed)
+        for page in pages:
+            self.assertEqual(page.blocks[1].type, BlockType.PAGE_HEADER)
+            self.assertEqual(page.blocks[1].metadata["layout_classification"]["strategy"], "repeated_top_text")
+            self.assertEqual(page.blocks[2].type, BlockType.TEXT)
+
+    def test_layout_classification_uses_body_region_font_median_not_footnotes(self):
+        page = PageIR(
+            id="p1",
+            page_number=1,
+            width=400,
+            height=500,
+            blocks=[
+                block("header", "Document title", (30, 5, 220, 18), font_size=9),
+                block("heading", "Section heading", (40, 70, 260, 94), font_size=18),
+                block("body", "127. Short body row", (40, 120, 320, 140), font_size=12),
+                block("body2", "128. Another body row", (40, 152, 320, 172), font_size=12),
+                block("footnote1", "1 tiny footnote", (40, 420, 320, 430), font_size=8),
+                block("footnote2", "2 tiny footnote", (40, 438, 320, 448), font_size=8),
+                block("footer", "1", (190, 475, 210, 492), font_size=9),
+            ],
+        )
+        doc = DocumentIR(id="d1", source_name="fixture.pdf", pages=[page])
+
+        result = LayoutClassificationStage().run(doc)
+
+        self.assertTrue(result.changed)
+        self.assertEqual(page.blocks[1].type, BlockType.HEADING)
+        self.assertEqual(page.blocks[2].type, BlockType.TEXT)
+        self.assertEqual(page.blocks[3].type, BlockType.TEXT)
+
     def test_paragraph_grouping_merges_adjacent_cjk_rows_without_space(self):
         page = PageIR(
             id="p1",
@@ -165,4 +234,3 @@ class Stage3PipelineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

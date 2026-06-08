@@ -23,6 +23,10 @@ def _table_markdown(document: DocumentIR, block: BlockIR) -> str | None:
     return None
 
 
+def _comment_text(text: str) -> str:
+    return " ".join(text.replace("-->", "-- >").split())
+
+
 @dataclass(slots=True)
 class MarkdownExporter(Exporter):
     name: str = "markdown"
@@ -36,7 +40,15 @@ class MarkdownExporter(Exporter):
             blocks = sorted(page.blocks, key=lambda item: (item.order_index is None, item.order_index or 0))
             for block in blocks:
                 text = block_text(block).strip()
-                if block.type in {BlockType.PAGE_HEADER, BlockType.PAGE_FOOTER, BlockType.UNKNOWN}:
+                if block.type == BlockType.PAGE_HEADER:
+                    if text:
+                        lines.extend([f"<!-- page-header: {_comment_text(text)} -->", ""])
+                    continue
+                if block.type == BlockType.PAGE_FOOTER:
+                    if text:
+                        lines.extend([f"<!-- page-footer: {_comment_text(text)} -->", ""])
+                    continue
+                if block.type == BlockType.UNKNOWN:
                     continue
                 if block.type == BlockType.HEADING and text:
                     lines.extend([f"{_heading_prefix(block)} {text}", ""])
@@ -58,4 +70,3 @@ class MarkdownExporter(Exporter):
                     lines.append("")
 
         return "\n".join(lines).strip() + "\n"
-
