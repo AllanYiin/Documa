@@ -8,8 +8,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from documa.adapters.base import ParseOptions
-from documa.adapters.markdown_adapter import MarkdownAdapter
-from documa.adapters.pymupdf_adapter import PyMuPDFAdapter
+from documa.adapters.registry import adapter_for_source
 from documa.core.errors import DocumaError
 from documa.core.ir import DocumentIR, to_plain_data
 from documa.core.serialization import document_from_plain_data
@@ -28,7 +27,6 @@ from documa.quality import BenchmarkOptions, DoctorOptions, run_doctor, run_fixt
 
 
 ToolPayload = dict[str, Any]
-_MARKDOWN_SUFFIXES = {".md", ".markdown", ".mdp", ".txt"}
 _CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 _WORD_RE = re.compile(r"\S+")
 _DEFAULT_SEARCH_FIELDS = ["title", "preview", "search_terms", "keywords", "new_words"]
@@ -73,14 +71,6 @@ def write_payload(path: str | Path, payload: Any) -> None:
         raise
 
 
-def _adapter_for_source(source: str | Path):
-    source_path = Path(source)
-    suffixes = [suffix.lower() for suffix in source_path.suffixes]
-    if source_path.suffix.lower() in _MARKDOWN_SUFFIXES or suffixes[-2:] == [".mdp", ".md"]:
-        return MarkdownAdapter()
-    return PyMuPDFAdapter()
-
-
 def inspect_document(document: DocumentIR) -> ToolPayload:
     image_count = sum(len(page.images) for page in document.pages)
     block_count = sum(len(page.blocks) for page in document.pages)
@@ -110,7 +100,7 @@ def parse_document_tool(
     languages = [part.strip() for part in lang.split(",") if part.strip()]
 
     try:
-        document = _adapter_for_source(source).parse(
+        document = adapter_for_source(source).parse(
             source,
             ParseOptions(
                 languages=languages or ["auto"],
@@ -153,7 +143,7 @@ def process_document_tool(
     export_formats = export_formats or []
 
     try:
-        document = _adapter_for_source(source).parse(
+        document = adapter_for_source(source).parse(
             source,
             ParseOptions(languages=languages or ["auto"], asset_dir=asset_dir),
         )
