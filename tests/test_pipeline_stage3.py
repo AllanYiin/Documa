@@ -176,6 +176,28 @@ class Stage3PipelineTests(unittest.TestCase):
         self.assertEqual(page.blocks[2].type, BlockType.TEXT)
         self.assertEqual(page.blocks[3].type, BlockType.TEXT)
 
+    def test_layout_classification_marks_toc_leader_rows(self):
+        page = PageIR(
+            id="p1",
+            page_number=1,
+            width=400,
+            height=500,
+            blocks=[
+                block("heading", "目 錄", (170, 40, 230, 62), font_size=18),
+                block("toc1", "I.前言........................................1", (40, 100, 340, 118), font_size=12),
+                block("toc2", "過渡性安排..................................3", (70, 130, 340, 148), font_size=12),
+            ],
+        )
+        doc = DocumentIR(id="d1", source_name="fixture.pdf", pages=[page])
+
+        result = LayoutClassificationStage().run(doc)
+
+        self.assertTrue(result.changed)
+        self.assertEqual(page.blocks[1].type, BlockType.TOC)
+        self.assertEqual(page.blocks[1].metadata["toc_items"][0]["title"], "I.前言")
+        self.assertEqual(page.blocks[1].metadata["toc_items"][0]["page_number"], 1)
+        self.assertEqual(page.blocks[2].type, BlockType.TOC)
+
     def test_paragraph_grouping_merges_adjacent_cjk_rows_without_space(self):
         page = PageIR(
             id="p1",
@@ -197,6 +219,25 @@ class Stage3PipelineTests(unittest.TestCase):
         self.assertEqual(page.blocks[0].text.raw_text, "這是第一行接續第二行。")
         self.assertEqual(page.blocks[0].metadata["source_block_ids"], ["line1", "line2"])
 
+    def test_paragraph_grouping_does_not_merge_toc_rows(self):
+        page = PageIR(
+            id="p1",
+            page_number=1,
+            width=400,
+            height=500,
+            blocks=[
+                block("toc1", "I.前言........................................1", (40, 100, 340, 118), order_index=1),
+                block("toc2", "過渡性安排..................................3", (70, 130, 340, 148), order_index=2),
+            ],
+        )
+        doc = DocumentIR(id="d1", source_name="fixture.pdf", pages=[page])
+
+        LayoutClassificationStage().run(doc)
+        result = ParagraphGroupingStage().run(doc)
+
+        self.assertFalse(result.changed)
+        self.assertEqual([item.type for item in page.blocks], [BlockType.TOC, BlockType.TOC])
+
     def test_table_normalization_converts_candidate_rows_to_table_ir(self):
         table_block = block(
             "table_block",
@@ -214,6 +255,20 @@ class Stage3PipelineTests(unittest.TestCase):
         self.assertEqual(len(doc.tables), 1)
         self.assertIn("| Name | Value |", doc.tables[0].markdown)
 
+    def test_table_normalization_preserves_cell_linebreaks_in_markdown(self):
+        table_block = block(
+            "table_block",
+            "A B",
+            (40, 40, 220, 120),
+            metadata={"table_rows": [["Code", "Meaning"], ["CUSIP", "Committee\nIdentification"]]},
+        )
+        page = PageIR(id="p1", page_number=1, width=400, height=500, blocks=[table_block])
+        doc = DocumentIR(id="d1", source_name="fixture.pdf", pages=[page])
+
+        TableNormalizationStage().run(doc)
+
+        self.assertIn("Committee<br>Identification", doc.tables[0].markdown)
+
     def test_image_normalization_marks_chart_candidate_by_caption(self):
         image = ImageIR(
             id="img1",
@@ -230,6 +285,40 @@ class Stage3PipelineTests(unittest.TestCase):
         self.assertTrue(result.changed)
         self.assertEqual(image.image_type, "chart_candidate")
         self.assertTrue(image.metadata["normalized"])
+
+    def test_image_normalization_marks_tiny_and_extreme_images_decorative(self):
+        tiny_image = ImageIR(
+            id="tiny",
+            page_number=1,
+            bbox=(20, 20, 28, 28),
+            asset_ref="images/tiny.png",
+        )
+        thin_image = ImageIR(
+            id="thin",
+            page_number=1,
+            bbox=(40, 40, 44, 180),
+            asset_ref="images/thin.png",
+            caption="Figure 1: should not override decorative geometry",
+        )
+        normal_image = ImageIR(
+            id="normal",
+            page_number=1,
+            bbox=(80, 80, 180, 160),
+            asset_ref="images/normal.png",
+            caption="Figure 2: revenue chart",
+        )
+        page = PageIR(id="p1", page_number=1, width=400, height=500, images=[tiny_image, thin_image, normal_image])
+        doc = DocumentIR(id="d1", source_name="fixture.pdf", pages=[page])
+
+        result = ImageNormalizationStage().run(doc)
+
+        self.assertTrue(result.changed)
+        self.assertEqual(tiny_image.image_type, "decorative")
+        self.assertEqual(tiny_image.metadata["decorative_reason"], "small_area")
+        self.assertEqual(thin_image.image_type, "decorative")
+        self.assertEqual(thin_image.metadata["decorative_reason"], "extreme_aspect_ratio")
+        self.assertEqual(normal_image.image_type, "chart_candidate")
+        self.assertEqual(result.report["decorative_images"], 2)
 
 
 if __name__ == "__main__":

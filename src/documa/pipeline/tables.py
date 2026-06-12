@@ -25,8 +25,11 @@ def rows_to_markdown(rows: list[list[str | None]]) -> str:
     separator = ["---"] * width
     body = normalized[1:] or [[""] * width]
 
+    def render_cell(cell: str) -> str:
+        return cell.replace("|", "\\|").replace("\n", "<br>")
+
     def render(row: list[str]) -> str:
-        return "| " + " | ".join(cell.replace("\n", " ") for cell in row) + " |"
+        return "| " + " | ".join(render_cell(cell) for cell in row) + " |"
 
     return "\n".join([render(header), render(separator), *[render(row) for row in body]])
 
@@ -75,4 +78,3 @@ class TableNormalizationStage(PipelineStage):
             changed=created > 0,
             report={"tables_created": created},
         )
-

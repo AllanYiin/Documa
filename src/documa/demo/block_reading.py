@@ -18,6 +18,7 @@ from documa.exporters import BlockJsonExporter, ExportOptions, JsonExporter
 from documa.interfaces.tools import write_payload
 from documa.pipeline import PipelineContext, run_default_pipeline
 from documa.pipeline.block_tree import document_block_text
+from documa.pipeline.page_refs import ensure_page_citation_map, page_citation_metadata
 
 
 _CJK = re.compile(r"[\u4e00-\u9fff]+")
@@ -130,8 +131,11 @@ def _meaningful_quote(text: str) -> bool:
 
 
 def _evidence_line(item: dict[str, Any]) -> str:
-    pages = ",".join(str(page) for page in item["page_refs"]) or "?"
-    return f"- p.{pages} / {item['block_id']}: {item['quote']}"
+    label = item.get("citation_label")
+    if not label:
+        pages = ",".join(str(page) for page in item["page_refs"]) or "?"
+        label = f"p.{pages}"
+    return f"- {label} / {item['block_id']}: {item['quote']}"
 
 
 def _content_block(block: DocumentBlockIR) -> bool:
@@ -148,7 +152,11 @@ def _block_path(block: DocumentBlockIR, by_id: dict[str, DocumentBlockIR]) -> li
     return list(reversed(path))
 
 
-def _metadata_summary(block: DocumentBlockIR, by_id: dict[str, DocumentBlockIR]) -> dict[str, Any]:
+def _metadata_summary(
+    block: DocumentBlockIR,
+    by_id: dict[str, DocumentBlockIR],
+    page_citations: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
     return {
         "id": block.id,
         "type": block.type.value,
@@ -158,6 +166,7 @@ def _metadata_summary(block: DocumentBlockIR, by_id: dict[str, DocumentBlockIR])
         "children_count": len(block.child_ids),
         "block_path": _block_path(block, by_id),
         "page_refs": block.page_refs,
+        **page_citation_metadata(block.page_refs, page_citations),
         "text_preview": block.text_preview,
         "keywords": block.metadata.get("keyword_terms", [])[:8],
         "new_words": [item.get("term") for item in block.metadata.get("new_word_terms", [])[:8]],
@@ -191,21 +200,23 @@ def _score_block(block: DocumentBlockIR, terms: list[str]) -> tuple[float, dict[
 
 def _list_blocks(document: DocumentIR) -> list[dict[str, Any]]:
     by_id = {block.id: block for block in document.document_blocks}
+    page_citations = ensure_page_citation_map(document)
     return [
-        _metadata_summary(block, by_id)
+        _metadata_summary(block, by_id, page_citations)
         for block in sorted(document.document_blocks, key=lambda item: (item.order_index is None, item.order_index or 0))
     ]
 
 
 def _select_blocks(document: DocumentIR, question: str, top_k: int) -> list[dict[str, Any]]:
     by_id = {block.id: block for block in document.document_blocks}
+    page_citations = ensure_page_citation_map(document)
     terms = _query_terms(question)
     scored = []
     for block in document.document_blocks:
         score, detail = _score_block(block, terms)
         if score <= 0:
             continue
-        item = _metadata_summary(block, by_id)
+        item = _metadata_summary(block, by_id, page_citations)
         item["score"] = round(score, 4)
         item["score_detail"] = detail
         scored.append(item)
@@ -213,7 +224,7 @@ def _select_blocks(document: DocumentIR, question: str, top_k: int) -> list[dict
     if scored:
         return scored[:top_k]
     fallback = [
-        _metadata_summary(block, by_id)
+        _metadata_summary(block, by_id, page_citations)
         for block in document.document_blocks
         if not block.child_ids and block.text_preview
     ]
@@ -222,6 +233,7 @@ def _select_blocks(document: DocumentIR, question: str, top_k: int) -> list[dict
 
 def _expand_selected_blocks(document: DocumentIR, selected: list[dict[str, Any]], *, per_hit: int = 3, max_blocks: int = 12) -> list[dict[str, Any]]:
     by_id = {block.id: block for block in document.document_blocks}
+    page_citations = ensure_page_citation_map(document)
     ordered = sorted(document.document_blocks, key=lambda item: (item.order_index is None, item.order_index or 0))
     by_position = {block.id: index for index, block in enumerate(ordered)}
     expanded: list[DocumentBlockIR] = []
@@ -265,11 +277,12 @@ def _expand_selected_blocks(document: DocumentIR, selected: list[dict[str, Any]]
         content = document_block_text(document, block)
         if not _meaningful_quote(content):
             append_following_content(block)
-    return [_metadata_summary(block, by_id) for block in expanded]
+    return [_metadata_summary(block, by_id, page_citations) for block in expanded]
 
 
 def _read_selected_blocks(document: DocumentIR, selected: list[dict[str, Any]], max_chars_per_block: int) -> list[dict[str, Any]]:
     by_id = {block.id: block for block in document.document_blocks}
+    page_citations = ensure_page_citation_map(document)
     bodies = []
     for item in selected:
         block = by_id[item["id"]]
@@ -281,6 +294,7 @@ def _read_selected_blocks(document: DocumentIR, selected: list[dict[str, Any]], 
                 "type": block.type.value,
                 "block_path": _block_path(block, by_id),
                 "page_refs": block.page_refs,
+                **page_citation_metadata(block.page_refs, page_citations),
                 "source_block_ids": block.source_block_ids,
                 "content": text[:max_chars_per_block],
                 "truncated": truncated,
@@ -311,6 +325,9 @@ def _synthesize_answer(question: str, block_bodies: list[dict[str, Any]], max_se
                     "block_id": body["id"],
                     "block_path": body["block_path"],
                     "page_refs": body["page_refs"],
+                    "printed_page_labels": body.get("printed_page_labels", []),
+                    "pdf_page_labels": body.get("pdf_page_labels", []),
+                    "citation_label": body.get("citation_label", ""),
                     "quote": sentence,
                 }
             )

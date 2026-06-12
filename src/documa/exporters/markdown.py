@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from documa.core.image_filtering import is_decorative_image
 from documa.core.ir import BlockIR, BlockType, DocumentIR
 from documa.exporters.base import ExportOptions, Exporter
 from documa.pipeline.relations import block_text
@@ -63,6 +64,8 @@ class MarkdownExporter(Exporter):
 
             if options.include_images:
                 for image in page.images:
+                    if is_decorative_image(image):
+                        continue
                     lines.append(f"![{image.image_type}]({image.asset_ref})")
                     if image.caption:
                         lines.append("")

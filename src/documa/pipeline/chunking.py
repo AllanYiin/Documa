@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from documa.core.text_normalization import clean_retrieval_text
+from documa.core.image_filtering import is_decorative_image
 from documa.core.ir import BlockIR, BlockType, ChunkIR, DocumentBlockIR, DocumentBlockType, DocumentIR, TextContent
 from documa.pipeline.base import PipelineContext, PipelineStage, StageResult
 from documa.pipeline.block_tree import document_block_text
+from documa.pipeline.page_refs import ensure_page_citation_map, page_citation_metadata
 from documa.pipeline.relations import block_text
 
 
@@ -35,8 +38,8 @@ def _table_markdown(document: DocumentIR, block: BlockIR) -> str | None:
 
 def _block_chunk_text(document: DocumentIR, block: BlockIR) -> str:
     if block.type == BlockType.TABLE:
-        return _table_markdown(document, block) or block_text(block)
-    return block_text(block)
+        return clean_retrieval_text(_table_markdown(document, block) or block_text(block))
+    return clean_retrieval_text(block_text(block))
 
 
 def _block_by_id(document: DocumentIR) -> dict[str, BlockIR]:
@@ -71,7 +74,7 @@ def _table_context(document: DocumentIR, block: DocumentBlockIR, heading_path: l
     title = block.title or (source.metadata.get("table_title") if source else None)
     caption = source.metadata.get("caption") if source else None
     notes = (source.metadata.get("table_notes") or source.metadata.get("unit")) if source else None
-    table_text = table.markdown if table and table.markdown else document_block_text(document, block)
+    table_text = clean_retrieval_text(table.markdown if table and table.markdown else document_block_text(document, block))
     context_lines = []
     if heading_path:
         context_lines.append("Section: " + " > ".join(heading_path))
@@ -85,7 +88,7 @@ def _table_context(document: DocumentIR, block: DocumentBlockIR, heading_path: l
 
 
 def _split_text_within_block(text: str, max_chars: int) -> list[str]:
-    text = text.strip()
+    text = clean_retrieval_text(text)
     if not text or len(text) <= max_chars:
         return [text] if text else []
     pieces = []
@@ -133,6 +136,7 @@ class ChunkingStage(PipelineStage):
         if document.document_blocks:
             return self._run_document_block_chunks(document, max_chars)
 
+        page_citations = ensure_page_citation_map(document)
         chunks_created = 0
         heading_path: list[str] = []
         buffer_texts: list[str] = []
@@ -146,18 +150,20 @@ class ChunkingStage(PipelineStage):
                 buffer_blocks.clear()
                 return
             chunks_created += 1
+            page_refs = _unique([block.page_number for block in buffer_blocks])
             chunk = ChunkIR(
                 id=f"chunk_{document.id}_{chunks_created:04d}",
                 text=TextContent(text),
                 source_block_ids=[block.id for block in buffer_blocks],
                 parent_block_id=None,
                 heading_path=list(heading_path),
-                page_refs=_unique([block.page_number for block in buffer_blocks]),
+                page_refs=page_refs,
                 bbox_refs=_unique([block.bbox for block in buffer_blocks if block.bbox]),
                 metadata={
                     "stage": self.name,
                     "chunk_kind": kind,
                     "block_types": _unique([block.type.value for block in buffer_blocks]),
+                    **page_citation_metadata(page_refs, page_citations),
                 },
             )
             document.chunks.append(chunk)
@@ -203,22 +209,30 @@ class ChunkingStage(PipelineStage):
         image_chunks = 0
         for page in document.pages:
             for image in page.images:
-                image_text = image.caption or image.metadata.get("alt_text") or image.metadata.get("ocr_text")
+                if is_decorative_image(image):
+                    continue
+                image_text = clean_retrieval_text(str(image.caption or image.metadata.get("alt_text") or image.metadata.get("ocr_text") or ""))
                 if not image_text:
                     continue
                 chunks_created += 1
                 image_chunks += 1
+                page_refs = [page.page_number]
                 document.chunks.append(
                     ChunkIR(
                         id=f"chunk_{document.id}_{chunks_created:04d}",
-                        text=TextContent(str(image_text)),
+                        text=TextContent(image_text),
                         source_block_ids=[],
                         parent_block_id=None,
                         heading_path=[],
-                        page_refs=[page.page_number],
+                        page_refs=page_refs,
                         bbox_refs=[image.bbox] if image.bbox else [],
                         asset_refs=[image.asset_ref],
-                        metadata={"stage": self.name, "chunk_kind": "image", "image_id": image.id},
+                        metadata={
+                            "stage": self.name,
+                            "chunk_kind": "image",
+                            "image_id": image.id,
+                            **page_citation_metadata(page_refs, page_citations),
+                        },
                     )
                 )
 
@@ -230,6 +244,7 @@ class ChunkingStage(PipelineStage):
         )
 
     def _run_document_block_chunks(self, document: DocumentIR, max_chars: int) -> StageResult:
+        page_citations = ensure_page_citation_map(document)
         chunks_created = 0
         by_id = _document_block_by_id(document)
         source_blocks = _block_by_id(document)
@@ -248,7 +263,8 @@ class ChunkingStage(PipelineStage):
 
         def append_chunk(block: DocumentBlockIR, text: str, kind: str, extra_metadata: dict | None = None) -> None:
             nonlocal chunks_created
-            if not text.strip():
+            text = clean_retrieval_text(text)
+            if not text:
                 return
             chunks_created += 1
             source_ids = block.source_block_ids
@@ -257,6 +273,7 @@ class ChunkingStage(PipelineStage):
                 for source_id in source_ids
                 if source_id in source_blocks
             ]
+            page_refs = list(block.page_refs)
             metadata = {
                 "stage": self.name,
                 "chunk_kind": kind,
@@ -264,6 +281,7 @@ class ChunkingStage(PipelineStage):
                 "block_path": _block_path(block, by_id),
                 "block_types": _unique(source_types),
                 "intra_block_view": True,
+                **page_citation_metadata(page_refs, page_citations),
             }
             metadata.update(extra_metadata or {})
             document.chunks.append(
@@ -273,7 +291,7 @@ class ChunkingStage(PipelineStage):
                     source_block_ids=source_ids,
                     parent_block_id=block.id,
                     heading_path=metadata["block_path"],
-                    page_refs=block.page_refs,
+                    page_refs=page_refs,
                     bbox_refs=block.bbox_refs,
                     metadata=metadata,
                 )
@@ -347,7 +365,7 @@ class ChunkingStage(PipelineStage):
                     )
                 continue
 
-            text = document_block_text(document, block)
+            text = clean_retrieval_text(document_block_text(document, block))
             for index, piece in enumerate(_split_text_within_block(text, max_chars), start=1):
                 append_chunk(
                     block,

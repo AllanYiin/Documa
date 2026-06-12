@@ -475,7 +475,8 @@ function renderKeywordGroups(groups) {
     <span class="keyword-label">關鍵字</span>
     ${rows.map((item) => {
       const pages = (item.page_refs || []).join(",");
-      const title = pages ? `${item.term} · p.${pages}` : item.term;
+      const citation = item.citation_label || (pages ? `p.${pages}` : "");
+      const title = citation ? `${item.term} · ${citation}` : item.term;
       return `<button class="keyword-chip" type="button" title="${esc(title)}" data-keyword="${esc(item.term)}">${esc(item.term)}</button>`;
     }).join("")}
   `;

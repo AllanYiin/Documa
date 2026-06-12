@@ -6,6 +6,7 @@ import hashlib
 from dataclasses import dataclass
 from typing import Any
 
+from documa.core.text_normalization import clean_retrieval_text
 from documa.core.ir import (
     BlockIR,
     BlockType,
@@ -17,6 +18,7 @@ from documa.core.ir import (
     RelationType,
 )
 from documa.pipeline.base import PipelineContext, PipelineStage, StageResult
+from documa.pipeline.page_refs import ensure_page_citation_map, page_citation_metadata, printed_page_label_from_footer
 from documa.pipeline.relations import append_relation_once, block_text
 
 
@@ -37,7 +39,7 @@ def _unique(values: list[Any]) -> list[Any]:
 
 
 def _preview(text: str, max_chars: int = 160) -> str | None:
-    clean = " ".join(text.split())
+    clean = " ".join(clean_retrieval_text(text).split())
     if not clean:
         return None
     return clean[:max_chars]
@@ -116,6 +118,7 @@ class BlockTreeBuildingStage(PipelineStage):
         page_nodes: dict[tuple[str, int], DocumentBlockIR] = {}
         order = 1
         furniture: list[dict[str, Any]] = []
+        page_citations = ensure_page_citation_map(document)
 
         def append_child(parent: DocumentBlockIR, child: DocumentBlockIR) -> None:
             child.parent_id = parent.id
@@ -139,7 +142,12 @@ class BlockTreeBuildingStage(PipelineStage):
                 page_refs=[page_number],
                 order_index=order,
                 confidence=Confidence.HIGH,
-                metadata={"stage": self.name, "role": "body", "build_strategy": "page_boundary"},
+                metadata={
+                    "stage": self.name,
+                    "role": "body",
+                    "build_strategy": "page_boundary",
+                    **page_citation_metadata([page_number], page_citations),
+                },
             )
             append_child(parent, node)
             page_nodes[key] = node
@@ -150,14 +158,15 @@ class BlockTreeBuildingStage(PipelineStage):
             for source in page_blocks:
                 text = block_text(source).strip()
                 if source.type in _FURNITURE_TYPES:
-                    furniture.append(
-                        {
-                            "source_block_id": source.id,
-                            "type": source.type.value,
-                            "page_number": source.page_number,
-                            "text_preview": _preview(text),
-                        }
-                    )
+                    item = {
+                        "source_block_id": source.id,
+                        "type": source.type.value,
+                        "page_number": source.page_number,
+                        "text_preview": _preview(text),
+                    }
+                    if source.type == BlockType.PAGE_FOOTER:
+                        item["printed_page_label"] = printed_page_label_from_footer(text)
+                    furniture.append(item)
                     continue
                 if source.type == BlockType.HEADING:
                     level = int(source.metadata.get("heading_level", 1) or 1)
@@ -182,6 +191,7 @@ class BlockTreeBuildingStage(PipelineStage):
                             "role": "body",
                             "heading_level": level,
                             "build_strategy": "heading_block",
+                            **page_citation_metadata([source.page_number], page_citations),
                             "source_range": {
                                 "line_start": source.metadata.get("line_start"),
                                 "line_end": source.metadata.get("line_end"),
@@ -220,6 +230,7 @@ class BlockTreeBuildingStage(PipelineStage):
                         "role": "body",
                         "source_block_type": source.type.value,
                         "build_strategy": "page_local_block",
+                        **page_citation_metadata([source.page_number], page_citations),
                         "source_range": {
                             "line_start": source.metadata.get("line_start"),
                             "line_end": source.metadata.get("line_end"),
@@ -237,6 +248,7 @@ class BlockTreeBuildingStage(PipelineStage):
                 children = [candidate for candidate in blocks if candidate.id in set(node.child_ids)]
                 node.page_refs = _unique([page for child in children for page in child.page_refs] + node.page_refs)
                 node.bbox_refs = _unique([bbox for child in children for bbox in child.bbox_refs] + node.bbox_refs)
+                node.metadata.update(page_citation_metadata(node.page_refs, page_citations))
 
         document.document_blocks = blocks
         created_relations = 0

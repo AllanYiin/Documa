@@ -13,6 +13,7 @@ from documa.core.text_normalization import normalize_for_search
 from documa.pipeline.base import PipelineContext, PipelineStage, StageResult
 
 _SPACES = re.compile(r"\s+")
+_TOC_LEADER_RE = re.compile(r"^(?P<title>.+?)\.{4,}\s*(?P<page>(?:\d+|[IVXLCDM]+))\s*$", re.IGNORECASE)
 _REPEATED_REGION_RATIO = 0.12
 _MIN_REPEATED_PAGES = 3
 
@@ -36,6 +37,21 @@ def _repeat_key(block: BlockIR) -> str:
         return ""
     text = normalize_for_search(block.text.raw_text)
     return _SPACES.sub(" ", text).strip()
+
+
+def _toc_item(block: BlockIR) -> dict[str, object] | None:
+    if not block.text:
+        return None
+    text = _SPACES.sub(" ", block.text.raw_text).strip()
+    match = _TOC_LEADER_RE.match(text)
+    if not match:
+        return None
+    title = _SPACES.sub(" ", match.group("title")).strip()
+    page_text = match.group("page")
+    page_number = int(page_text) if page_text.isdecimal() else None
+    if not title:
+        return None
+    return {"title": title, "page_number": page_number, "page_label": page_text}
 
 
 def _repeated_region_keys(document: DocumentIR, *, top: bool) -> set[str]:
@@ -127,6 +143,11 @@ class LayoutClassificationStage(PipelineStage):
                     block.type = BlockType.PAGE_FOOTER
                     page_counts["page_footer"] += 1
                     strategy = "repeated_bottom_text"
+                elif toc_item := _toc_item(block):
+                    block.type = BlockType.TOC
+                    block.metadata["toc_title"] = toc_item["title"]
+                    block.metadata["toc_items"] = [toc_item]
+                    strategy = "toc_leader_dots"
                 elif median_font and block_font >= median_font * 1.25 and _is_short_heading_candidate(block):
                     block.type = BlockType.HEADING
                     page_counts["heading"] += 1

@@ -63,6 +63,33 @@ class Stage10BlockReadingTests(unittest.TestCase):
         root = next(item for item in doc.document_blocks if item.parent_id is None)
         self.assertEqual(len(root.metadata["furniture"]), 2)
 
+    def test_block_tree_adds_printed_page_citation_metadata(self):
+        doc = DocumentIR(
+            id="d1",
+            source_name="block.pdf",
+            pages=[
+                PageIR(
+                    id="p12",
+                    page_number=12,
+                    width=400,
+                    height=500,
+                    blocks=[
+                        block("body", "第十二張 PDF 頁的正文", page_number=12, order_index=1),
+                        block("footer", "6", BlockType.PAGE_FOOTER, page_number=12, order_index=2),
+                    ],
+                )
+            ],
+        )
+
+        BlockTreeBuildingStage().run(doc)
+
+        paragraph = next(item for item in doc.document_blocks if item.source_block_ids == ["body"])
+        self.assertEqual(paragraph.page_refs, [12])
+        self.assertEqual(paragraph.metadata["page_ref_kind"], "physical_page_number_1_based")
+        self.assertEqual(paragraph.metadata["printed_page_labels"], ["6"])
+        self.assertEqual(paragraph.metadata["citation_label"], "PDF p.12 (printed p.6)")
+        self.assertEqual(doc.metadata["page_citations"]["12"]["printed_page_label"], "6")
+
     def test_block_json_export_omits_page_furniture(self):
         header_text = "固定頁首重複文字"
         footer_text = "固定頁尾頁碼"
@@ -101,6 +128,8 @@ class Stage10BlockReadingTests(unittest.TestCase):
         self.assertNotIn(header_text, serialized)
         self.assertNotIn(footer_text, serialized)
         self.assertIn("段落內容", serialized)
+        self.assertEqual(payload["page_ref_kind"], "physical_page_number_1_based")
+        self.assertIn("1", payload["page_citations"])
 
     def test_keyword_stage_aggregates_bottom_up_with_dynamic_thresholds(self):
         doc = DocumentIR(
@@ -201,7 +230,18 @@ class Stage10BlockReadingTests(unittest.TestCase):
         doc = DocumentIR(
             id="d1",
             source_name="tool.pdf",
-            pages=[PageIR(id="p1", page_number=1, width=400, height=500, blocks=[block("p1", "工具查詢內容")])],
+            pages=[
+                PageIR(
+                    id="p12",
+                    page_number=12,
+                    width=400,
+                    height=500,
+                    blocks=[
+                        block("p1", "工具查詢內容", page_number=12, order_index=1),
+                        block("footer", "6", BlockType.PAGE_FOOTER, page_number=12, order_index=2),
+                    ],
+                )
+            ],
         )
         with tempfile.TemporaryDirectory() as tmp:
             ir_path = Path(tmp) / "documa.ir.json"
@@ -214,6 +254,9 @@ class Stage10BlockReadingTests(unittest.TestCase):
             self.assertFalse(listed["isError"])
             self.assertFalse(read["isError"])
             self.assertEqual(read["structuredContent"]["content"], "工具查詢內容")
+            self.assertEqual(listed["structuredContent"]["blocks"][-1]["page_refs"], [12])
+            self.assertEqual(read["structuredContent"]["printed_page_labels"], ["6"])
+            self.assertEqual(read["structuredContent"]["citation_label"], "PDF p.12 (printed p.6)")
 
     def test_search_blocks_uses_body_snippets_without_returning_full_body(self):
         doc = DocumentIR(
@@ -251,6 +294,7 @@ class Stage10BlockReadingTests(unittest.TestCase):
 
             self.assertFalse(body_search["isError"])
             self.assertEqual(body_search["structuredContent"]["results"][0]["id"], "db1")
+            self.assertEqual(body_search["structuredContent"]["results"][0]["citation_label"], "PDF p.1")
             self.assertEqual(body_search["structuredContent"]["results"][0]["snippets"][0]["field"], "body")
             self.assertIn("hidden-needle", body_search["structuredContent"]["results"][0]["snippets"][0]["snippet"])
             self.assertNotIn("content", body_search["structuredContent"]["results"][0])

@@ -10,10 +10,12 @@ from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
 from typing import Any
+import re
 import uuid
 
 from documa.adapters.base import ParseOptions, ParserAdapter
 from documa.core.errors import DocumaError, DocumaErrorDetail
+from documa.core.image_filtering import decorative_image_reason
 from documa.core.ir import (
     BlockIR,
     BlockType,
@@ -55,6 +57,8 @@ def _load_pymupdf():
 def _bbox(value: Any) -> tuple[float, float, float, float] | None:
     if value is None:
         return None
+    if all(hasattr(value, attr) for attr in ("x0", "y0", "x1", "y1")):
+        return (float(value.x0), float(value.y0), float(value.x1), float(value.y1))
     if hasattr(value, "__iter__"):
         items = list(value)
         if len(items) >= 4:
@@ -136,6 +140,13 @@ def _overlap_ratio(
     return _intersection_area(block_bbox, table_bbox) / area
 
 
+def _rects_intersect(
+    left: tuple[float, float, float, float] | None,
+    right: tuple[float, float, float, float] | None,
+) -> bool:
+    return _intersection_area(left, right) > 0.0
+
+
 def _cell_text(cell: str | None) -> str:
     return "" if cell is None else str(cell).strip()
 
@@ -160,6 +171,12 @@ def _table_text(rows: list[list[str | None]]) -> str:
     return "\n".join(" | ".join(_cell_text(cell) for cell in row) for row in rows)
 
 
+_GLOSSARY_HEADING_TEXT = "縮寫名詞表"
+_GLOSSARY_HEADERS = ["縮寫", "英文", "中文"]
+_ABBREVIATION_RE = re.compile(r"^[A-Z][A-Z0-9-]{1,}$")
+_ROW_KEY_RE = re.compile(r"^(?:[A-Z][A-Z0-9-]{1,}|[0-9]+(?:[.)%]|[.][0-9]+)?|[A-Za-z0-9][A-Za-z0-9-]{0,11})$")
+
+
 def _find_page_tables(page: Any) -> list[Any]:
     if not hasattr(page, "find_tables"):
         return []
@@ -170,6 +187,248 @@ def _find_page_tables(page: Any) -> list[Any]:
     except Exception:
         return []
     return list(getattr(finder, "tables", []) or [])
+
+
+def _compact_text(value: str) -> str:
+    return "".join(str(value).split())
+
+
+def _block_compact_text(block: BlockIR) -> str:
+    if block.text is None:
+        return ""
+    return _compact_text(block.text.normalized_text or block.text.raw_text)
+
+
+def _is_centered_short_text(block: BlockIR, page_ir: PageIR) -> bool:
+    text = _block_compact_text(block)
+    if not text or len(text) > 30 or block.bbox is None:
+        return False
+    center_x = (block.bbox[0] + block.bbox[2]) / 2.0
+    return abs(center_x - page_ir.width / 2.0) <= page_ir.width * 0.18
+
+
+def _borderless_table_regions(page_ir: PageIR) -> list[dict[str, Any]]:
+    regions: list[dict[str, Any]] = []
+    for block in page_ir.blocks:
+        if block.text is None:
+            continue
+        compact = _block_compact_text(block)
+        if _GLOSSARY_HEADING_TEXT in compact:
+            regions.append(
+                {
+                    "top": block.bbox[3] if block.bbox else 0.0,
+                    "headers": _GLOSSARY_HEADERS,
+                    "profile": "glossary_abbreviation_list",
+                    "key_pattern": "abbreviation",
+                    "min_data_rows": 2,
+                    "strategy": "borderless_column_table",
+                    "synthetic_header": False,
+                }
+            )
+            continue
+        if _is_centered_short_text(block, page_ir) and block.bbox and block.bbox[1] < page_ir.height * 0.45:
+            regions.append(
+                {
+                    "top": block.bbox[3],
+                    "headers": ["Column 1", "Column 2", "Column 3"],
+                    "profile": "generic_centered_heading",
+                    "key_pattern": "short_row_key",
+                    "min_data_rows": 6,
+                    "strategy": "borderless_column_table",
+                    "synthetic_header": True,
+                }
+            )
+    return sorted(regions, key=lambda item: float(item["top"]))
+
+
+def _word_rect(word: Any) -> tuple[float, float, float, float] | None:
+    try:
+        return (float(word[0]), float(word[1]), float(word[2]), float(word[3]))
+    except Exception:
+        return None
+
+
+def _word_text(word: Any) -> str:
+    try:
+        return str(word[4]).strip()
+    except Exception:
+        return ""
+
+
+def _cluster_word_lines(words: list[Any]) -> list[list[Any]]:
+    lines: list[dict[str, Any]] = []
+    for word in sorted(words, key=lambda item: ((_word_rect(item) or (0.0, 0.0, 0.0, 0.0))[1], (_word_rect(item) or (0.0, 0.0, 0.0, 0.0))[0])):
+        rect = _word_rect(word)
+        if rect is None:
+            continue
+        y_mid = (rect[1] + rect[3]) / 2.0
+        if lines and abs(float(lines[-1]["y_mid"]) - y_mid) <= 4.5:
+            current = lines[-1]
+            current["words"].append(word)
+            count = int(current["count"]) + 1
+            current["y_mid"] = (float(current["y_mid"]) * int(current["count"]) + y_mid) / count
+            current["count"] = count
+        else:
+            lines.append({"y_mid": y_mid, "count": 1, "words": [word]})
+    return [sorted(line["words"], key=lambda item: (_word_rect(item) or (0.0, 0.0, 0.0, 0.0))[0]) for line in lines]
+
+
+def _infer_glossary_columns(words: list[Any]) -> tuple[float, float] | None:
+    counts: dict[float, int] = {}
+    for word in words:
+        rect = _word_rect(word)
+        text = _word_text(word)
+        if rect is None or not text:
+            continue
+        anchor = round(rect[0] / 5.0) * 5.0
+        counts[anchor] = counts.get(anchor, 0) + 1
+
+    anchors = sorted(anchor for anchor, count in counts.items() if count >= 2)
+    if len(anchors) < 3:
+        return None
+
+    abbreviation_anchor = anchors[0]
+    english_anchor = anchors[1]
+    right_anchors = [anchor for anchor in anchors[2:] if anchor - english_anchor >= 60.0]
+    if not right_anchors or english_anchor - abbreviation_anchor < 15.0:
+        return None
+
+    chinese_anchor = max(right_anchors)
+    abbreviation_cut = english_anchor - max(8.0, min(18.0, (english_anchor - abbreviation_anchor) * 0.4))
+    chinese_cut = chinese_anchor - max(12.0, min(25.0, (chinese_anchor - english_anchor) * 0.12))
+    return abbreviation_cut, chinese_cut
+
+
+def _join_words(words: list[str]) -> str:
+    return " ".join(word for word in words if word).strip()
+
+
+def _append_cell_line(existing: str, line: str) -> str:
+    if not line:
+        return existing
+    if not existing:
+        return line
+    return f"{existing}\n{line}"
+
+
+def _looks_like_row_key(value: str, key_pattern: str) -> bool:
+    text = value.strip()
+    if not text:
+        return False
+    if key_pattern == "abbreviation":
+        return bool(_ABBREVIATION_RE.match(text))
+    return bool(_ROW_KEY_RE.match(text)) and len(text.split()) <= 2
+
+
+def _borderless_column_table_from_words(
+    words: list[Any],
+    headers: list[str],
+    key_pattern: str,
+    min_data_rows: int,
+) -> tuple[list[list[str | None]], tuple[float, float, float, float]] | None:
+    if len(words) < 6:
+        return None
+
+    columns = _infer_glossary_columns(words)
+    if columns is None:
+        return None
+    abbreviation_cut, chinese_cut = columns
+
+    data_rows: list[list[str]] = []
+    included_rects: list[tuple[float, float, float, float]] = []
+    for line_words in _cluster_word_lines(words):
+        column_words: list[list[str]] = [[], [], []]
+        line_rects: list[tuple[float, float, float, float]] = []
+        for word in line_words:
+            rect = _word_rect(word)
+            text = _word_text(word)
+            if rect is None or not text:
+                continue
+            if rect[0] < abbreviation_cut:
+                column = 0
+            elif rect[0] >= chinese_cut:
+                column = 2
+            else:
+                column = 1
+            column_words[column].append(text)
+            line_rects.append(rect)
+
+        cells = [_join_words(column) for column in column_words]
+        abbreviation = cells[0]
+        if abbreviation:
+            if not _looks_like_row_key(abbreviation, key_pattern):
+                continue
+            data_rows.append(cells)
+            included_rects.extend(line_rects)
+            continue
+
+        if not data_rows:
+            continue
+        for index in (1, 2):
+            if cells[index]:
+                data_rows[-1][index] = _append_cell_line(data_rows[-1][index], cells[index])
+                included_rects.extend(line_rects)
+
+    if len(data_rows) < min_data_rows or not included_rects:
+        return None
+
+    bbox = (
+        min(rect[0] for rect in included_rects),
+        min(rect[1] for rect in included_rects),
+        max(rect[2] for rect in included_rects),
+        max(rect[3] for rect in included_rects),
+    )
+    complete_rows = sum(1 for row in data_rows if row[0] and row[1] and row[2])
+    if complete_rows / len(data_rows) < 0.65:
+        return None
+
+    return [headers, *data_rows], bbox
+
+
+def _borderless_column_tables(page: Any, page_ir: PageIR) -> list[dict[str, Any]]:
+    if not hasattr(page, "get_text"):
+        return []
+
+    try:
+        page_words = list(page.get_text("words") or [])
+    except Exception:
+        return []
+
+    candidates: list[dict[str, Any]] = []
+    used_regions: list[tuple[float, float, float, float]] = []
+    bottom_limit = page_ir.height * 0.92
+    for region in _borderless_table_regions(page_ir):
+        top = float(region["top"])
+        words = [
+            word
+            for word in page_words
+            if (rect := _word_rect(word)) is not None
+            and rect[1] >= top
+            and rect[3] <= bottom_limit
+            and _word_text(word)
+        ]
+        result = _borderless_column_table_from_words(
+            words,
+            [str(item) for item in region["headers"]],
+            str(region["key_pattern"]),
+            int(region["min_data_rows"]),
+        )
+        if result is None:
+            continue
+        rows, bbox = result
+        if any(_intersection_area(bbox, used) / max(_rect_area(bbox), 1.0) > 0.2 for used in used_regions):
+            continue
+        used_regions.append(bbox)
+        candidates.append(
+            {
+                "rows": rows,
+                "bbox": bbox,
+                "profile": region["profile"],
+                "strategy": region["strategy"],
+                "synthetic_header": region["synthetic_header"],
+            }
+        )
+    return candidates
 
 
 class PyMuPDFAdapter(ParserAdapter):
@@ -360,6 +619,54 @@ class PyMuPDFAdapter(ParserAdapter):
                 )
             )
 
+        for borderless in _borderless_column_tables(page, page_ir):
+            rows = borderless["rows"]
+            bbox = borderless["bbox"]
+            table_index = len(table_blocks) + 1
+            overlapping = [
+                block
+                for block in remaining_blocks
+                if block.type == BlockType.TEXT and _rects_intersect(block.bbox, bbox)
+            ]
+            if overlapping:
+                overlapping_ids = {block.id for block in overlapping}
+                remaining_blocks = [block for block in remaining_blocks if block.id not in overlapping_ids]
+                source_order = min(
+                    (block.order_index for block in overlapping if block.order_index is not None),
+                    default=len(remaining_blocks) + len(table_blocks) + 1,
+                )
+                source_refs = [ref for block in overlapping for ref in block.source_refs]
+                source_blocks = [
+                    {
+                        "id": block.id,
+                        "bbox": block.bbox,
+                        "text": block.text.raw_text if block.text else "",
+                        "source_refs": block.source_refs,
+                    }
+                    for block in overlapping
+                ]
+                table_blocks.append(
+                    BlockIR(
+                        id=f"p{page_ir.page_number}_table{table_index}",
+                        type=BlockType.TABLE,
+                        page_number=page_ir.page_number,
+                        text=TextContent(_table_text(rows)),
+                        bbox=bbox,
+                        confidence=Confidence.MEDIUM,
+                        order_index=source_order,
+                        source_refs=source_refs or [f"pymupdf:borderless-table:{page_ir.page_number}:{table_index}"],
+                        metadata={
+                            "source_type": "pymupdf_borderless_table",
+                            "table_rows": rows,
+                            "source_block_ids": [block.id for block in overlapping],
+                            "source_blocks": source_blocks,
+                            "extraction_strategy": borderless["strategy"],
+                            "borderless_profile": borderless["profile"],
+                            "synthetic_header": borderless["synthetic_header"],
+                        },
+                    )
+                )
+
         if table_blocks:
             page_ir.blocks = sorted(
                 [*remaining_blocks, *table_blocks],
@@ -376,11 +683,34 @@ class PyMuPDFAdapter(ParserAdapter):
             return
         doc = page.parent
         seen: set[tuple[int, int]] = set()
+        decorative_suppressed = 0
         for image_index, image_info in enumerate(page.get_images(full=True), start=1):
             xref = int(image_info[0])
             rects = page.get_image_rects(xref) if hasattr(page, "get_image_rects") else []
             if not rects:
                 rects = [None]
+
+            visible_rects: list[tuple[int, tuple[float, float, float, float] | None]] = []
+            for rect_index, rect in enumerate(rects, start=1):
+                key = (xref, rect_index)
+                if key in seen:
+                    continue
+                seen.add(key)
+                bbox = _bbox(rect)
+                reason = decorative_image_reason(
+                    bbox=bbox,
+                    page_width=page_ir.width,
+                    page_height=page_ir.height,
+                    intrinsic_width=image_info[2] if len(image_info) > 2 else None,
+                    intrinsic_height=image_info[3] if len(image_info) > 3 else None,
+                )
+                if reason:
+                    decorative_suppressed += 1
+                    continue
+                visible_rects.append((rect_index, bbox))
+            if not visible_rects:
+                continue
+
             asset_ref = f"images/page_{page_ir.page_number:04d}_image_{image_index:03d}.bin"
             if asset_store:
                 extracted = doc.extract_image(xref)
@@ -389,16 +719,12 @@ class PyMuPDFAdapter(ParserAdapter):
                     f"images/page_{page_ir.page_number:04d}_image_{image_index:03d}.{ext}",
                     extracted["image"],
                 )
-            for rect_index, rect in enumerate(rects, start=1):
-                key = (xref, rect_index)
-                if key in seen:
-                    continue
-                seen.add(key)
+            for rect_index, bbox in visible_rects:
                 page_ir.images.append(
                     ImageIR(
                         id=f"p{page_ir.page_number}_img{image_index}_{rect_index}",
                         page_number=page_ir.page_number,
-                        bbox=_bbox(rect),
+                        bbox=bbox,
                         asset_ref=asset_ref,
                         image_type="image",
                         confidence=Confidence.MEDIUM,
@@ -410,6 +736,8 @@ class PyMuPDFAdapter(ParserAdapter):
                         },
                     )
                 )
+        if decorative_suppressed:
+            page_ir.metadata["decorative_images_suppressed"] = decorative_suppressed
 
     def _parse_annotations(self, page: Any, page_ir: PageIR) -> None:
         if not hasattr(page, "annots"):

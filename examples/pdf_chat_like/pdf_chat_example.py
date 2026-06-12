@@ -32,6 +32,7 @@ from documa.core.ir import DocumentBlockIR, DocumentBlockType, DocumentIR  # noq
 from documa.exporters import BlockJsonExporter, ExportOptions, JsonExporter  # noqa: E402
 from documa.pipeline import PipelineContext, run_default_pipeline  # noqa: E402
 from documa.pipeline.block_tree import document_block_text  # noqa: E402
+from documa.pipeline.page_refs import ensure_page_citation_map, page_citation_metadata  # noqa: E402
 
 
 _CJK = re.compile(r"[\u4e00-\u9fff]+")
@@ -115,7 +116,7 @@ LLM_SYNTHESIS_PROMPT = (
     SYSTEM_PROMPT_ZH_HANT
     + "\n你會收到使用者問題、搜尋計畫，以及已讀取的 PDF block 原文證據。"
     + "請用繁體中文回答，先給結論，再列重點與依據。"
-    + "引用證據時保留原文短句並標明頁碼/block id；不要捏造未出現在證據中的內容。"
+    + "引用證據時保留原文短句並標明 citation_label/block id；不要捏造未出現在證據中的內容。"
 )
 LLM_SEARCH_TERMS_PROMPT = (
     SYSTEM_PROMPT_ZH_HANT
@@ -132,7 +133,7 @@ LLM_TOOL_CALLING_PROMPT = (
     + "search_blocks 的 snippets 只能用來選落點，不能當最終證據；已有候選結果時不要連續 search_blocks。"
     + "若 search_blocks 回傳 retrieval_policy，先照 recommended_args 只讀 primary blocks；"
     + "secondary blocks 只有在 primary 證據不足時才讀。"
-    + "回答前至少要讀取一個 block 的正文，並根據工具回傳內容標明頁碼與 block id；不要捏造未在工具結果中的內容。"
+    + "回答前至少要讀取一個 block 的正文，並優先根據工具回傳的 citation_label 與 block id 引用；不要捏造未在工具結果中的內容。"
 )
 _ZH_EN_QUERY_EXPANSIONS = [
     (re.compile(r"(論文|文章|文件|paper|document).*(主要|大意|摘要|講|說|內容|主題)|"
@@ -582,6 +583,7 @@ def search_candidate_summary(results: list[dict[str, Any]], *, limit: int = 5) -
                 "type": row.get("type"),
                 "title": row.get("title"),
                 "page_refs": row.get("page_refs", []),
+                "citation_label": row.get("citation_label"),
                 "matched": matched,
                 "matched_terms_count": len(set(matched)),
                 "score": row.get("score"),
@@ -676,8 +678,11 @@ def blocked_repeated_search(candidates: list[dict[str, Any]], reason: str) -> di
 
 
 def evidence_line(item: dict[str, Any]) -> str:
-    pages = ",".join(str(page) for page in item["page_refs"]) or "?"
-    return f"- p.{pages} / {item['block_id']}: {item['quote']}"
+    label = item.get("citation_label")
+    if not label:
+        pages = ",".join(str(page) for page in item["page_refs"]) or "?"
+        label = f"p.{pages}"
+    return f"- {label} / {item['block_id']}: {item['quote']}"
 
 
 def content_block(block: DocumentBlockIR) -> bool:
@@ -914,6 +919,7 @@ def metadata_row(
     keywords: list[str] | None = None,
 ) -> dict[str, Any]:
     title = safe_display_path_segment(block.title or inherited_heading_title(block, by_id) or block.id)
+    page_citations = ensure_page_citation_map(document)
     return {
         "id": block.id,
         "type": block.type.value,
@@ -924,6 +930,7 @@ def metadata_row(
         "children_count": len(block.child_ids),
         "block_path": block_path(block, by_id),
         "page_refs": block.page_refs,
+        **page_citation_metadata(block.page_refs, page_citations),
         "text_preview": block.text_preview,
         "keywords": keywords if keywords is not None else raw_block_keywords(block, by_id, document, top_k=8),
         "new_words": [item.get("term") for item in block.metadata.get("new_word_terms", [])[:8]],
@@ -950,6 +957,7 @@ def document_text_for_tokens(document: DocumentIR) -> str:
 class PdfBlockChatExample:
     def __init__(self, document: DocumentIR):
         self.document = document
+        self.page_citations = ensure_page_citation_map(document)
         self.by_id = {block.id: block for block in document.document_blocks}
         self.counter = TokenCounter.create()
         self._keyword_index: dict[str, list[str]] | None = None
@@ -1021,17 +1029,21 @@ class PdfBlockChatExample:
                 add(term, block, "block_tfidf_ngram", 1.8)
 
         ranked = sorted(scores.items(), key=lambda item: (item[1], len(item[0])), reverse=True)
-        return [
-            {
-                "term": display.get(term, term),
-                "score": round(score, 4),
-                "block_count": len(block_ids.get(term, [])),
-                "page_refs": sorted(pages.get(term, set()))[:8],
-                "source_kinds": sorted(source_kinds.get(term, set())),
-                "sample_block_ids": block_ids.get(term, [])[:4],
-            }
-            for term, score in ranked[:limit]
-        ]
+        items = []
+        for term, score in ranked[:limit]:
+            page_refs = sorted(pages.get(term, set()))[:8]
+            items.append(
+                {
+                    "term": display.get(term, term),
+                    "score": round(score, 4),
+                    "block_count": len(block_ids.get(term, [])),
+                    "page_refs": page_refs,
+                    **page_citation_metadata(page_refs, self.page_citations),
+                    "source_kinds": sorted(source_kinds.get(term, set())),
+                    "sample_block_ids": block_ids.get(term, [])[:4],
+                }
+            )
+        return items
 
     def search_blocks(
         self,
@@ -1116,6 +1128,9 @@ class PdfBlockChatExample:
                 "title": base_row["title"],
                 "score": round(score, 4),
                 "page_refs": base_row["page_refs"],
+                "citation_label": base_row.get("citation_label"),
+                "printed_page_labels": base_row.get("printed_page_labels", []),
+                "pdf_page_labels": base_row.get("pdf_page_labels", []),
                 "children_count": base_row["children_count"],
                 "matched": matched,
                 "snippets": snippets,
@@ -1211,6 +1226,7 @@ class PdfBlockChatExample:
             "type": block.type.value,
             "block_path": block_path(block, self.by_id),
             "page_refs": block.page_refs,
+            **page_citation_metadata(block.page_refs, self.page_citations),
             "source_block_ids": block.source_block_ids,
             "content": content[:max_chars],
             "truncated": len(content) > max_chars,
@@ -1273,6 +1289,7 @@ class PdfBlockChatExample:
                 "term": item.get("term"),
                 "block_count": item.get("block_count"),
                 "page_refs": item.get("page_refs", []),
+                "citation_label": item.get("citation_label"),
             }
             for item in self.keyword_groups(limit=18)
         ]
@@ -1485,6 +1502,9 @@ class PdfBlockChatExample:
                                 "block_id": block.get("id"),
                                 "block_path": block.get("block_path", []),
                                 "page_refs": block.get("page_refs", []),
+                                "printed_page_labels": block.get("printed_page_labels", []),
+                                "pdf_page_labels": block.get("pdf_page_labels", []),
+                                "citation_label": block.get("citation_label", ""),
                                 "quote": str(block.get("content", ""))[:500],
                             }
                         )
@@ -1495,6 +1515,9 @@ class PdfBlockChatExample:
                             "block_id": result.get("id"),
                             "block_path": result.get("block_path", []),
                             "page_refs": result.get("page_refs", []),
+                            "printed_page_labels": result.get("printed_page_labels", []),
+                            "pdf_page_labels": result.get("pdf_page_labels", []),
+                            "citation_label": result.get("citation_label", ""),
                             "quote": str(result.get("content", ""))[:500],
                         }
                     )
@@ -1540,6 +1563,9 @@ class PdfBlockChatExample:
         evidence_blocks = [
             {
                 "page_refs": block.get("page_refs", []),
+                "printed_page_labels": block.get("printed_page_labels", []),
+                "pdf_page_labels": block.get("pdf_page_labels", []),
+                "citation_label": block.get("citation_label", ""),
                 "content": block.get("content", ""),
                 "truncated": block.get("truncated", False),
             }
@@ -1582,6 +1608,9 @@ class PdfBlockChatExample:
                     "block_id": block["id"],
                     "block_path": block.get("block_path", []),
                     "page_refs": block.get("page_refs", []),
+                    "printed_page_labels": block.get("printed_page_labels", []),
+                    "pdf_page_labels": block.get("pdf_page_labels", []),
+                    "citation_label": block.get("citation_label", ""),
                     "quote": block.get("content", "")[:500],
                 }
                 for block in read_results
@@ -1776,6 +1805,9 @@ def fallback_answer(
                     "block_id": block["id"],
                     "block_path": block["block_path"],
                     "page_refs": block["page_refs"],
+                    "printed_page_labels": block.get("printed_page_labels", []),
+                    "pdf_page_labels": block.get("pdf_page_labels", []),
+                    "citation_label": block.get("citation_label", ""),
                     "quote": sentence,
                 }
             )

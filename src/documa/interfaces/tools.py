@@ -23,6 +23,7 @@ from documa.pipeline import (
     run_default_pipeline,
 )
 from documa.pipeline.block_tree import document_block_text
+from documa.pipeline.page_refs import ensure_page_citation_map, page_citation_metadata
 from documa.quality import BenchmarkOptions, DoctorOptions, run_doctor, run_fixture_benchmark
 
 
@@ -342,6 +343,7 @@ def list_blocks_tool(
     except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
         return {"status": "error", "message": str(exc)}
     _ensure_document_blocks(document)
+    page_citations = ensure_page_citation_map(document)
 
     blocks = []
     for block in sorted(document.document_blocks, key=lambda item: (item.order_index is None, item.order_index or 0)):
@@ -359,6 +361,7 @@ def list_blocks_tool(
             "page_refs": block.page_refs,
             "text_preview": block.text_preview,
             "source_range": block.metadata.get("source_range"),
+            **page_citation_metadata(block.page_refs, page_citations),
         }
         if include_metadata_summary:
             item["metadata_summary"] = {
@@ -378,14 +381,18 @@ def inspect_block_tool(ir_path: str, block_id: str) -> ToolPayload:
     except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
         return {"status": "error", "message": str(exc)}
     _ensure_document_blocks(document)
+    page_citations = ensure_page_citation_map(document)
     by_id = _block_index(document)
     block = by_id.get(block_id)
     if block is None:
         return {"status": "error", "message": f"Unknown block_id: {block_id}"}
+    block_payload = to_plain_data(block)
+    block_payload.setdefault("metadata", {}).update(page_citation_metadata(block.page_refs, page_citations))
     return {
         "status": "ok",
         "document_id": document.id,
-        "block": to_plain_data(block),
+        "block": block_payload,
+        **page_citation_metadata(block.page_refs, page_citations),
         "block_path": _block_path(block.id, by_id),
     }
 
@@ -401,6 +408,7 @@ def read_block_tool(
     except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
         return {"status": "error", "message": str(exc)}
     _ensure_document_blocks(document)
+    page_citations = ensure_page_citation_map(document)
     by_id = _block_index(document)
     block = by_id.get(block_id)
     if block is None:
@@ -421,6 +429,7 @@ def read_block_tool(
     if max_chars is not None and len(text) > max_chars:
         text = text[:max_chars]
         truncated = True
+    page_refs = sorted({page for item in selected for page in item.page_refs})
     return {
         "status": "ok",
         "document_id": document.id,
@@ -429,7 +438,8 @@ def read_block_tool(
         "content": text,
         "truncated": truncated,
         "source_block_ids": [source_id for item in selected for source_id in item.source_block_ids],
-        "page_refs": sorted({page for item in selected for page in item.page_refs}),
+        "page_refs": page_refs,
+        **page_citation_metadata(page_refs, page_citations),
     }
 
 
@@ -452,6 +462,7 @@ def search_blocks_tool(
     except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
         return {"status": "error", "message": str(exc)}
     _ensure_document_blocks(document)
+    page_citations = ensure_page_citation_map(document)
     by_id = _block_index(document)
 
     raw_terms = _search_terms(query, any_of)
@@ -548,6 +559,7 @@ def search_blocks_tool(
             "title": block.title,
             "score": score,
             "page_refs": block.page_refs,
+            **page_citation_metadata(block.page_refs, page_citations),
             "children_count": len(block.child_ids),
             "matched": matched,
             "snippets": snippets,
@@ -596,6 +608,7 @@ def block_tree_tool(ir_path: str) -> ToolPayload:
     except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
         return {"status": "error", "message": str(exc)}
     _ensure_document_blocks(document)
+    page_citations = ensure_page_citation_map(document)
     by_parent = _children_by_parent(document)
 
     def node(block: Any) -> dict[str, Any]:
@@ -605,6 +618,7 @@ def block_tree_tool(ir_path: str) -> ToolPayload:
             "title": block.title,
             "depth": block.depth,
             "page_refs": block.page_refs,
+            **page_citation_metadata(block.page_refs, page_citations),
             "source_range": block.metadata.get("source_range"),
             "children": [node(child) for child in by_parent.get(block.id, [])],
         }
@@ -619,6 +633,7 @@ def block_xref_tool(ir_path: str, block_id: str) -> ToolPayload:
     except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
         return {"status": "error", "message": str(exc)}
     _ensure_document_blocks(document)
+    page_citations = ensure_page_citation_map(document)
     by_id = _block_index(document)
     block = by_id.get(block_id)
     if block is None:
@@ -636,6 +651,7 @@ def block_xref_tool(ir_path: str, block_id: str) -> ToolPayload:
             "type": target.type.value,
             "title": target.title,
             "page_refs": target.page_refs,
+            **page_citation_metadata(target.page_refs, page_citations),
             "source_range": target.metadata.get("source_range"),
         }
 
@@ -654,6 +670,8 @@ def block_xref_tool(ir_path: str, block_id: str) -> ToolPayload:
         "status": "ok",
         "document_id": document.id,
         "id": block.id,
+        "page_refs": block.page_refs,
+        **page_citation_metadata(block.page_refs, page_citations),
         "parent": ref(block.parent_id),
         "children": [ref(child_id) for child_id in block.child_ids],
         "source_block_ids": block.source_block_ids,

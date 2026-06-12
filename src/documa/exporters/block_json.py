@@ -8,6 +8,7 @@ from typing import Any
 
 from documa.core.ir import DocumentIR, to_plain_data
 from documa.exporters.base import ExportOptions, Exporter
+from documa.pipeline.page_refs import ensure_page_citation_map
 
 
 _SPACES = re.compile(r"\s+")
@@ -105,6 +106,7 @@ class BlockJsonExporter(Exporter):
     name: str = "block-json"
 
     def export(self, document: DocumentIR, options: ExportOptions | None = None) -> dict[str, Any]:
+        page_citations = ensure_page_citation_map(document)
         blocks = [to_plain_data(block) for block in document.document_blocks]
         furniture_texts = _collect_furniture_texts(blocks)
         sanitized_blocks = [_sanitize_value(block, furniture_texts) for block in blocks if not _is_furniture_block(block)]
@@ -117,5 +119,7 @@ class BlockJsonExporter(Exporter):
             "document_id": document.id,
             "source_name": document.source_name,
             "block_count": len(sanitized_blocks),
+            "page_ref_kind": document.metadata.get("page_ref_kind"),
+            "page_citations": page_citations,
             "blocks": sanitized_blocks,
         }
