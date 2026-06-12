@@ -16,6 +16,7 @@ from documa.interfaces.tools import (
     process_document_tool,
     read_block_tool,
     search_blocks_tool,
+    view_document_tool,
 )
 
 __all__ = [
@@ -35,4 +36,5 @@ __all__ = [
     "process_document_tool",
     "read_block_tool",
     "search_blocks_tool",
+    "view_document_tool",
 ]

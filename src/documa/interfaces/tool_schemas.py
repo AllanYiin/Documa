@@ -109,6 +109,43 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
             "annotations": {"readOnlyHint": True},
         },
         {
+            "name": "documa_view",
+            "title": "Build Documa universal viewer",
+            "description": (
+                "Build a hierarchical human-viewer payload for any Documa-supported source or existing IR, "
+                "including document metadata, block metadata, optional body text, and query matches."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "source": {"type": ["string", "null"]},
+                    "ir_path": {"type": ["string", "null"]},
+                    "out": {"type": ["string", "null"]},
+                    "format": {"type": "string", "enum": ["json", "markdown", "html"], "default": "json"},
+                    "query": {"type": "string", "default": ""},
+                    "lang": {"type": "string", "default": "auto"},
+                    "max_chars": {"type": "integer", "minimum": 1, "default": 1200},
+                    "max_depth": {"type": ["integer", "null"], "minimum": 0},
+                    "include_body": {"type": "boolean", "default": False},
+                    "body_chars": {"type": "integer", "minimum": 1, "default": 1200},
+                    "result_limit": {"type": "integer", "minimum": 0, "default": 10},
+                },
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "document_id": {"type": "string"},
+                    "format": {"type": "string"},
+                    "output_path": {"type": ["string", "null"]},
+                    "viewer": {"type": ["object", "null"]},
+                    "content": {"type": ["string", "null"]},
+                },
+                "required": ["status"],
+            },
+            "annotations": {"readOnlyHint": False},
+        },
+        {
             "name": "documa_list_blocks",
             "title": "List Documa document blocks",
             "description": "Return a progressive-disclosure block list without full block bodies.",

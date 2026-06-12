@@ -4,7 +4,7 @@
 
 Documa 是一個以 Python 套件為核心、面向 LLM 的文件理解套件。它的目標不是取代底層 PDF parser，而是把 parser 產出的低階訊號整理成穩定、可追溯、可被 agent、RAG、MCP 與 tool-calling 工作流使用的文件中介表示。
 
-目前定位是 Alpha 階段的開發者套件：
+目前定位是 Beta 階段的開發者套件：
 
 - 核心是 Python package，不在核心 repo 內建產品 UI。
 - 文件 parsing 透過 adapter 接入，目前包含 `PyMuPDFAdapter`、`MarkdownAdapter`、`DocxAdapter`、`PptxAdapter`、`HtmlAdapter`、`EmailAdapter` 與 `IpynbAdapter`；core 不直接依賴 parser-native object。
@@ -49,7 +49,7 @@ Documa 對 PDF parser 的態度是「adapter-based composition」：底層 parse
 - Pipeline stage：對 IR 做保守、可測試的轉換，例如 reading order、inline semantics、paragraph grouping、table normalization、relations、block tree、chunking。
 - Relation：用來表達 footnote、TOC、caption、provenance 等可追溯連結；不確定時保留 unresolved evidence，而不是假裝成功。
 - Document block：面向 agent 的 progressive disclosure tree。agent 可以先看 metadata，再只讀相關 section、paragraph、table 或 image block。
-- Exporter：把 IR 輸出成 `json`、`markdown`、`rag-json` 或 `block-json`。
+- Exporter / viewer：把 IR 輸出成 `json`、`markdown`、`rag-json`、`block-json`，或產生 universal human viewer。
 - Tool layer：`documa_parse`、`documa_process`、`documa_search_blocks` 等工具共用同一組 structured result。
 
 ## 快速開始
@@ -183,7 +183,34 @@ documa block ".\out\report\documa.ir.json" --id "<block-id>" --read
 
 這是主要的 LLM-facing 使用模式：先 list 或 search metadata，再載入選定 block body 與 provenance。
 
-### 8. 輸出給下游系統
+### 8. 產生 Universal Viewer
+
+若要把任一 Documa 支援格式呈現成階層式 human viewer，可使用 `view`：
+
+```powershell
+documa view "<path-to-report.pdf|.md|.docx|.pptx|.html|.eml|.msg|.ipynb>" `
+  --format html `
+  --out ".\out\report\viewer.html" `
+  --query "主要風險" `
+  --include-body
+```
+
+也可以從既有 IR 產生 viewer：
+
+```powershell
+documa view ".\out\report\documa.ir.json" --from-ir --format markdown --query "主要風險"
+```
+
+Universal viewer 會輸出：
+
+- 文件層 metadata：parser、頁數、block/chunk/relation/table/image counts 與 adapter metadata。
+- 階層式 document blocks：document / section / page / paragraph / table / image 等 progressive blocks。
+- 每個 block 的 metadata、page refs、citation label、preview，以及可選的 bounded body。
+- query results：用同一份 block hierarchy 對 title、preview、body 與 metadata 做 deterministic lexical query。
+
+同一能力也暴露為 `documa_view` tool，可由 direct tool-calling、OpenAI tool schema 與 MCP 使用；若需要更細的查詢流程，仍可搭配 `documa_list_blocks`、`documa_search_blocks`、`documa_read_block` 與 `documa_block_xref`。
+
+### 9. 輸出給下游系統
 
 ```powershell
 documa export ".\out\report\documa.ir.json" --format markdown --out ".\out\report\documa.md"
@@ -198,7 +225,7 @@ documa export ".\out\report\documa.ir.json" --format block-json --out ".\out\rep
 - `rag-json`：供 retrieval ingestion 使用的 chunk records。
 - `block-json`：供 progressive reading workflow 使用的 document block tree。
 
-### 9. 使用 tool schemas 或 MCP
+### 10. 使用 tool schemas 或 MCP
 
 列出 Documa tools：
 
@@ -220,12 +247,12 @@ tools = openai_tool_schemas(strict=True)
 from documa.interfaces import call_documa_tool
 
 result = call_documa_tool(
-    "documa_process",
+    "documa_view",
     {
         "source": "report.pdf",
-        "out": "out/report",
-        "languages": ["zh-Hant", "en"],
-        "export_formats": ["rag-json", "block-json"],
+        "format": "json",
+        "query": "主要風險",
+        "include_body": False,
     },
 )
 ```
@@ -237,7 +264,7 @@ python -m pip install -e ".[mcp]"
 documa-mcp
 ```
 
-### 10. 執行測試
+### 11. 執行測試
 
 ```powershell
 python -m pytest

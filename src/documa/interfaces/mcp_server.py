@@ -17,6 +17,7 @@ from documa.interfaces.tools import (
     process_document_tool,
     read_block_tool,
     search_blocks_tool,
+    view_document_tool,
 )
 
 
@@ -74,6 +75,36 @@ def create_mcp_server() -> Any:
         """Inspect a Documa IR file."""
 
         return inspect_document_tool(ir_path=ir_path)
+
+    @mcp.tool()
+    def documa_view(
+        source: str | None = None,
+        ir_path: str | None = None,
+        out: str | None = None,
+        format: str = "json",
+        query: str = "",
+        lang: str = "auto",
+        max_chars: int = 1200,
+        max_depth: int | None = None,
+        include_body: bool = False,
+        body_chars: int = 1200,
+        result_limit: int = 10,
+    ) -> dict[str, Any]:
+        """Build a universal hierarchical human viewer for any Documa-supported document."""
+
+        return view_document_tool(
+            source=source,
+            ir_path=ir_path,
+            out=out,
+            format=format,
+            query=query,
+            lang=lang,
+            max_chars=max_chars,
+            max_depth=max_depth,
+            include_body=include_body,
+            body_chars=body_chars,
+            result_limit=result_limit,
+        )
 
     @mcp.tool()
     def documa_list_blocks(

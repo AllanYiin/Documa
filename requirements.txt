@@ -1,0 +1,8 @@
+# Full local development install for Documa.
+#
+# pyproject.toml remains the package dependency source of truth. This file is a
+# pip convenience entry point for environments that expect:
+#
+#   python -m pip install -r requirements.txt
+#
+-e .[dev,documents,mcp,demo]

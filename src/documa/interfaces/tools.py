@@ -24,6 +24,7 @@ from documa.pipeline import (
 )
 from documa.pipeline.block_tree import document_block_text
 from documa.pipeline.page_refs import ensure_page_citation_map, page_citation_metadata
+from documa.viewer import VIEWER_FORMATS, ViewerOptions, build_universal_viewer, render_viewer
 from documa.quality import BenchmarkOptions, DoctorOptions, run_doctor, run_fixture_benchmark
 
 
@@ -245,6 +246,80 @@ def inspect_document_tool(ir_path: str) -> ToolPayload:
     except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
         return {"status": "error", "message": str(exc)}
     return inspect_document(document)
+
+
+def view_document_tool(
+    source: str | None = None,
+    ir_path: str | None = None,
+    out: str | None = None,
+    format: str = "json",
+    query: str = "",
+    lang: str = "auto",
+    max_chars: int = 1200,
+    max_depth: int | None = None,
+    include_body: bool = False,
+    body_chars: int = 1200,
+    result_limit: int = 10,
+) -> ToolPayload:
+    if bool(source) == bool(ir_path):
+        return {"status": "error", "message": "Provide exactly one of source or ir_path."}
+    if format not in VIEWER_FORMATS:
+        return {"status": "error", "message": f"Unsupported viewer format: {format}"}
+
+    output_path = Path(out) if out else None
+    try:
+        if source:
+            output_dir = output_path.parent if output_path else None
+            asset_dir = output_dir / "assets" if output_dir else None
+            languages = [part.strip() for part in lang.split(",") if part.strip()]
+            document = adapter_for_source(source).parse(
+                source,
+                ParseOptions(languages=languages or ["auto"], asset_dir=asset_dir),
+            )
+            pipeline_run = run_default_pipeline(
+                document,
+                PipelineContext(settings={"max_chars": max_chars}),
+                include_chunking=True,
+            )
+            document = pipeline_run.document
+        else:
+            document = load_document(str(ir_path))
+    except DocumaError as exc:
+        return _documa_error_payload(exc)
+    except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
+        return {"status": "error", "message": str(exc)}
+
+    viewer = build_universal_viewer(
+        document,
+        ViewerOptions(
+            query=query,
+            max_depth=max_depth,
+            include_body=include_body,
+            body_chars=body_chars,
+            result_limit=result_limit,
+        ),
+    )
+    content = render_viewer(viewer, format)
+    if output_path:
+        write_payload(output_path, content)
+
+    payload: ToolPayload = {
+        "status": "ok",
+        "document_id": document.id,
+        "format": format,
+        "output_path": str(output_path) if output_path else None,
+        "query": query,
+    }
+    if output_path:
+        payload["viewer"] = None
+        payload["content"] = None
+    elif format == "json":
+        payload["viewer"] = content
+        payload["content"] = None
+    else:
+        payload["viewer"] = viewer
+        payload["content"] = content
+    return payload
 
 
 def _ensure_document_blocks(document: DocumentIR) -> None:
@@ -722,6 +797,7 @@ def _tool_registry() -> dict[str, Callable[..., ToolPayload]]:
         "documa_process": process_document_tool,
         "documa_export": export_document_tool,
         "documa_inspect": inspect_document_tool,
+        "documa_view": view_document_tool,
         "documa_list_blocks": list_blocks_tool,
         "documa_inspect_block": inspect_block_tool,
         "documa_read_block": read_block_tool,

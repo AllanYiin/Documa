@@ -23,6 +23,7 @@ from documa.interfaces import (
     process_document_tool,
     read_block_tool,
     search_blocks_tool,
+    view_document_tool,
 )
 
 
@@ -68,6 +69,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     inspect_cmd = subparsers.add_parser("inspect", help="Inspect a Documa IR document.")
     inspect_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
+
+    view_cmd = subparsers.add_parser("view", help="Build a universal human viewer for any Documa-supported document.")
+    view_cmd.add_argument("target", help="Source document path, or documa.ir.json when --from-ir is set.")
+    view_cmd.add_argument("--from-ir", action="store_true", help="Read target as an existing Documa IR JSON file.")
+    view_cmd.add_argument("--out", help="Output file path.")
+    view_cmd.add_argument("--format", choices=["json", "markdown", "html"], default="json")
+    view_cmd.add_argument("--query", default="", help="Optional lexical query to highlight matching blocks.")
+    view_cmd.add_argument("--lang", default="auto", help="Comma-separated language hints when target is a source document.")
+    view_cmd.add_argument("--max-chars", type=int, default=1200, help="Target max characters per generated chunk.")
+    view_cmd.add_argument("--max-depth", type=int, help="Maximum hierarchy depth to include.")
+    view_cmd.add_argument("--include-body", action="store_true", help="Include bounded block body text in the viewer payload.")
+    view_cmd.add_argument("--body-chars", type=int, default=1200, help="Maximum body characters per block when included.")
+    view_cmd.add_argument("--result-limit", type=int, default=10, help="Maximum query result count.")
 
     blocks_cmd = subparsers.add_parser("blocks", help="List Documa document blocks.")
     blocks_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
@@ -163,6 +177,27 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "inspect":
         payload = inspect_document_tool(args.ir_path)
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "view":
+        payload = view_document_tool(
+            source=None if args.from_ir else args.target,
+            ir_path=args.target if args.from_ir else None,
+            out=args.out,
+            format=args.format,
+            query=args.query,
+            lang=args.lang,
+            max_chars=args.max_chars,
+            max_depth=args.max_depth,
+            include_body=args.include_body,
+            body_chars=args.body_chars,
+            result_limit=args.result_limit,
+        )
+        if payload.get("status") != "ok" or args.out or args.format == "json":
+            return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+        sys.stdout.write(str(payload.get("content") or ""))
+        if not str(payload.get("content") or "").endswith("\n"):
+            sys.stdout.write("\n")
+        return 0
 
     if args.command == "blocks":
         payload = list_blocks_tool(
