@@ -7,7 +7,7 @@ Documa 是一個以 Python 套件為核心、面向 LLM 的文件理解套件。
 目前定位是 Alpha 階段的開發者套件：
 
 - 核心是 Python package，不在核心 repo 內建產品 UI。
-- 文件 parsing 透過 adapter 接入，目前包含 `PyMuPDFAdapter`、`MarkdownAdapter`、`DocxAdapter`、`PptxAdapter` 與 `HtmlAdapter`；core 不直接依賴 parser-native object。
+- 文件 parsing 透過 adapter 接入，目前包含 `PyMuPDFAdapter`、`MarkdownAdapter`、`DocxAdapter`、`PptxAdapter`、`HtmlAdapter`、`EmailAdapter` 與 `IpynbAdapter`；core 不直接依賴 parser-native object。
 - 內部文字使用 Python Unicode `str`；JSON 與檔案輸出預設 UTF-8，JSON 使用 `ensure_ascii=False`。
 - 保留原始文字與正規化文字，不靜默覆蓋原文。
 - CLI、Python tool layer、OpenAI tool schema 與 MCP wrapper 共用同一組結構化結果契約。
@@ -20,7 +20,7 @@ Documa 補的是這一層。
 
 ```mermaid
 flowchart LR
-    A["PDF / Markdown / DOCX / PPTX / HTML"] --> B["Parser adapter"]
+    A["PDF / Markdown / DOCX / PPTX / HTML / EML / MSG / IPYNB"] --> B["Parser adapter"]
     B --> C["Parser-neutral Documa IR"]
     C --> D["理解 pipeline"]
     D --> E["輸出: JSON / Markdown / RAG JSON / block JSON"]
@@ -45,7 +45,7 @@ Documa 對 PDF parser 的態度是「adapter-based composition」：底層 parse
 ## 核心概念
 
 - `DocumentIR`：Documa 的 parser-neutral source of truth，定義在 `src/documa/core/ir.py`。
-- Adapter：把外部格式轉成 `DocumentIR`，例如 `PyMuPDFAdapter`、`MarkdownAdapter`、`DocxAdapter`、`PptxAdapter` 與 `HtmlAdapter`。
+- Adapter：把外部格式轉成 `DocumentIR`，例如 `PyMuPDFAdapter`、`MarkdownAdapter`、`DocxAdapter`、`PptxAdapter`、`HtmlAdapter`、`EmailAdapter` 與 `IpynbAdapter`。
 - Pipeline stage：對 IR 做保守、可測試的轉換，例如 reading order、inline semantics、paragraph grouping、table normalization、relations、block tree、chunking。
 - Relation：用來表達 footnote、TOC、caption、provenance 等可追溯連結；不確定時保留 unresolved evidence，而不是假裝成功。
 - Document block：面向 agent 的 progressive disclosure tree。agent 可以先看 metadata，再只讀相關 section、paragraph、table 或 image block。
@@ -60,7 +60,7 @@ Documa 對 PDF parser 的態度是「adapter-based composition」：底層 parse
 
 - Python 3.10 或更新版本。
 - 這個 repo 的 checkout，或已安裝的 `documa` package。
-- 若要處理 PDF、DOCX、PPTX 或 HTML，需安裝對應 extra；Markdown adapter 不需要額外依賴。
+- 若要處理 PDF、DOCX、PPTX、HTML、MSG 或 IPYNB，需安裝對應 extra；Markdown 與 EML adapter 不需要額外依賴。
 - 若要使用 MCP 或 demo 整合，需視情況安裝 `mcp` 與 `demo` extras。
 
 ### 1. 從 package index 安裝
@@ -126,7 +126,9 @@ python -m pip install -e ".[dev,documents,mcp,demo]"
 | `docx` | 安裝 python-docx，讓 `DocxAdapter` 可處理 DOCX。 |
 | `pptx` | 安裝 python-pptx，讓 `PptxAdapter` 可處理 PPTX。 |
 | `html` | 安裝 beautifulsoup4，讓 `HtmlAdapter` 可處理 HTML。 |
-| `documents` | 一次安裝 PDF、DOCX、PPTX 與 HTML adapter 依賴。 |
+| `msg` | 安裝 extract-msg，讓 `EmailAdapter` 可處理 Outlook MSG。 |
+| `ipynb` | 安裝 nbformat，讓 `IpynbAdapter` 可處理 Jupyter Notebook。 |
+| `documents` | 一次安裝 PDF、DOCX、PPTX、HTML、MSG 與 IPYNB adapter 依賴；EML 使用 Python 標準庫。 |
 | `mcp` | 安裝 `documa-mcp` 需要的 MCP 依賴。 |
 | `demo` | 安裝 demo 需要的選用依賴，例如 token counting 與 OpenAI SDK support。 |
 | `dev` | 安裝測試依賴。 |
@@ -149,7 +151,7 @@ python -m documa.cli doctor
 ### 6. 處理文件
 
 ```powershell
-documa process "<path-to-report.pdf|.md|.docx|.pptx|.html>" `
+documa process "<path-to-report.pdf|.md|.docx|.pptx|.html|.eml|.msg|.ipynb>" `
   --out ".\out\report" `
   --lang zh-Hant,en `
   --export-format block-json
@@ -160,12 +162,12 @@ documa process "<path-to-report.pdf|.md|.docx|.pptx|.html>" `
 - `.\out\report\documa.ir.json`：完整 Documa IR。
 - `.\out\report\documa.rag.json`：帶有來源 metadata 的 retrieval chunks。
 - `.\out\report\documa.blocks.json`：漸進式讀取用的 block tree。
-- `.\out\report\assets\...`：可用時輸出 page preview 或抽取出的 assets。
+- `.\out\report\assets\...`：可用時輸出 page preview、文件圖片、email attachments 或 notebook attachments。
 
 `process` 是高階 ingestion 指令，會執行 parse 加上預設理解 pipeline。若只需要 adapter boundary，可使用 `parse`：
 
 ```powershell
-documa parse "<path-to-report.pdf|.md|.docx|.pptx|.html>" --out ".\out\parsed" --lang zh-Hant,en
+documa parse "<path-to-report.pdf|.md|.docx|.pptx|.html|.eml|.msg|.ipynb>" --out ".\out\parsed" --lang zh-Hant,en
 ```
 
 ### 7. 像 agent 一樣讀文件
@@ -340,6 +342,8 @@ documa benchmark
 python -m pytest
 ```
 
+GitHub PR 會透過 `.github/workflows/ci.yml` 在 Python 3.10、3.11、3.12 上安裝 `.[dev,documents]`，並執行 `python -m pytest` 與 `documa doctor` 作為確認前的自動測試 gate。
+
 如果 release gate 要求每個宣告的 fixture PDF 都必須存在，使用 `--require-files`：
 
 ```powershell
@@ -349,10 +353,10 @@ documa benchmark --require-files --out ".\out\documa-benchmark.json"
 ## 已知限制
 
 - Documa core 不是 UI product。UI code 應留在 examples 或 downstream applications。
-- Documa 不從零實作底層 parser。PDF、DOCX、PPTX 與 HTML extraction 透過 adapters 委派給專門 library。
+- Documa 不從零實作底層 parser。PDF、DOCX、PPTX、HTML、MSG 與 IPYNB extraction 透過 adapters 委派給專門 library；EML 使用 Python 標準庫 MIME parser。
 - 目前 pipeline stages 是保守 baseline，不是完美的 document understanding model。
 - OCR-only 或 image-only PDFs 需要 core 假設以外的 parser/OCR 支援。
-- DOCX 與 HTML 目前使用 logical flow / DOM order；PPTX 使用 slide order，並把每張 slide 視為 logical page。
+- DOCX 與 HTML 目前使用 logical flow / DOM order；PPTX 使用 slide order；EML/MSG 使用 logical email page；IPYNB 使用 cell order，皆映射成 logical page。
 - 選用 LLM usage 只出現在 demos 或 downstream integrations。Core parsing 與 processing 是 deterministic，可離線執行。
 
 ## 疑難排解
@@ -363,6 +367,8 @@ documa benchmark --require-files --out ".\out\documa-benchmark.json"
 | `python-docx is required for DocxAdapter.` | 尚未安裝 `docx` extra。 | 執行 `python -m pip install -e ".[docx]"` 或 `python -m pip install -e ".[documents]"`。 |
 | `python-pptx is required for PptxAdapter.` | 尚未安裝 `pptx` extra。 | 執行 `python -m pip install -e ".[pptx]"` 或 `python -m pip install -e ".[documents]"`。 |
 | `beautifulsoup4 is required for HtmlAdapter.` | 尚未安裝 `html` extra。 | 執行 `python -m pip install -e ".[html]"` 或 `python -m pip install -e ".[documents]"`。 |
+| `extract-msg is required for Outlook MSG parsing.` | 尚未安裝 `msg` extra。 | 執行 `python -m pip install -e ".[msg]"` 或 `python -m pip install -e ".[documents]"`。 |
+| `nbformat is required for IpynbAdapter.` | 尚未安裝 `ipynb` extra。 | 執行 `python -m pip install -e ".[ipynb]"` 或 `python -m pip install -e ".[documents]"`。 |
 | 找不到 `documa` 指令。 | Virtual environment 未啟用，或 package 尚未 editable install。 | 啟用 `.venv`，重新執行 `python -m pip install -e ".[dev,documents]"`，或改跑 `$env:PYTHONPATH="src"; python -m documa.cli ...`。 |
 | `documa-mcp` 無法 import MCP modules。 | 尚未安裝 `mcp` extra。 | 執行 `python -m pip install -e ".[mcp]"`。 |
 | PDF 結果的 reading order 不如預期。 | PDF text order 受來源 PDF 的產生方式影響。 | 檢查 `documa.ir.json`，使用 block search/read tools，並在改 pipeline heuristics 前補 fixture coverage。 |
@@ -372,6 +378,9 @@ documa benchmark --require-files --out ".\out\documa-benchmark.json"
 以下上游概念是 Documa 邊界設計的依據：
 
 - PyMuPDF 文件說明，plain PDF text extraction 不一定保留 natural reading order，而 block/word extraction 會帶有可用於 layout repair 的 position information：[PyMuPDF text recipes](https://pymupdf.readthedocs.io/en/latest/recipes-text.html)。
+- Python `email.parser` 提供 MIME message parser，可從 serialized email bytes 建立 `EmailMessage` 並遍歷 multipart body 與 attachments：[Python email.parser](https://docs.python.org/3/library/email.parser.html)。
+- `extract-msg` 提供 Outlook `.msg` 解析入口，Documa 只在 adapter boundary 內使用該 parser：[extract-msg documentation](https://msg-extractor.readthedocs.io/en/latest/extract_msg/index.html)。
+- `nbformat` 是 Jupyter notebook 官方格式 API，可讀取 `.ipynb` 並轉成 versioned notebook node：[nbformat API](https://nbformat.readthedocs.io/en/latest/api.html)。
 - OpenAI function calling 使用 JSON-schema-defined tools，並由 application side 執行 tool call：[OpenAI function calling guide](https://developers.openai.com/api/docs/guides/function-calling)。
 - MCP tools 回傳 content 與 structured results，並支援 structured output schemas：[MCP tools specification](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)。
 

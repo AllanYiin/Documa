@@ -1,0 +1,19 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]: Documa PDF Chat
+    - generic [ref=e5]: 服務就緒 · documa_pdf_chat_web
+  - main [ref=e6]:
+    - region "PDF chat workspace" [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9] [cursor=pointer]: 載入 PDF
+        - generic [ref=e10]: 未載入文件
+      - generic [ref=e12]:
+        - heading "上傳 PDF 後直接提問" [level=1] [ref=e13]
+        - paragraph [ref=e14]: 每次提問會顯示 Documa 如何列出 blocks、搜尋 metadata、讀取候選 block，最後用證據回答。
+      - generic [ref=e16]:
+        - textbox "先載入 PDF，再輸入問題…" [disabled] [ref=e17]
+        - button "送出" [disabled] [ref=e18]
+    - complementary "Block index" [ref=e19]:
+      - generic [ref=e20]:
+        - strong [ref=e21]: Block Index
+        - text: 等待 PDF

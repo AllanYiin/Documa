@@ -6,7 +6,9 @@ from pathlib import Path
 
 from documa.adapters.base import ParserAdapter
 from documa.adapters.docx_adapter import DocxAdapter
+from documa.adapters.email_adapter import EmailAdapter
 from documa.adapters.html_adapter import HtmlAdapter
+from documa.adapters.ipynb_adapter import IpynbAdapter
 from documa.adapters.markdown_adapter import MarkdownAdapter
 from documa.adapters.pptx_adapter import PptxAdapter
 from documa.adapters.pymupdf_adapter import PyMuPDFAdapter
@@ -17,6 +19,8 @@ _PDF_SUFFIXES = {".pdf"}
 _DOCX_SUFFIXES = {".docx"}
 _PPTX_SUFFIXES = {".pptx"}
 _HTML_SUFFIXES = {".html", ".htm", ".xhtml"}
+_EMAIL_SUFFIXES = {".eml", ".msg"}
+_IPYNB_SUFFIXES = {".ipynb"}
 
 
 def adapter_for_source(source: str | Path) -> ParserAdapter:
@@ -34,13 +38,20 @@ def adapter_for_source(source: str | Path) -> ParserAdapter:
         return PptxAdapter()
     if suffix in _HTML_SUFFIXES:
         return HtmlAdapter()
+    if suffix in _EMAIL_SUFFIXES:
+        return EmailAdapter()
+    if suffix in _IPYNB_SUFFIXES:
+        return IpynbAdapter()
 
     raise DocumaError(
         DocumaErrorDetail(
             code="UNSUPPORTED_DOCUMENT_FORMAT",
             message=f"Unsupported document format: {source_path.suffix or '(no suffix)'}",
             recoverable=True,
-            suggested_action="Use one of: .pdf, .md, .markdown, .mdp, .txt, .docx, .pptx, .html, .htm, .xhtml.",
+            suggested_action=(
+                "Use one of: .pdf, .md, .markdown, .mdp, .txt, .docx, .pptx, "
+                ".html, .htm, .xhtml, .eml, .msg, .ipynb."
+            ),
             context={"source": str(source_path), "suffix": source_path.suffix},
         )
     )

@@ -1,0 +1,775 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - link "Markdown +" [ref=e4] [cursor=pointer]:
+        - /url: ./index.html
+        - text: Markdown
+        - generic [ref=e5]: +
+      - generic [ref=e6]:
+        - link "為何需要" [ref=e7] [cursor=pointer]:
+          - /url: ./index.html
+        - link "語法" [ref=e8] [cursor=pointer]:
+          - /url: ./syntax.html
+        - link "教學" [ref=e9] [cursor=pointer]:
+          - /url: ./tutorial.html
+        - link "Skill" [ref=e10] [cursor=pointer]:
+          - /url: ./skill.html
+        - link "Chat" [ref=e11] [cursor=pointer]:
+          - /url: ./chat.html
+        - link "Playground" [ref=e12] [cursor=pointer]:
+          - /url: ./playground.html
+        - link "GitHub repository" [ref=e13] [cursor=pointer]:
+          - /url: https://github.com/AllanYiin/markdown_plus
+          - img [ref=e14]
+  - generic [ref=e16]:
+    - generic [ref=e17]:
+      - tablist "主視圖切換" [ref=e18]:
+        - tab "Editor + Viewer" [selected] [ref=e19] [cursor=pointer]
+        - tab "Rewriter" [ref=e20] [cursor=pointer]
+      - generic [ref=e21]:
+        - button "載入檔案至 Editor" [ref=e22] [cursor=pointer]:
+          - img [ref=e23]
+          - generic [ref=e26]: 載入檔案至 Editor
+        - button "寫入 keywords" [ref=e27] [cursor=pointer]:
+          - img [ref=e28]
+          - generic [ref=e30]: 寫入 keywords
+        - button "重新載入範例" [ref=e31] [cursor=pointer]:
+          - img [ref=e32]
+          - generic [ref=e35]: 重新載入範例
+        - generic [ref=e36]: PASS · 34 blocks
+    - tabpanel [ref=e37]:
+      - generic [ref=e38]:
+        - generic [ref=e39]:
+          - generic [ref=e40]:
+            - generic [ref=e41]: source.mdp.md
+            - generic [ref=e42]:
+              - generic [ref=e43]: 226 lines
+              - button "放大此面板" [ref=e44] [cursor=pointer]:
+                - img [ref=e45]
+          - textbox "Loading kitchen-sink sample..." [ref=e47]: "# Q1 2026 Auth Service Review 涵蓋現況、決策、KPI、issue、歷史與後續行動。本文件作為 Markdown+ 視覺元素的展示樣本。 - **#intro** `type:note` `priority:normal` `updated:2026-05-13` 本檔示範 Markdown+ 在實際 service review 場景下的呈現方式,包含 KPI、gauge、表格、對話、變體、Mermaid、callout 等元素。 - **#exec-dashboard** `type:dashboard` `layout:grid` `period:2026-Q1` *Dashboard: Q1 Auth Service 重點指標* - **#sla-kpi** `type:kpi` `metric:API_SLA` `value:99.92` `unit:%` `target:99.95` `delta:-0.03` `status:behind` API SLA 99.92%,目標 99.95%,本季因 5/3 outage 扣分 0.03 個百分點。 - **#latency-kpi** `type:kpi` `metric:p99_latency` `value:218` `unit:ms` `target:250` `delta:-12` `status:on-track` p99 latency 218ms,優於 250ms 目標,本季較上季降 12ms。 - **#error-kpi** `type:kpi` `metric:error_rate` `value:0.38` `unit:%` `target:0.5` `delta:-0.07` `status:on-track` 錯誤率 0.38%,優於 0.5% SLO。 - **#mttr-kpi** `type:kpi` `metric:MTTR` `value:22` `unit:min` `target:30` `delta:-5` `status:on-track` MTTR 22 分鐘,優於 30 分鐘目標。 - **#sla-gauge** `type:gauge` `metric:API_SLA` `value:99.92` `unit:%` `min:99.0` `max:100` `target:99.95` `zones:[99.0:red,99.9:amber,99.95:green]` *Gauge: API SLA(目標 99.95%)* 目前落在 amber 區間(99.9–99.95)。距 green 區間還差 0.03 個百分點, Q2 需把 5/3 那類 14 分鐘 outage 的數量歸零才能回到 green。 - **#q1-targets** `type:targets` `period:2026-Q1` *Targets: Q1 SLO 達成狀況* | 指標 | Target | Actual | Status | Trend | |-----------------|---------|---------|-------------------|---------------| | API SLA | 99.95% | 99.92% | `status:behind` | `trend:flat` | | p99 latency | <250ms | 218ms | `status:on-track` | `trend:down` | | Error rate | <0.5% | 0.38% | `status:on-track` | `trend:down` | | MTTR | <30m | 22m | `status:on-track` | `trend:down2` | 4 項指標中 3 項 on-track,僅 SLA 落後。改善方向見 `#actions`。 - **#current-state** `type:state` `status:active` `updated:2026-05-13` `tags:[domain:auth,module:gateway]` 目前 Auth v2 在 production 運作,refresh token 由 gateway 統一處理, 三種 client(browser / mobile / server-to-server)各走不同 token 路徑。 - **#arch-diagram** `type:figure` `media:image` `alt:auth-three-tier-architecture` *Figure: Auth Service 三層架構* ![Auth flow architecture](./diagrams/auth-arch.png) 圖中三層:Gateway(rate limit + auth)、Token Service(簽發/驗證)、Identity DB (使用者主檔)。Browser 走 httpOnly cookie、mobile 走 signed JWT、 server-to-server 走 mTLS。 - **#refresh-flow** `type:diagram` `diagram-type:mermaid` *Figure: Token refresh 流程* ```mermaid sequenceDiagram participant C as Client participant G as Gateway participant T as Token Service C->>G: request with expired access token G->>T: validate refresh token T-->>G: new access token (15m TTL) G-->>C: 200 + new access token ``` refresh 流程從 client 看是透明的,gateway 自動換 token,client 只感知重試一次。 - **#sla-trend-svg** `type:figure` `media:svg` `alt:q1-sla-trend` *Figure: Q1 API SLA 月度趨勢(內嵌 SVG,可在「圖/碼」兩種視圖切換)* ```svg <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 320 120\" width=\"100%\" height=\"120\"> <rect x=\"0\" y=\"0\" width=\"320\" height=\"120\" fill=\"#f8fafc\" rx=\"6\"/> <line x1=\"30\" y1=\"20\" x2=\"30\" y2=\"100\" stroke=\"#cbd5e1\" stroke-width=\"1\"/> <line x1=\"30\" y1=\"100\" x2=\"310\" y2=\"100\" stroke=\"#cbd5e1\" stroke-width=\"1\"/> <text x=\"6\" y=\"28\" font-size=\"9\" fill=\"#64748b\">100</text> <text x=\"2\" y=\"62\" font-size=\"9\" fill=\"#64748b\">99.95</text> <text x=\"2\" y=\"96\" font-size=\"9\" fill=\"#64748b\">99.90</text> <polyline points=\"50,40 130,56 210,70 290,72\" fill=\"none\" stroke=\"#0ea5e9\" stroke-width=\"2\"/> <circle cx=\"50\" cy=\"40\" r=\"3\" fill=\"#0ea5e9\"/> <circle cx=\"130\" cy=\"56\" r=\"3\" fill=\"#0ea5e9\"/> <circle cx=\"210\" cy=\"70\" r=\"3\" fill=\"#0ea5e9\"/> <circle cx=\"290\" cy=\"72\" r=\"3\" fill=\"#f59e0b\"/> <line x1=\"30\" y1=\"50\" x2=\"310\" y2=\"50\" stroke=\"#16a34a\" stroke-dasharray=\"3,3\" stroke-width=\"1\"/> <text x=\"240\" y=\"46\" font-size=\"9\" fill=\"#16a34a\">target 99.95%</text> <text x=\"50\" y=\"116\" font-size=\"9\" fill=\"#64748b\">1月</text> <text x=\"128\" y=\"116\" font-size=\"9\" fill=\"#64748b\">2月</text> <text x=\"208\" y=\"116\" font-size=\"9\" fill=\"#64748b\">3月</text> <text x=\"284\" y=\"116\" font-size=\"9\" fill=\"#64748b\">4月</text> </svg> ``` 4 月 SLA 跌至 99.92%(琥珀色點),低於 99.95% 目標線。可切換成「碼」檢視原始 SVG markup。 超過 16 KB 的 SVG 會強制要求外部檔,避免污染 source 可讀性。 > [!IMPORTANT] > 5/3 那次 outage 與 token service memory leak 有關,詳見 `#inc-2026-05-03`, > hotfix PR 已 merge 至 main,canary 部署中。 - **#decision-canary** `type:decision` `status:accepted` `updated:2026-05-13` `owner:platform-team` `tags:[domain:auth,strategy:deployment]` 自 2026-Q2 起 Token Service 採 **canary deployment** 策略, 10% 流量灰度 → 30% → 100%。理由:5/3 outage 顯示全量部署風險過高, 且 token 邏輯異動偵測延遲可達 2 分鐘。 - **#inc-2026-05-03** `type:record` `status:active` `priority:high` `tags:[domain:auth,incident:outage]` `updated:2026-05-03` *Record: 2026-05-03 Token Service Outage* | 時間 (UTC) | 事件 | |------------|-------------------------------------| | 03:14 | Token Service memory 突破 7.5GB | | 03:16 | p99 latency 飆至 2.4s,oncall paged | | 03:18 | Auto-restart 觸發,服務恢復 | | 03:28 | 全面恢復,後續監控 4 hr 無復發 | 影響:14 分鐘 partial outage,約 8% 請求失敗。根因:JWT cache 未設上限, 累積後 OOM。修正:設 LRU cache size = 100k、加 memory alert 在 6GB。 - **#install-steps** `type:spec` client SDK 安裝方式,依語言環境選擇。 - **#install-py** `type:step` `variant-group:install` `variant:python` *Listing: Python SDK 安裝* ```bash pip install auth-sdk ``` Python 3.10+ 透過 pip 安裝,自動帶 `httpx` 與 `pyjwt` 依賴。 - **#install-js** `type:step` `variant-group:install` `variant:javascript` *Listing: JavaScript SDK 安裝* ```bash npm install @company/auth-sdk ``` 支援 Node 18+ 與現代瀏覽器(透過 esm build)。 - **#install-go** `type:step` `variant-group:install` `variant:go` *Listing: Go SDK 安裝* ```bash go get github.com/company/auth-sdk-go ``` 需 Go 1.21+,使用 generics 簡化 token type 推導。 - **#interview-mobile-team** `type:dialogue` `participants:[ann,bob]` `source:interview-2026-05-08` 訪談 Mobile team Bob 關於 Auth v2 整合痛點。 - **#turn-1** `type:turn` `speaker:ann` `time:14:02` > Mobile 整合 Auth v2 最大的痛點是什麼? - **#turn-2** `type:turn` `speaker:bob` `time:14:02` > 錯誤訊息太抽象。\"Invalid request\" 但不告訴我是哪個欄位, > trace ID 也沒回傳,沒辦法 escalate。 - **#turn-3** `type:turn` `speaker:ann` `time:14:04` > SDK 那邊呢? - **#turn-4** `type:turn` `speaker:bob` `time:14:05` > TypeScript types 跟 OpenAPI spec 對不上,有時候少欄位, > 得自己手動補。希望有 codegen pipeline。 - **#issue-error-msg** `type:issue` `status:open` `priority:high` `owner:auth-team` `accent:warning` `tags:[domain:auth,client:all]` 錯誤訊息缺乏可操作性(來源 `#interview-mobile-team`): (1) 無欄位粒度錯誤碼;(2) 無 trace ID;(3) 文件未列舉錯誤型態。 影響三類 client。Target fix:Q2 W4。 - **#issue-sdk-drift** `type:issue` `status:open` `priority:normal` `owner:dx-team` `accent:warning` TypeScript SDK 與 OpenAPI spec 漂移。需要建立 codegen pipeline 並 在 CI 加 schema diff gate。 - **#actions** `type:task` `owner:platform-team` Q2 行動項目。 - **#action-canary** `type:task` `status:open` `owner:alice` `valid-until:2026-06-30` 完成 Token Service canary deployment 上線,目標 2026-06-30。 - **#action-fix-errors** `type:task` `status:open` `owner:bob` `valid-until:2026-06-15` 重構錯誤回應:加 field-level error code + trace_id,文件補錯誤目錄。 - **#action-codegen** `type:task` `status:blocked` `owner:carol` 建立 TypeScript SDK 自動 codegen pipeline。Blocked on OpenAPI spec 完整性審查(Spec team 處理中)。 - **#action-monitoring** `type:task` `status:done` `owner:dave` Token Service memory alert 已上線(6GB warning、7GB critical)。 - **#related-docs** `type:reference` `related:[decision-canary,inc-2026-05-03]` 相關文件: - Token Service spec: `./specs/token-service-v2.md` - Incident 2026-05-03 full report: `./incidents/2026-05-03-token-oom.md` - Auth v2 migration runbook: `./runbooks/auth-v2-migration.md` - **#auth-v1-history** `type:history` `status:deprecated` `superseded-by:current-state` `updated:2026-02-15` `visibility:collapsed` `tags:[domain:auth,archive]` Auth v1 歷史記錄。 - **#auth-v1-design** `type:history` `status:deprecated` `superseded-by:current-state` `visibility:collapsed` Auth v1 把 access token 直接放在 cookie(無 httpOnly flag), refresh 邏輯由各 service 各自實作,缺乏統一 rotation 策略。 2026-02-15 棄用,所有流量遷移至 Auth v2。 - **#auth-v1-known-issues** `type:history` `status:deprecated` `superseded-by:current-state` `visibility:collapsed` 已知問題(已隨 v2 解決): (1) Token 不 rotate → 長期暴露風險; (2) Cross-service refresh 不一致; (3) Mobile 無 secure storage。"
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - generic [ref=e54]: rendered preview
+            - generic [ref=e55]:
+              - generic [ref=e56]: 34 blocks
+              - button "放大此面板" [ref=e57] [cursor=pointer]:
+                - img [ref=e58]
+          - generic [ref=e61]:
+            - complementary "文件目錄" [ref=e62]:
+              - generic [ref=e63]: 目錄
+              - list [ref=e64]:
+                - listitem [ref=e65]:
+                  - link "intro note" [ref=e66] [cursor=pointer]:
+                    - /url: "#intro"
+                    - text: intro
+                    - generic [ref=e67]: note
+                - listitem [ref=e68]:
+                  - link "exec dashboard dashboard" [ref=e69] [cursor=pointer]:
+                    - /url: "#exec-dashboard"
+                    - text: exec dashboard
+                    - generic [ref=e70]: dashboard
+                  - list [ref=e71]:
+                    - listitem [ref=e72]:
+                      - link "sla kpi kpi" [ref=e73] [cursor=pointer]:
+                        - /url: "#sla-kpi"
+                        - text: sla kpi
+                        - generic [ref=e74]: kpi
+                    - listitem [ref=e75]:
+                      - link "latency kpi kpi" [ref=e76] [cursor=pointer]:
+                        - /url: "#latency-kpi"
+                        - text: latency kpi
+                        - generic [ref=e77]: kpi
+                    - listitem [ref=e78]:
+                      - link "error kpi kpi" [ref=e79] [cursor=pointer]:
+                        - /url: "#error-kpi"
+                        - text: error kpi
+                        - generic [ref=e80]: kpi
+                    - listitem [ref=e81]:
+                      - link "mttr kpi kpi" [ref=e82] [cursor=pointer]:
+                        - /url: "#mttr-kpi"
+                        - text: mttr kpi
+                        - generic [ref=e83]: kpi
+                - listitem [ref=e84]:
+                  - link "sla gauge gauge" [ref=e85] [cursor=pointer]:
+                    - /url: "#sla-gauge"
+                    - text: sla gauge
+                    - generic [ref=e86]: gauge
+                - listitem [ref=e87]:
+                  - link "q1 targets targets" [ref=e88] [cursor=pointer]:
+                    - /url: "#q1-targets"
+                    - text: q1 targets
+                    - generic [ref=e89]: targets
+                - listitem [ref=e90]:
+                  - link "current state state" [ref=e91] [cursor=pointer]:
+                    - /url: "#current-state"
+                    - text: current state
+                    - generic [ref=e92]: state
+                - listitem [ref=e93]:
+                  - link "arch diagram figure" [ref=e94] [cursor=pointer]:
+                    - /url: "#arch-diagram"
+                    - text: arch diagram
+                    - generic [ref=e95]: figure
+                - listitem [ref=e96]:
+                  - link "refresh flow diagram" [ref=e97] [cursor=pointer]:
+                    - /url: "#refresh-flow"
+                    - text: refresh flow
+                    - generic [ref=e98]: diagram
+                - listitem [ref=e99]:
+                  - link "sla trend svg figure" [ref=e100] [cursor=pointer]:
+                    - /url: "#sla-trend-svg"
+                    - text: sla trend svg
+                    - generic [ref=e101]: figure
+                - listitem [ref=e102]:
+                  - link "decision canary decision" [ref=e103] [cursor=pointer]:
+                    - /url: "#decision-canary"
+                    - text: decision canary
+                    - generic [ref=e104]: decision
+                - listitem [ref=e105]:
+                  - link "inc 2026 05 03 record" [ref=e106] [cursor=pointer]:
+                    - /url: "#inc-2026-05-03"
+                    - text: inc 2026 05 03
+                    - generic [ref=e107]: record
+                - listitem [ref=e108]:
+                  - link "install steps spec" [ref=e109] [cursor=pointer]:
+                    - /url: "#install-steps"
+                    - text: install steps
+                    - generic [ref=e110]: spec
+                  - list [ref=e111]:
+                    - listitem [ref=e112]:
+                      - link "install py step" [ref=e113] [cursor=pointer]:
+                        - /url: "#install-py"
+                        - text: install py
+                        - generic [ref=e114]: step
+                - listitem [ref=e115]:
+                  - link "interview mobile team dialogue" [ref=e116] [cursor=pointer]:
+                    - /url: "#interview-mobile-team"
+                    - text: interview mobile team
+                    - generic [ref=e117]: dialogue
+                  - list [ref=e118]:
+                    - listitem [ref=e119]:
+                      - link "turn 1 turn" [ref=e120] [cursor=pointer]:
+                        - /url: "#turn-1"
+                        - text: turn 1
+                        - generic [ref=e121]: turn
+                    - listitem [ref=e122]:
+                      - link "turn 2 turn" [ref=e123] [cursor=pointer]:
+                        - /url: "#turn-2"
+                        - text: turn 2
+                        - generic [ref=e124]: turn
+                    - listitem [ref=e125]:
+                      - link "turn 3 turn" [ref=e126] [cursor=pointer]:
+                        - /url: "#turn-3"
+                        - text: turn 3
+                        - generic [ref=e127]: turn
+                    - listitem [ref=e128]:
+                      - link "turn 4 turn" [ref=e129] [cursor=pointer]:
+                        - /url: "#turn-4"
+                        - text: turn 4
+                        - generic [ref=e130]: turn
+                - listitem [ref=e131]:
+                  - link "issue error msg issue" [ref=e132] [cursor=pointer]:
+                    - /url: "#issue-error-msg"
+                    - text: issue error msg
+                    - generic [ref=e133]: issue
+                - listitem [ref=e134]:
+                  - link "issue sdk drift issue" [ref=e135] [cursor=pointer]:
+                    - /url: "#issue-sdk-drift"
+                    - text: issue sdk drift
+                    - generic [ref=e136]: issue
+                - listitem [ref=e137]:
+                  - link "actions task" [ref=e138] [cursor=pointer]:
+                    - /url: "#actions"
+                    - text: actions
+                    - generic [ref=e139]: task
+                  - list [ref=e140]:
+                    - listitem [ref=e141]:
+                      - link "action canary task" [ref=e142] [cursor=pointer]:
+                        - /url: "#action-canary"
+                        - text: action canary
+                        - generic [ref=e143]: task
+                    - listitem [ref=e144]:
+                      - link "action fix errors task" [ref=e145] [cursor=pointer]:
+                        - /url: "#action-fix-errors"
+                        - text: action fix errors
+                        - generic [ref=e146]: task
+                    - listitem [ref=e147]:
+                      - link "action codegen task" [ref=e148] [cursor=pointer]:
+                        - /url: "#action-codegen"
+                        - text: action codegen
+                        - generic [ref=e149]: task
+                    - listitem [ref=e150]:
+                      - link "action monitoring task" [ref=e151] [cursor=pointer]:
+                        - /url: "#action-monitoring"
+                        - text: action monitoring
+                        - generic [ref=e152]: task
+                - listitem [ref=e153]:
+                  - link "related docs reference" [ref=e154] [cursor=pointer]:
+                    - /url: "#related-docs"
+                    - text: related docs
+                    - generic [ref=e155]: reference
+                - listitem [ref=e156]:
+                  - link "auth v1 history history" [ref=e157] [cursor=pointer]:
+                    - /url: "#auth-v1-history"
+                    - text: auth v1 history
+                    - generic [ref=e158]: history
+                  - list [ref=e159]:
+                    - listitem [ref=e160]:
+                      - link "auth v1 design history" [ref=e161] [cursor=pointer]:
+                        - /url: "#auth-v1-design"
+                        - text: auth v1 design
+                        - generic [ref=e162]: history
+                    - listitem [ref=e163]:
+                      - link "auth v1 known issues history" [ref=e164] [cursor=pointer]:
+                        - /url: "#auth-v1-known-issues"
+                        - text: auth v1 known issues
+                        - generic [ref=e165]: history
+            - main [ref=e166]:
+              - generic [ref=e167]:
+                - heading "Q1 2026 Auth Service Review" [level=1] [ref=e168]
+                - paragraph [ref=e170]: 涵蓋現況、決策、KPI、issue、歷史與後續行動。本文件作為 Markdown+ 視覺元素的展示樣本。
+              - generic [ref=e171]:
+                - generic [ref=e172]:
+                  - heading "# intro 2026-05-13 note" [level=2] [ref=e173]:
+                    - link "#" [ref=e174] [cursor=pointer]:
+                      - /url: "#intro"
+                    - generic [ref=e175]: intro
+                    - generic [ref=e176]:
+                      - time [ref=e177]: 2026-05-13
+                      - generic "type" [ref=e178]: note
+                  - generic [ref=e179]:
+                    - generic [ref=e180]: auto keywords
+                    - generic [ref=e181]: 元素
+                - paragraph [ref=e183]: 本檔示範 Markdown+ 在實際 service review 場景下的呈現方式,包含 KPI、gauge、表格、對話、變體、Mermaid、callout 等元素。
+              - generic [ref=e184]:
+                - generic [ref=e185]:
+                  - heading "# exec dashboard dashboard" [level=2] [ref=e186]:
+                    - link "#" [ref=e187] [cursor=pointer]:
+                      - /url: "#exec-dashboard"
+                    - generic [ref=e188]: exec dashboard
+                    - generic "type" [ref=e190]: dashboard
+                  - generic [ref=e191]:
+                    - generic [ref=e192]: auto keywords
+                    - generic [ref=e193]: 指標
+                - generic [ref=e194]:
+                  - generic [ref=e195]:
+                    - generic [ref=e197]:
+                      - generic [ref=e198]: API_SLA
+                      - generic [ref=e199]: 99.92%
+                      - generic [ref=e200]: Target 99.95%
+                      - generic [ref=e201]: "-0.03"
+                    - paragraph [ref=e203]: API SLA 99.92%,目標 99.95%,本季因 5/3 outage 扣分 0.03 個百分點。
+                  - generic [ref=e204]:
+                    - generic [ref=e206]:
+                      - generic [ref=e207]: p99_latency
+                      - generic [ref=e208]: 218ms
+                      - generic [ref=e209]: Target 250ms
+                      - generic [ref=e210]: "-12"
+                    - paragraph [ref=e212]: p99 latency 218ms,優於 250ms 目標,本季較上季降 12ms。
+                  - generic [ref=e213]:
+                    - generic [ref=e215]:
+                      - generic [ref=e216]: error_rate
+                      - generic [ref=e217]: 0.38%
+                      - generic [ref=e218]: Target 0.5%
+                      - generic [ref=e219]: "-0.07"
+                    - paragraph [ref=e221]: 錯誤率 0.38%,優於 0.5% SLO。
+                  - generic [ref=e222]:
+                    - generic [ref=e224]:
+                      - generic [ref=e225]: MTTR
+                      - generic [ref=e226]: 22min
+                      - generic [ref=e227]: Target 30min
+                      - generic [ref=e228]: "-5"
+                    - paragraph [ref=e230]: MTTR 22 分鐘,優於 30 分鐘目標。
+              - generic [ref=e231]:
+                - generic [ref=e232]:
+                  - heading "# sla gauge gauge" [level=2] [ref=e233]:
+                    - link "#" [ref=e234] [cursor=pointer]:
+                      - /url: "#sla-gauge"
+                    - generic [ref=e235]: sla gauge
+                    - generic "type" [ref=e237]: gauge
+                  - generic [ref=e238]:
+                    - generic [ref=e239]: auto keywords
+                    - generic [ref=e240]: 目標
+                - generic [ref=e241]:
+                  - generic [ref=e242]:
+                    - generic "Target 99.95%" [ref=e243]
+                    - generic "Value 99.92%" [ref=e244]
+                  - generic [ref=e245]:
+                    - generic [ref=e246]: 99.92%
+                    - generic [ref=e247]: / target 99.95%
+                - paragraph [ref=e249]: 目前落在 amber 區間(99.9–99.95)。距 green 區間還差 0.03 個百分點, Q2 需把 5/3 那類 14 分鐘 outage 的數量歸零才能回到 green。
+              - generic [ref=e250]:
+                - generic [ref=e251]:
+                  - heading "# q1 targets targets" [level=2] [ref=e252]:
+                    - link "#" [ref=e253] [cursor=pointer]:
+                      - /url: "#q1-targets"
+                    - generic [ref=e254]: q1 targets
+                    - generic "type" [ref=e256]: targets
+                  - generic [ref=e257]:
+                    - generic [ref=e258]: auto keywords
+                    - generic [ref=e259]: 指標
+                    - generic [ref=e260]: Target
+                    - generic [ref=e261]: Actual
+                    - generic [ref=e262]: Status
+                    - generic [ref=e263]: Trend
+                - generic [ref=e264]:
+                  - 'figure "Targets 1: Q1 SLO 達成狀況" [ref=e265]':
+                    - generic [ref=e266]: "Targets 1: Q1 SLO 達成狀況"
+                    - table [ref=e267]:
+                      - rowgroup [ref=e268]:
+                        - row "指標 Target Actual Status Trend" [ref=e269]:
+                          - columnheader "指標" [ref=e270]
+                          - columnheader "Target" [ref=e271]
+                          - columnheader "Actual" [ref=e272]
+                          - columnheader "Status" [ref=e273]
+                          - columnheader "Trend" [ref=e274]
+                      - rowgroup [ref=e275]:
+                        - row "API SLA 99.95% 99.92% behind →" [ref=e276]:
+                          - cell "API SLA" [ref=e277]
+                          - cell "99.95%" [ref=e278]
+                          - cell "99.92%" [ref=e279]
+                          - cell "behind" [ref=e280]:
+                            - generic [ref=e281]: behind
+                          - cell "→" [ref=e282]
+                        - row "p99 latency <250ms 218ms on-track ↓" [ref=e283]:
+                          - cell "p99 latency" [ref=e284]
+                          - cell "<250ms" [ref=e285]
+                          - cell "218ms" [ref=e286]
+                          - cell "on-track" [ref=e287]:
+                            - generic [ref=e288]: on-track
+                          - cell "↓" [ref=e289]
+                        - row "Error rate <0.5% 0.38% on-track ↓" [ref=e290]:
+                          - cell "Error rate" [ref=e291]
+                          - cell "<0.5%" [ref=e292]
+                          - cell "0.38%" [ref=e293]
+                          - cell "on-track" [ref=e294]:
+                            - generic [ref=e295]: on-track
+                          - cell "↓" [ref=e296]
+                        - row "MTTR <30m 22m on-track ↓↓" [ref=e297]:
+                          - cell "MTTR" [ref=e298]
+                          - cell "<30m" [ref=e299]
+                          - cell "22m" [ref=e300]
+                          - cell "on-track" [ref=e301]:
+                            - generic [ref=e302]: on-track
+                          - cell "↓↓" [ref=e303]
+                  - paragraph [ref=e304]:
+                    - text: 4 項指標中 3 項 on-track,僅 SLA 落後。改善方向見
+                    - code [ref=e305]: "#actions"
+                    - text: 。
+              - generic [ref=e306]:
+                - generic [ref=e307]:
+                  - heading "# current state active 2026-05-13 state" [level=2] [ref=e308]:
+                    - link "#" [ref=e309] [cursor=pointer]:
+                      - /url: "#current-state"
+                    - generic [ref=e310]: current state
+                    - generic [ref=e312]: active
+                    - generic [ref=e313]:
+                      - time [ref=e314]: 2026-05-13
+                      - generic "type" [ref=e315]: state
+                  - generic [ref=e316]:
+                    - generic [ref=e317]: auto keywords
+                    - generic [ref=e318]: 處理
+                    - generic [ref=e319]: 統一
+                - paragraph [ref=e321]: 目前 Auth v2 在 production 運作,refresh token 由 gateway 統一處理, 三種 client(browser / mobile / server-to-server)各走不同 token 路徑。
+                - generic [ref=e323]:
+                  - generic [ref=e324]: tags
+                  - generic [ref=e325]: domain:auth
+                  - generic [ref=e326]: module:gateway
+              - generic [ref=e327]:
+                - generic [ref=e328]:
+                  - heading "# arch diagram figure" [level=2] [ref=e329]:
+                    - link "#" [ref=e330] [cursor=pointer]:
+                      - /url: "#arch-diagram"
+                    - generic [ref=e331]: arch diagram
+                    - generic "type" [ref=e333]: figure
+                  - generic [ref=e334]:
+                    - generic [ref=e335]: auto keywords
+                    - generic [ref=e336]: 三層
+                - generic [ref=e337]:
+                  - 'figure "Figure 1: Auth Service 三層架構" [ref=e338]':
+                    - img "Auth flow architecture"
+                    - generic [ref=e339]: "Figure 1: Auth Service 三層架構"
+                  - paragraph [ref=e340]: 圖中三層:Gateway(rate limit + auth)、Token Service(簽發/驗證)、Identity DB (使用者主檔)。Browser 走 httpOnly cookie、mobile 走 signed JWT、 server-to-server 走 mTLS。
+              - generic [ref=e341]:
+                - generic [ref=e342]:
+                  - heading "# refresh flow diagram" [level=2] [ref=e343]:
+                    - link "#" [ref=e344] [cursor=pointer]:
+                      - /url: "#refresh-flow"
+                    - generic [ref=e345]: refresh flow
+                    - generic "type" [ref=e347]: diagram
+                  - generic [ref=e348]:
+                    - generic [ref=e349]: auto keywords
+                    - generic [ref=e350]: mermaid
+                    - generic [ref=e351]: sequenceDiagram
+                - generic [ref=e352]:
+                  - 'figure "Figure 2: Token refresh 流程" [ref=e353]':
+                    - generic [ref=e354]:
+                      - generic [ref=e355]:
+                        - generic [ref=e356]: mermaid
+                        - button "graph" [ref=e357] [cursor=pointer]
+                        - button "code" [ref=e358] [cursor=pointer]
+                      - generic [ref=e361]: "sequenceDiagram participant C as Client participant G as Gateway participant T as Token Service C->>G: request with expired access token G->>T: validate refresh token T-->>G: new access token (15m TTL) G-->>C: 200 + new access token"
+                    - generic [ref=e362]: "Figure 2: Token refresh 流程"
+                  - paragraph [ref=e363]: refresh 流程從 client 看是透明的,gateway 自動換 token,client 只感知重試一次。
+              - generic [ref=e364]:
+                - generic [ref=e365]:
+                  - heading "# sla trend svg figure" [level=2] [ref=e366]:
+                    - link "#" [ref=e367] [cursor=pointer]:
+                      - /url: "#sla-trend-svg"
+                    - generic [ref=e368]: sla trend svg
+                    - generic "type" [ref=e370]: figure
+                  - generic [ref=e371]:
+                    - generic [ref=e372]: auto keywords
+                    - generic [ref=e373]: svg
+                    - generic [ref=e374]: 切換
+                    - generic [ref=e375]: 目標
+                    - generic [ref=e376]: 部署
+                - generic [ref=e377]:
+                  - 'figure "Figure 3: Q1 API SLA 月度趨勢(內嵌 SVG,可在「圖/碼」兩種視圖切換)" [ref=e378]':
+                    - generic [ref=e379]:
+                      - generic [ref=e380]:
+                        - generic [ref=e381]: svg · 1.2 KB
+                        - button "graph" [ref=e382] [cursor=pointer]
+                        - button "code" [ref=e383] [cursor=pointer]
+                      - img [ref=e387]:
+                        - generic [ref=e389]: "100"
+                        - generic [ref=e390]: "99.95"
+                        - generic [ref=e391]: "99.90"
+                        - generic [ref=e397]: target 99.95%
+                        - generic [ref=e398]: 1月
+                        - generic [ref=e399]: 2月
+                        - generic [ref=e400]: 3月
+                        - generic [ref=e401]: 4月
+                    - generic [ref=e402]: "Figure 3: Q1 API SLA 月度趨勢(內嵌 SVG,可在「圖/碼」兩種視圖切換)"
+                  - paragraph [ref=e403]: 4 月 SLA 跌至 99.92%(琥珀色點),低於 99.95% 目標線。可切換成「碼」檢視原始 SVG markup。 超過 16 KB 的 SVG 會強制要求外部檔,避免污染 source 可讀性。
+                  - complementary [ref=e404]:
+                    - generic [ref=e405]: IMPORTANT
+                    - generic [ref=e406]:
+                      - text: 5/3 那次 outage 與 token service memory leak 有關,詳見
+                      - code [ref=e407]: "#inc-2026-05-03"
+                      - text: ", hotfix PR 已 merge 至 main,canary 部署中。"
+              - generic [ref=e408]:
+                - generic [ref=e409]:
+                  - heading "# decision canary accepted 2026-05-13 @platform-team decision" [level=2] [ref=e410]:
+                    - link "#" [ref=e411] [cursor=pointer]:
+                      - /url: "#decision-canary"
+                    - generic [ref=e412]: decision canary
+                    - generic [ref=e414]: accepted
+                    - generic [ref=e415]:
+                      - time [ref=e416]: 2026-05-13
+                      - generic "owner" [ref=e417]: "@platform-team"
+                      - generic "type" [ref=e418]: decision
+                  - generic [ref=e419]:
+                    - generic [ref=e420]: auto keywords
+                    - generic [ref=e421]: 風險
+                    - generic [ref=e422]: 部署
+                    - generic [ref=e423]: 流量
+                - paragraph [ref=e425]:
+                  - text: 自 2026-Q2 起 Token Service 採
+                  - strong [ref=e426]: canary deployment
+                  - text: 策略, 10% 流量灰度 → 30% → 100%。理由:5/3 outage 顯示全量部署風險過高, 且 token 邏輯異動偵測延遲可達 2 分鐘。
+                - generic [ref=e428]:
+                  - generic [ref=e429]: tags
+                  - generic [ref=e430]: domain:auth
+                  - generic [ref=e431]: strategy:deployment
+              - generic [ref=e432]:
+                - generic [ref=e433]:
+                  - heading "# inc 2026 05 03 active high 2026-05-03 record" [level=2] [ref=e434]:
+                    - link "#" [ref=e435] [cursor=pointer]:
+                      - /url: "#inc-2026-05-03"
+                    - generic [ref=e436]: inc 2026 05 03
+                    - generic [ref=e437]:
+                      - generic [ref=e438]: active
+                      - generic [ref=e439]: high
+                    - generic [ref=e440]:
+                      - time [ref=e441]: 2026-05-03
+                      - generic "type" [ref=e442]: record
+                  - generic [ref=e443]:
+                    - generic [ref=e444]: auto keywords
+                    - generic [ref=e445]: 後續
+                - generic [ref=e446]:
+                  - 'figure "Record 1: 2026-05-03 Token Service Outage" [ref=e447]':
+                    - generic [ref=e448]: "Record 1: 2026-05-03 Token Service Outage"
+                    - table [ref=e449]:
+                      - rowgroup [ref=e450]:
+                        - row "時間 (UTC) 事件" [ref=e451]:
+                          - columnheader "時間 (UTC)" [ref=e452]
+                          - columnheader "事件" [ref=e453]
+                      - rowgroup [ref=e454]:
+                        - row "03:14 Token Service memory 突破 7.5GB" [ref=e455]:
+                          - cell "03:14" [ref=e456]
+                          - cell "Token Service memory 突破 7.5GB" [ref=e457]
+                        - row "03:16 p99 latency 飆至 2.4s,oncall paged" [ref=e458]:
+                          - cell "03:16" [ref=e459]
+                          - cell "p99 latency 飆至 2.4s,oncall paged" [ref=e460]
+                        - row "03:18 Auto-restart 觸發,服務恢復" [ref=e461]:
+                          - cell "03:18" [ref=e462]
+                          - cell "Auto-restart 觸發,服務恢復" [ref=e463]
+                        - row "03:28 全面恢復,後續監控 4 hr 無復發" [ref=e464]:
+                          - cell "03:28" [ref=e465]
+                          - cell "全面恢復,後續監控 4 hr 無復發" [ref=e466]
+                  - paragraph [ref=e467]: 影響:14 分鐘 partial outage,約 8% 請求失敗。根因:JWT cache 未設上限, 累積後 OOM。修正:設 LRU cache size = 100k、加 memory alert 在 6GB。
+                - generic [ref=e469]:
+                  - generic [ref=e470]: tags
+                  - generic [ref=e471]: domain:auth
+                  - generic [ref=e472]: incident:outage
+              - generic [ref=e473]:
+                - heading "# install steps spec" [level=2] [ref=e475]:
+                  - link "#" [ref=e476] [cursor=pointer]:
+                    - /url: "#install-steps"
+                  - generic [ref=e477]: install steps
+                  - generic "type" [ref=e479]: spec
+                - paragraph [ref=e481]: client SDK 安裝方式,依語言環境選擇。
+                - generic [ref=e483]:
+                  - tablist [ref=e484]:
+                    - tab "python" [selected] [ref=e485] [cursor=pointer]
+                    - tab "javascript" [ref=e486] [cursor=pointer]
+                    - tab "go" [ref=e487] [cursor=pointer]
+                  - tabpanel [ref=e489]:
+                    - generic [ref=e490]:
+                      - heading "# install py step" [level=3] [ref=e492]:
+                        - link "#" [ref=e493] [cursor=pointer]:
+                          - /url: "#install-py"
+                        - generic [ref=e494]: install py
+                        - generic "type" [ref=e496]: step
+                      - generic [ref=e497]:
+                        - 'figure "Listing 1: Python SDK 安裝" [ref=e498]':
+                          - generic [ref=e499]:
+                            - button "Copy" [ref=e500] [cursor=pointer]
+                            - code [ref=e501]: pip install auth-sdk
+                          - generic [ref=e502]: "Listing 1: Python SDK 安裝"
+                        - paragraph [ref=e503]:
+                          - text: Python 3.10+ 透過 pip 安裝,自動帶
+                          - code [ref=e504]: httpx
+                          - text: 與
+                          - code [ref=e505]: pyjwt
+                          - text: 依賴。
+              - generic [ref=e506]:
+                - generic [ref=e507]:
+                  - heading "# interview mobile team dialogue" [level=2] [ref=e508]:
+                    - link "#" [ref=e509] [cursor=pointer]:
+                      - /url: "#interview-mobile-team"
+                    - generic [ref=e510]: interview mobile team
+                    - generic "type" [ref=e512]: dialogue
+                  - generic [ref=e513]:
+                    - generic [ref=e514]: auto keywords
+                    - generic [ref=e515]: 痛點
+                - paragraph [ref=e517]: 訪談 Mobile team Bob 關於 Auth v2 整合痛點。
+                - generic [ref=e519]:
+                  - generic [ref=e520]: source
+                  - generic [ref=e521]: interview-2026-05-08
+                - generic [ref=e522]:
+                  - navigation "目錄" [ref=e523]:
+                    - list [ref=e524]:
+                      - listitem [ref=e525]:
+                        - link "turn 1" [ref=e526] [cursor=pointer]:
+                          - /url: "#turn-1"
+                      - listitem [ref=e527]:
+                        - link "turn 2" [ref=e528] [cursor=pointer]:
+                          - /url: "#turn-2"
+                      - listitem [ref=e529]:
+                        - link "turn 3" [ref=e530] [cursor=pointer]:
+                          - /url: "#turn-3"
+                      - listitem [ref=e531]:
+                        - link "turn 4" [ref=e532] [cursor=pointer]:
+                          - /url: "#turn-4"
+                  - generic [ref=e533]:
+                    - generic [ref=e534]:
+                      - heading "# turn 1 turn" [level=3] [ref=e535]:
+                        - link "#" [ref=e536] [cursor=pointer]:
+                          - /url: "#turn-1"
+                        - generic [ref=e537]: turn 1
+                        - generic "type" [ref=e539]: turn
+                      - generic [ref=e540]:
+                        - generic [ref=e541]: auto keywords
+                        - generic [ref=e542]: 痛點
+                    - blockquote [ref=e544]: Mobile 整合 Auth v2 最大的痛點是什麼?
+                  - generic [ref=e545]:
+                    - generic [ref=e546]:
+                      - heading "# turn 2 turn" [level=3] [ref=e547]:
+                        - link "#" [ref=e548] [cursor=pointer]:
+                          - /url: "#turn-2"
+                        - generic [ref=e549]: turn 2
+                        - generic "type" [ref=e551]: turn
+                      - generic [ref=e552]:
+                        - generic [ref=e553]: auto keywords
+                        - generic [ref=e554]: 錯誤
+                        - generic [ref=e555]: 欄位
+                    - blockquote [ref=e557]: 錯誤訊息太抽象。"Invalid request" 但不告訴我是哪個欄位, trace ID 也沒回傳,沒辦法 escalate。
+                  - generic [ref=e558]:
+                    - heading "# turn 3 turn" [level=3] [ref=e560]:
+                      - link "#" [ref=e561] [cursor=pointer]:
+                        - /url: "#turn-3"
+                      - generic [ref=e562]: turn 3
+                      - generic "type" [ref=e564]: turn
+                    - blockquote [ref=e566]: SDK 那邊呢?
+                  - generic [ref=e567]:
+                    - generic [ref=e568]:
+                      - heading "# turn 4 turn" [level=3] [ref=e569]:
+                        - link "#" [ref=e570] [cursor=pointer]:
+                          - /url: "#turn-4"
+                        - generic [ref=e571]: turn 4
+                        - generic "type" [ref=e573]: turn
+                      - generic [ref=e574]:
+                        - generic [ref=e575]: auto keywords
+                        - generic [ref=e576]: 欄位
+                    - blockquote [ref=e578]: TypeScript types 跟 OpenAPI spec 對不上,有時候少欄位, 得自己手動補。希望有 codegen pipeline。
+              - generic [ref=e579]:
+                - generic [ref=e580]:
+                  - heading "# issue error msg open high @auth-team issue" [level=2] [ref=e581]:
+                    - link "#" [ref=e582] [cursor=pointer]:
+                      - /url: "#issue-error-msg"
+                    - generic [ref=e583]: issue error msg
+                    - generic [ref=e584]:
+                      - generic [ref=e585]: open
+                      - generic [ref=e586]: high
+                    - generic [ref=e587]:
+                      - generic "owner" [ref=e588]: "@auth-team"
+                      - generic "type" [ref=e589]: issue
+                  - generic [ref=e590]:
+                    - generic [ref=e591]: auto keywords
+                    - generic [ref=e592]: 錯誤
+                    - generic [ref=e593]: 文件
+                    - generic [ref=e594]: 欄位
+                    - generic [ref=e595]: 缺乏
+                - paragraph [ref=e597]:
+                  - text: 錯誤訊息缺乏可操作性(來源
+                  - code [ref=e598]: "#interview-mobile-team"
+                  - text: "): (1) 無欄位粒度錯誤碼;(2) 無 trace ID;(3) 文件未列舉錯誤型態。 影響三類 client。Target fix:Q2 W4。"
+                - generic [ref=e600]:
+                  - generic [ref=e601]: tags
+                  - generic [ref=e602]: domain:auth
+                  - generic [ref=e603]: client:all
+              - generic [ref=e604]:
+                - heading "# issue sdk drift open @dx-team issue" [level=2] [ref=e606]:
+                  - link "#" [ref=e607] [cursor=pointer]:
+                    - /url: "#issue-sdk-drift"
+                  - generic [ref=e608]: issue sdk drift
+                  - generic [ref=e610]: open
+                  - generic [ref=e611]:
+                    - generic "owner" [ref=e612]: "@dx-team"
+                    - generic "type" [ref=e613]: issue
+                - paragraph [ref=e615]: TypeScript SDK 與 OpenAPI spec 漂移。需要建立 codegen pipeline 並 在 CI 加 schema diff gate。
+              - generic [ref=e616]:
+                - generic [ref=e617]:
+                  - heading "# actions @platform-team task" [level=2] [ref=e618]:
+                    - link "#" [ref=e619] [cursor=pointer]:
+                      - /url: "#actions"
+                    - generic [ref=e620]: actions
+                    - generic [ref=e621]:
+                      - generic "owner" [ref=e622]: "@platform-team"
+                      - generic "type" [ref=e623]: task
+                  - generic [ref=e624]:
+                    - generic [ref=e625]: auto keywords
+                    - generic [ref=e626]: 行動
+                - paragraph [ref=e628]: Q2 行動項目。
+                - generic [ref=e629]:
+                  - navigation "目錄" [ref=e630]:
+                    - list [ref=e631]:
+                      - listitem [ref=e632]:
+                        - link "action canary" [ref=e633] [cursor=pointer]:
+                          - /url: "#action-canary"
+                      - listitem [ref=e634]:
+                        - link "action fix errors" [ref=e635] [cursor=pointer]:
+                          - /url: "#action-fix-errors"
+                      - listitem [ref=e636]:
+                        - link "action codegen" [ref=e637] [cursor=pointer]:
+                          - /url: "#action-codegen"
+                      - listitem [ref=e638]:
+                        - link "action monitoring" [ref=e639] [cursor=pointer]:
+                          - /url: "#action-monitoring"
+                  - generic [ref=e640]:
+                    - generic [ref=e641]:
+                      - heading "# action canary open @alice task" [level=3] [ref=e642]:
+                        - link "#" [ref=e643] [cursor=pointer]:
+                          - /url: "#action-canary"
+                        - generic [ref=e644]: action canary
+                        - generic [ref=e646]: open
+                        - generic [ref=e647]:
+                          - generic "owner" [ref=e648]: "@alice"
+                          - generic "type" [ref=e649]: task
+                      - generic [ref=e650]:
+                        - generic [ref=e651]: auto keywords
+                        - generic [ref=e652]: 目標
+                    - paragraph [ref=e654]: 完成 Token Service canary deployment 上線,目標 2026-06-30。
+                    - generic [ref=e656]:
+                      - generic [ref=e657]: valid until
+                      - time [ref=e658]: 2026-06-30
+                  - generic [ref=e659]:
+                    - generic [ref=e660]:
+                      - heading "# action fix errors open @bob task" [level=3] [ref=e661]:
+                        - link "#" [ref=e662] [cursor=pointer]:
+                          - /url: "#action-fix-errors"
+                        - generic [ref=e663]: action fix errors
+                        - generic [ref=e665]: open
+                        - generic [ref=e666]:
+                          - generic "owner" [ref=e667]: "@bob"
+                          - generic "type" [ref=e668]: task
+                      - generic [ref=e669]:
+                        - generic [ref=e670]: auto keywords
+                        - generic [ref=e671]: 錯誤
+                        - generic [ref=e672]: 文件
+                    - paragraph [ref=e674]: 重構錯誤回應:加 field-level error code + trace_id,文件補錯誤目錄。
+                    - generic [ref=e676]:
+                      - generic [ref=e677]: valid until
+                      - time [ref=e678]: 2026-06-15
+                  - generic [ref=e679]:
+                    - generic [ref=e680]:
+                      - heading "# action codegen blocked @carol task" [level=3] [ref=e681]:
+                        - link "#" [ref=e682] [cursor=pointer]:
+                          - /url: "#action-codegen"
+                        - generic [ref=e683]: action codegen
+                        - generic [ref=e685]: blocked
+                        - generic [ref=e686]:
+                          - generic "owner" [ref=e687]: "@carol"
+                          - generic "type" [ref=e688]: task
+                      - generic [ref=e689]:
+                        - generic [ref=e690]: auto keywords
+                        - generic [ref=e691]: 處理
+                    - paragraph [ref=e693]: 建立 TypeScript SDK 自動 codegen pipeline。Blocked on OpenAPI spec 完整性審查(Spec team 處理中)。
+                  - generic [ref=e694]:
+                    - heading "# action monitoring done @dave task" [level=3] [ref=e696]:
+                      - link "#" [ref=e697] [cursor=pointer]:
+                        - /url: "#action-monitoring"
+                      - generic [ref=e698]: action monitoring
+                      - generic [ref=e700]: done
+                      - generic [ref=e701]:
+                        - generic "owner" [ref=e702]: "@dave"
+                        - generic "type" [ref=e703]: task
+                    - paragraph [ref=e705]: Token Service memory alert 已上線(6GB warning、7GB critical)。
+              - generic [ref=e706]:
+                - generic [ref=e707]:
+                  - heading "# related docs reference" [level=2] [ref=e708]:
+                    - link "#" [ref=e709] [cursor=pointer]:
+                      - /url: "#related-docs"
+                    - generic [ref=e710]: related docs
+                    - generic "type" [ref=e712]: reference
+                  - generic [ref=e713]:
+                    - generic [ref=e714]: auto keywords
+                    - generic [ref=e715]: 文件
+                - generic [ref=e716]:
+                  - paragraph [ref=e717]: "相關文件:"
+                  - list [ref=e718]:
+                    - listitem [ref=e719]:
+                      - text: "Token Service spec:"
+                      - code [ref=e720]: ./specs/token-service-v2.md
+                    - listitem [ref=e721]:
+                      - text: "Incident 2026-05-03 full report:"
+                      - code [ref=e722]: ./incidents/2026-05-03-token-oom.md
+                    - listitem [ref=e723]:
+                      - text: "Auth v2 migration runbook:"
+                      - code [ref=e724]: ./runbooks/auth-v2-migration.md
+                - generic [ref=e726]:
+                  - generic [ref=e727]: related
+                  - link "#decision-canary" [ref=e728] [cursor=pointer]:
+                    - /url: "#decision-canary"
+                  - link "#inc-2026-05-03" [ref=e729] [cursor=pointer]:
+                    - /url: "#inc-2026-05-03"
+              - group [ref=e730]:
+                - generic "▸ history auth v1 history" [ref=e731] [cursor=pointer]:
+                  - text: ▸
+                  - generic [ref=e732]: history
+                  - text: auth v1 history
+                - text: ▸ ▸
+      - button "▾ 0 errors · 0 warnings · all clean" [ref=e734] [cursor=pointer]:
+        - generic [ref=e735]: ▾
+        - generic [ref=e736]: 0 errors · 0 warnings · all clean
