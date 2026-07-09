@@ -92,6 +92,13 @@ def _make_paragraph(page_number: int, index: int, blocks: list[BlockIR]) -> Bloc
         metadata={
             "source_block_ids": [block.id for block in blocks],
             "strategy": "vertical_gap_x_overlap",
+            # Merged paragraphs inherit the first member's reading-order trace
+            # so every block in the final IR stays explainable.
+            **(
+                {"reading_order": dict(blocks[0].metadata["reading_order"])}
+                if isinstance(blocks[0].metadata.get("reading_order"), dict)
+                else {}
+            ),
         },
     )
 

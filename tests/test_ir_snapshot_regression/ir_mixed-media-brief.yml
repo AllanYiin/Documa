@@ -1956,8 +1956,13 @@ pages:
         strategy: font_size_and_page_position
       original_order_index: 1
       reading_order:
-        column_index: 0
-        strategy: simple_column_gap
+        column_index: null
+        gestalt:
+        - figure/ground
+        - common region
+        rule: spanner
+        strategy: zone_column_v2
+        zone_id: z1b1
       source_type: pymupdf_text_block
     order_index: 1
     page_number: 1
@@ -2010,8 +2015,12 @@ pages:
         strategy: font_size_and_page_position
       original_order_index: 2
       reading_order:
-        column_index: 0
-        strategy: simple_column_gap
+        column_index: null
+        gestalt:
+        - figure/ground
+        rule: spanner
+        strategy: zone_column_v2
+        zone_id: z1b1b2
       source_type: pymupdf_text_block
     order_index: 2
     page_number: 1
@@ -2057,6 +2066,14 @@ pages:
     confidence: medium
     id: p1_para1
     metadata:
+      reading_order:
+        column_index: null
+        gestalt:
+        - figure/ground
+        - common region
+        rule: spanner
+        strategy: zone_column_v2
+        zone_id: z1b1
       source_block_ids:
       - p1_b3
       - p1_b4
@@ -2225,8 +2242,13 @@ pages:
     metadata:
       original_order_index: 5
       reading_order:
-        column_index: 0
-        strategy: simple_column_gap
+        column_index: null
+        gestalt:
+        - figure/ground
+        - common region
+        rule: spanner
+        strategy: zone_column_v2
+        zone_id: z1b1
       source_type: pymupdf_text_block
     order_index: 4
     page_number: 1
@@ -2280,8 +2302,12 @@ pages:
         strategy: font_size_and_page_position
       original_order_index: 6
       reading_order:
-        column_index: 0
-        strategy: simple_column_gap
+        column_index: null
+        gestalt:
+        - figure/ground
+        rule: spanner
+        strategy: zone_column_v2
+        zone_id: z1b1b5
       source_type: pymupdf_text_block
     order_index: 5
     page_number: 1
@@ -2329,8 +2355,13 @@ pages:
     metadata:
       original_order_index: 7
       reading_order:
-        column_index: 0
-        strategy: simple_column_gap
+        column_index: null
+        gestalt:
+        - figure/ground
+        - common region
+        rule: spanner
+        strategy: zone_column_v2
+        zone_id: z1
       source_type: pymupdf_text_block
     order_index: 6
     page_number: 1
@@ -2476,6 +2507,35 @@ pages:
     label: ''
     links: []
     preview_asset_ref: previews/page_0001.png
+    reading_order_trace:
+      gutters: []
+      zones:
+      - block_count: 1
+        column_count: 1
+        kind: content
+        y0: 96.09
+        y1: 113.99
+        zone_id: z1b1b2
+      - block_count: 1
+        column_count: 1
+        kind: content
+        y0: 366.09
+        y1: 383.99
+        zone_id: z1b1b5
+      - band_count: 5
+        block_count: 6
+        kind: banded
+        spanner_count: 4
+        y0: 61.81
+        y1: 383.99
+        zone_id: z1b1
+      - band_count: 2
+        block_count: 7
+        kind: banded
+        spanner_count: 1
+        y0: 61.81
+        y1: 453.05
+        zone_id: z1
   page_number: 1
   rotation: 0
   width: 595.0
@@ -2495,8 +2555,12 @@ pages:
         strategy: font_size_and_page_position
       original_order_index: 1
       reading_order:
-        column_index: 0
-        strategy: simple_column_gap
+        column_index: null
+        gestalt:
+        - figure/ground
+        rule: spanner
+        strategy: zone_column_v2
+        zone_id: z1b1
       source_type: pymupdf_text_block
     order_index: 1
     page_number: 2
@@ -2542,6 +2606,14 @@ pages:
     confidence: medium
     id: p2_para1
     metadata:
+      reading_order:
+        column_index: null
+        gestalt:
+        - figure/ground
+        - common region
+        rule: spanner
+        strategy: zone_column_v2
+        zone_id: z1
       source_block_ids:
       - p2_b2
       - p2_b3
@@ -2706,8 +2778,12 @@ pages:
     metadata:
       original_order_index: 4
       reading_order:
-        column_index: 0
-        strategy: simple_column_gap
+        column_index: null
+        gestalt:
+        - figure/ground
+        rule: spanner
+        strategy: zone_column_v2
+        zone_id: z1b3
       source_type: pymupdf_text_block
     order_index: 3
     page_number: 2
@@ -2775,6 +2851,28 @@ pages:
     label: ''
     links: []
     preview_asset_ref: previews/page_0002.png
+    reading_order_trace:
+      gutters: []
+      zones:
+      - block_count: 1
+        column_count: 1
+        kind: content
+        y0: 66.09
+        y1: 83.99
+        zone_id: z1b1
+      - block_count: 1
+        column_count: 1
+        kind: content
+        y0: 290.86
+        y1: 306.04
+        zone_id: z1b3
+      - band_count: 3
+        block_count: 4
+        kind: banded
+        spanner_count: 2
+        y0: 66.09
+        y1: 306.04
+        zone_id: z1
   page_number: 2
   rotation: 0
   width: 595.0

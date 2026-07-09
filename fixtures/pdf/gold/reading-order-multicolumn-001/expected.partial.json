@@ -3,11 +3,10 @@
   "annotator": "documa-fixture-author",
   "annotated_at": "2026-07-09",
   "source": "real/two-column-article.pdf",
-  "note": "Anchors are block-start aligned. Human order reads the left column fully before the right column.",
+  "note": "Anchors are block-start aligned. Human order reads the left column fully before the right column. With correct column ordering the two left-column paragraphs merge into one block, so mid-column anchors cannot be used.",
   "reading_order": [
     "Signal Propagation in Layered Media",
     "A short synthetic article",
-    "In practical assemblies the layers are rarely uniform",
     "The second parameter is loss",
     "Figure 1: Measurement setup"
   ]
