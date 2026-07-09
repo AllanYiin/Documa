@@ -170,6 +170,61 @@ class DocumentFormatAdapterTests(unittest.TestCase):
             self.assertFalse(search["isError"])
             self.assertGreaterEqual(len(search["structuredContent"]["results"]), 1)
 
+    def test_email_mailbox_cli_ingests_folder_manifest_and_message_blocks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            mailbox_dir = tmp_path / "mailbox"
+            nested_dir = mailbox_dir / "客戶"
+            out_dir = tmp_path / "out"
+            nested_dir.mkdir(parents=True)
+
+            first = EmailMessage()
+            first["Subject"] = "第一封更新"
+            first["From"] = "Alice <alice@example.com>"
+            first["To"] = "Bob <bob@example.com>"
+            first.set_content("第一封信需要整理付款條件。")
+            (mailbox_dir / "001.eml").write_bytes(first.as_bytes())
+
+            second = EmailMessage()
+            second["Subject"] = "第二封更新"
+            second["From"] = "Carol <carol@example.com>"
+            second["To"] = "Dana <dana@example.com>"
+            second.set_content("第二封信需要整理交付風險。")
+            (nested_dir / "002.eml").write_bytes(second.as_bytes())
+
+            from io import StringIO
+
+            old_stdout = sys.stdout
+            sys.stdout = StringIO()
+            try:
+                exit_code = main(
+                    [
+                        "ingest-mailbox",
+                        str(mailbox_dir),
+                        "--out",
+                        str(out_dir),
+                        "--recursive",
+                        "--progress",
+                        "jsonl",
+                    ]
+                )
+                output = json.loads(sys.stdout.getvalue())
+            finally:
+                sys.stdout = old_stdout
+
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(output["status"], "ok")
+            self.assertEqual(output["summary"]["message_count"], 2)
+            self.assertEqual(output["summary"]["succeeded_count"], 2)
+            manifest = json.loads((out_dir / "documa.mailbox.manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["collection_type"], "email_mailbox")
+            self.assertEqual([item["relative_path"] for item in manifest["documents"]], ["001.eml", str(Path("客戶") / "002.eml")])
+            for item in manifest["documents"]:
+                self.assertTrue(Path(item["ir_path"]).exists())
+                self.assertTrue((Path(item["output_dir"]) / "documa.blocks.json").exists())
+            progress_lines = (out_dir / "documa.mailbox.progress.jsonl").read_text(encoding="utf-8").splitlines()
+            self.assertTrue(any(json.loads(line)["event"] == "mailbox_message_completed" for line in progress_lines))
+
     def test_msg_process_uses_extract_msg_boundary(self):
         class FakeAttachment:
             longFilename = "outlook-note.txt"

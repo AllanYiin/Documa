@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 from typing import Any
 
 from documa import __version__
@@ -13,16 +14,23 @@ from documa.interfaces import (
     benchmark_tool,
     block_tree_tool,
     block_xref_tool,
+    cite_block_tool,
+    cite_chunk_tool,
+    delete_document_tool,
     doctor_tool,
+    ingest_document_tool,
+    list_documents_tool,
     export_document_tool,
     inspect_block_tool,
     inspect_document_tool,
+    ingest_mailbox_tool,
     list_blocks_tool,
     list_documa_tools,
     parse_document_tool,
     process_document_tool,
     read_block_tool,
     search_blocks_tool,
+    source_window_tool,
     view_document_tool,
 )
 
@@ -53,6 +61,7 @@ def build_parser() -> argparse.ArgumentParser:
     process_cmd.add_argument("--out", help="Output directory.")
     process_cmd.add_argument("--lang", default="auto", help="Comma-separated language hints.")
     process_cmd.add_argument("--max-chars", type=int, default=1200, help="Target max characters per generated chunk.")
+    process_cmd.add_argument("--ocr", action="store_true", help="Run OCR on image-only pages and embedded images (requires documa[ocr]).")
     process_cmd.add_argument(
         "--export-format",
         action="append",
@@ -60,6 +69,26 @@ def build_parser() -> argparse.ArgumentParser:
         dest="export_formats",
         help="Additional export format to write when --out is provided. Can be repeated.",
     )
+
+    mailbox_cmd = subparsers.add_parser("ingest-mailbox", help="Ingest a directory of .eml/.msg messages.")
+    mailbox_cmd.add_argument("source", help="Path to a directory containing email messages.")
+    mailbox_cmd.add_argument("--out", required=True, help="Output directory for the mailbox manifest and message IRs.")
+    mailbox_cmd.add_argument("--lang", default="auto", help="Comma-separated language hints.")
+    mailbox_cmd.add_argument("--max-chars", type=int, default=1200, help="Target max characters per generated chunk.")
+    mailbox_cmd.add_argument(
+        "--export-format",
+        action="append",
+        choices=["json", "markdown", "rag-json", "block-json"],
+        dest="export_formats",
+        help="Export format for each message. Defaults to rag-json and block-json. Can be repeated.",
+    )
+    mailbox_cmd.add_argument("--recursive", action="store_true", help="Recursively scan nested folders.")
+    mailbox_cmd.add_argument(
+        "--fail-fast",
+        action="store_true",
+        help="Stop after the first message that fails to parse or process.",
+    )
+    mailbox_cmd.add_argument("--progress", choices=["text", "jsonl"], default="text")
 
     export_cmd = subparsers.add_parser("export", help="Export a Documa IR document.")
     export_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
@@ -136,6 +165,48 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_cmd.add_argument("--fixtures-dir", default="fixtures/pdf", help="Directory containing fixture files.")
     benchmark_cmd.add_argument("--out", help="Output JSON file path.")
     benchmark_cmd.add_argument("--require-files", action="store_true", help="Fail cases with missing fixture files.")
+    benchmark_cmd.add_argument("--mode", choices=["readiness", "quality"], default="readiness", help="readiness checks files; quality scores against gold annotations.")
+    benchmark_cmd.add_argument("--gold-dir", default="fixtures/pdf/gold", help="Directory holding gold expected.partial.json files.")
+    benchmark_cmd.add_argument("--quality-threshold", type=float, default=0.85, help="Minimum score for a quality case to pass.")
+
+    diff_cmd = subparsers.add_parser("diff", help="Structured diff between two Documa IR JSON files.")
+    diff_cmd.add_argument("actual", help="Path to the actual IR JSON.")
+    diff_cmd.add_argument("expected", help="Path to the expected IR JSON.")
+
+    validate_ir_cmd = subparsers.add_parser("validate-ir", help="Validate an IR JSON file against the Documa schema.")
+    validate_ir_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
+
+    ingest_cmd = subparsers.add_parser("ingest", help="Ingest a document into the local store; returns a stable document_id.")
+    ingest_cmd.add_argument("source", nargs="?", help="Path to the source document.")
+    ingest_cmd.add_argument("--store-dir", default=".documa", help="Document store directory.")
+    ingest_cmd.add_argument("--lang", default="auto", help="Comma-separated language hints.")
+    ingest_cmd.add_argument("--max-chars", type=int, default=1200, help="Target max characters per generated chunk.")
+    ingest_cmd.add_argument("--ocr", action="store_true", help="Run OCR on image-only pages and embedded images (requires documa[ocr]).")
+    ingest_cmd.add_argument("--rebuild-index", action="store_true", help="Rebuild registry.json from stored documents.")
+
+    list_documents_cmd = subparsers.add_parser("list-documents", help="List documents in the local store.")
+    list_documents_cmd.add_argument("--store-dir", default=".documa", help="Document store directory.")
+
+    delete_document_cmd = subparsers.add_parser("delete-document", help="Delete a document from the local store.")
+    delete_document_cmd.add_argument("document_id", help="Registry document id (doc-...).")
+    delete_document_cmd.add_argument("--store-dir", default=".documa", help="Document store directory.")
+    delete_document_cmd.add_argument("--yes", action="store_true", help="Confirm deletion.")
+
+    cite_block_cmd = subparsers.add_parser("cite-block", help="Return page/bbox citation for a block id.")
+    cite_block_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
+    cite_block_cmd.add_argument("--id", required=True, dest="block_id", help="Block id (document block or page block).")
+    cite_block_cmd.add_argument("--style", choices=["page-bbox", "markdown", "inline"], default="page-bbox")
+
+    cite_chunk_cmd = subparsers.add_parser("cite-chunk", help="Return page/bbox citation for a chunk id.")
+    cite_chunk_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
+    cite_chunk_cmd.add_argument("--id", required=True, dest="chunk_id", help="Chunk id.")
+    cite_chunk_cmd.add_argument("--style", choices=["page-bbox", "markdown", "inline"], default="page-bbox")
+
+    source_window_cmd = subparsers.add_parser("source-window", help="Read neighboring blocks around a block id.")
+    source_window_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
+    source_window_cmd.add_argument("--id", required=True, dest="block_id", help="Block id.")
+    source_window_cmd.add_argument("--before", type=int, default=1, help="Blocks before the target.")
+    source_window_cmd.add_argument("--after", type=int, default=1, help="Blocks after the target.")
 
     doctor_cmd = subparsers.add_parser("doctor", help="Run Documa environment diagnostics.")
     doctor_cmd.add_argument("--project-root", default=".", help="Project root for local readiness checks.")
@@ -162,8 +233,22 @@ def main(argv: list[str] | None = None) -> int:
             lang=args.lang,
             max_chars=args.max_chars,
             export_formats=args.export_formats,
+            ocr=args.ocr,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "ingest-mailbox":
+        payload = ingest_mailbox_tool(
+            source=args.source,
+            out=args.out,
+            lang=args.lang,
+            max_chars=args.max_chars,
+            export_formats=args.export_formats,
+            recursive=args.recursive,
+            continue_on_error=not args.fail_fast,
+            progress=args.progress,
+        )
+        return _emit_json(payload, exit_code=0 if payload.get("status") in {"ok", "partial"} else 1)
 
     if args.command == "export":
         payload = export_document_tool(
@@ -265,8 +350,71 @@ def main(argv: list[str] | None = None) -> int:
             fixtures_dir=args.fixtures_dir,
             out=args.out,
             require_files=args.require_files,
+            mode=args.mode,
+            gold_dir=args.gold_dir,
+            quality_threshold=args.quality_threshold,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "diff":
+        from documa.quality.ir_diff import diff_documents
+
+        try:
+            actual = json.loads(Path(args.actual).read_text(encoding="utf-8"))
+            expected = json.loads(Path(args.expected).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            return _emit_json({"status": "error", "message": f"Cannot read IR JSON: {exc}"}, exit_code=1)
+        payload = diff_documents(actual, expected)
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "ingest":
+        if args.rebuild_index:
+            from documa.collections.registry import rebuild_index
+
+            payload = rebuild_index(store_dir=args.store_dir)
+            return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+        if not args.source:
+            return _emit_json({"status": "error", "message": "ingest requires a source path (or --rebuild-index)."}, exit_code=1)
+        payload = ingest_document_tool(
+            source=args.source, store_dir=args.store_dir, lang=args.lang, max_chars=args.max_chars, ocr=args.ocr
+        )
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "list-documents":
+        payload = list_documents_tool(store_dir=args.store_dir)
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "delete-document":
+        payload = delete_document_tool(document_id=args.document_id, store_dir=args.store_dir, yes=args.yes)
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "cite-block":
+        payload = cite_block_tool(ir_path=args.ir_path, block_id=args.block_id, style=args.style)
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "cite-chunk":
+        payload = cite_chunk_tool(ir_path=args.ir_path, chunk_id=args.chunk_id, style=args.style)
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "source-window":
+        payload = source_window_tool(
+            ir_path=args.ir_path, block_id=args.block_id, before=args.before, after=args.after
+        )
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "validate-ir":
+        from documa.core.schema_validation import validate_document_payload
+
+        try:
+            payload_data = json.loads(Path(args.ir_path).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            return _emit_json(
+                {"status": "error", "ir_path": args.ir_path, "message": f"Cannot read IR JSON: {exc}"},
+                exit_code=1,
+            )
+        result = validate_document_payload(payload_data)
+        result.update({"status": "ok" if result["valid"] else "invalid", "ir_path": args.ir_path})
+        return _emit_json(result, exit_code=0 if result["valid"] else 1)
 
     if args.command == "doctor":
         payload = doctor_tool(project_root=args.project_root, include_benchmark=not args.no_benchmark)

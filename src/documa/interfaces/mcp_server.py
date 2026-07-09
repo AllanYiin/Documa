@@ -12,6 +12,7 @@ from documa.interfaces.tools import (
     export_document_tool,
     inspect_block_tool,
     inspect_document_tool,
+    ingest_mailbox_tool,
     list_blocks_tool,
     parse_document_tool,
     process_document_tool,
@@ -57,6 +58,30 @@ def create_mcp_server() -> Any:
             lang=lang,
             max_chars=max_chars,
             export_formats=export_formats,
+        )
+
+    @mcp.tool()
+    def documa_ingest_mailbox(
+        source: str,
+        out: str,
+        lang: str = "auto",
+        max_chars: int = 1200,
+        export_formats: list[str] | None = None,
+        recursive: bool = False,
+        continue_on_error: bool = True,
+        progress: str = "text",
+    ) -> dict[str, Any]:
+        """Ingest a directory of EML/MSG messages as a Documa email collection."""
+
+        return ingest_mailbox_tool(
+            source=source,
+            out=out,
+            lang=lang,
+            max_chars=max_chars,
+            export_formats=export_formats,
+            recursive=recursive,
+            continue_on_error=continue_on_error,
+            progress=progress,
         )
 
     @mcp.tool()
@@ -154,7 +179,7 @@ def create_mcp_server() -> Any:
         snippet_fields: list[str] | None = None,
         verbosity: str = "compact",
         include_snippets: bool = True,
-        max_snippets_per_block: int = 5,
+        max_snippets_per_block: int = 2,
         search_body: bool = True,
         context_chars: int = 24,
         context_words: int = 8,

@@ -70,6 +70,7 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
                         "type": "array",
                         "items": {"type": "string", "enum": ["json", "markdown", "rag-json", "block-json"]},
                     },
+                    "ocr": {"type": "boolean", "default": False},
                 },
                 "required": ["source"],
             },
@@ -83,6 +84,44 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
                     "pipeline": {"type": "object"},
                 },
                 "required": ["status"],
+            },
+            "annotations": {"readOnlyHint": False},
+        },
+        {
+            "name": "documa_ingest_mailbox",
+            "title": "Ingest email mailbox directory",
+            "description": (
+                "Ingest a directory of .eml/.msg messages as a Documa email collection, "
+                "writing one processed document per message plus a mailbox manifest."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "source": {"type": "string"},
+                    "out": {"type": "string"},
+                    "lang": {"type": "string", "default": "auto"},
+                    "max_chars": {"type": "integer", "minimum": 1, "default": 1200},
+                    "export_formats": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": ["json", "markdown", "rag-json", "block-json"]},
+                    },
+                    "recursive": {"type": "boolean", "default": False},
+                    "continue_on_error": {"type": "boolean", "default": True},
+                    "progress": {"type": "string", "enum": ["text", "jsonl"], "default": "text"},
+                },
+                "required": ["source", "out"],
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "collection_type": {"type": "string"},
+                    "manifest_path": {"type": "string"},
+                    "summary": {"type": "object"},
+                    "documents": {"type": "array"},
+                    "errors": {"type": "array"},
+                },
+                "required": ["status", "summary"],
             },
             "annotations": {"readOnlyHint": False},
         },
@@ -206,7 +245,7 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
                     "snippet_fields": {"type": ["array", "null"], "items": {"type": "string"}},
                     "verbosity": {"type": "string", "enum": ["compact", "standard", "debug"], "default": "compact"},
                     "include_snippets": {"type": "boolean", "default": True},
-                    "max_snippets_per_block": {"type": "integer", "minimum": 0, "default": 5},
+                    "max_snippets_per_block": {"type": "integer", "minimum": 0, "default": 2},
                     "search_body": {"type": "boolean", "default": True},
                     "context_chars": {"type": "integer", "minimum": 0, "default": 24},
                     "context_words": {"type": "integer", "minimum": 0, "default": 8},
@@ -285,6 +324,219 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
                     "checks": {"type": "array"},
                 },
                 "required": ["status", "summary", "checks"],
+            },
+            "annotations": {"readOnlyHint": True},
+        },
+        {
+            "name": "documa_cite_block",
+            "title": "Cite a document block",
+            "description": (
+                "Resolve a block id to its citation: page label, bounding boxes, source excerpt, "
+                "and a formatted citation string."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "ir_path": {"type": "string"},
+                    "block_id": {"type": "string"},
+                    "style": {"type": "string", "enum": ["page-bbox", "markdown", "inline"], "default": "page-bbox"},
+                },
+                "required": ["ir_path", "block_id"],
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "block_id": {"type": "string"},
+                    "page_label": {"type": "string"},
+                    "grounding": {"type": "string"},
+                    "bboxes": {"type": "array"},
+                    "excerpt": {"type": "string"},
+                    "citation_string": {"type": "string"},
+                },
+                "required": ["status"],
+            },
+            "annotations": {"readOnlyHint": True},
+        },
+        {
+            "name": "documa_cite_chunk",
+            "title": "Cite a RAG chunk",
+            "description": (
+                "Resolve a chunk id to its citation: page label, bounding boxes, excerpt, heading path, "
+                "and the source blocks it was built from."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "ir_path": {"type": "string"},
+                    "chunk_id": {"type": "string"},
+                    "style": {"type": "string", "enum": ["page-bbox", "markdown", "inline"], "default": "page-bbox"},
+                },
+                "required": ["ir_path", "chunk_id"],
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "chunk_id": {"type": "string"},
+                    "page_label": {"type": "string"},
+                    "grounding": {"type": "string"},
+                    "bboxes": {"type": "array"},
+                    "excerpt": {"type": "string"},
+                    "source_blocks": {"type": "array"},
+                    "citation_string": {"type": "string"},
+                },
+                "required": ["status"],
+            },
+            "annotations": {"readOnlyHint": True},
+        },
+        {
+            "name": "documa_render_citation",
+            "title": "Render a citation string",
+            "description": "Render a formatted citation string for a chunk id or block id in the requested style.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "ir_path": {"type": "string"},
+                    "ref_id": {"type": "string"},
+                    "style": {"type": "string", "enum": ["page-bbox", "markdown", "inline"], "default": "page-bbox"},
+                },
+                "required": ["ir_path", "ref_id"],
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "ref_id": {"type": "string"},
+                    "style": {"type": "string"},
+                    "citation_string": {"type": "string"},
+                },
+                "required": ["status"],
+            },
+            "annotations": {"readOnlyHint": True},
+        },
+        {
+            "name": "documa_source_window",
+            "title": "Read blocks around a block",
+            "description": "Return the neighboring blocks (by reading order) around a block id for extra context.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "ir_path": {"type": "string"},
+                    "block_id": {"type": "string"},
+                    "before": {"type": "integer", "minimum": 0, "default": 1},
+                    "after": {"type": "integer", "minimum": 0, "default": 1},
+                },
+                "required": ["ir_path", "block_id"],
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "block_id": {"type": "string"},
+                    "window": {"type": "array"},
+                    "warnings": {"type": "array"},
+                },
+                "required": ["status"],
+            },
+            "annotations": {"readOnlyHint": True},
+        },
+        {
+            "name": "documa_verify_citations",
+            "title": "Verify cited block ids",
+            "description": (
+                "Check that every cited block id exists in the document and carries a page reference. "
+                "This is an id-existence check, not semantic answer verification."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "ir_path": {"type": "string"},
+                    "block_ids": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["ir_path", "block_ids"],
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "items": {"type": "array"},
+                    "overall_valid": {"type": "boolean"},
+                },
+                "required": ["status"],
+            },
+            "annotations": {"readOnlyHint": True},
+        },
+        {
+            "name": "documa_ingest",
+            "title": "Ingest document into the local store",
+            "description": (
+                "Parse + process a document into the local document store and return a stable, "
+                "content-addressed document_id. Re-ingesting identical content deduplicates."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "source": {"type": "string"},
+                    "store_dir": {"type": "string", "default": ".documa"},
+                    "lang": {"type": "string", "default": "auto"},
+                    "max_chars": {"type": "integer", "minimum": 1, "default": 1200},
+                    "ocr": {"type": "boolean", "default": False},
+                },
+                "required": ["source"],
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "document_id": {"type": "string"},
+                    "deduplicated": {"type": "boolean"},
+                    "ir_path": {"type": "string"},
+                },
+                "required": ["status"],
+            },
+            "annotations": {"readOnlyHint": False},
+        },
+        {
+            "name": "documa_list_documents",
+            "title": "List ingested documents",
+            "description": "List all documents registered in the local document store.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "store_dir": {"type": "string", "default": ".documa"},
+                },
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "document_count": {"type": "integer"},
+                    "documents": {"type": "array"},
+                },
+                "required": ["status"],
+            },
+            "annotations": {"readOnlyHint": True},
+        },
+        {
+            "name": "documa_validate_ir",
+            "title": "Validate IR against the Documa schema",
+            "description": "Validate an IR JSON file against the published documa.schema.json contract.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "ir_path": {"type": "string"},
+                },
+                "required": ["ir_path"],
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "valid": {"type": "boolean"},
+                    "violations": {"type": "array"},
+                },
+                "required": ["status"],
             },
             "annotations": {"readOnlyHint": True},
         },

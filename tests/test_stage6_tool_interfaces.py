@@ -89,11 +89,14 @@ class Stage6ToolInterfaceTests(unittest.TestCase):
         self.assertTrue(schemas["documa_inspect"]["annotations"]["readOnlyHint"])
         self.assertIn("outputSchema", schemas["documa_parse"])
         self.assertIn("inputSchema", schemas["documa_export"])
+        self.assertIn("documa_ingest_mailbox", schemas)
+        self.assertEqual(schemas["documa_ingest_mailbox"]["inputSchema"]["required"], ["source", "out"])
 
     def test_openai_tool_schemas_use_function_shape(self):
         tools = {tool["function"]["name"]: tool for tool in openai_tool_schemas(strict=True)}
 
         self.assertIn("documa_process", tools)
+        self.assertIn("documa_ingest_mailbox", tools)
         self.assertEqual(tools["documa_process"]["type"], "function")
         self.assertTrue(tools["documa_process"]["function"]["strict"])
         parameters = tools["documa_process"]["function"]["parameters"]

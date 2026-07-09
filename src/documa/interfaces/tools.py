@@ -2,17 +2,22 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import math
 import re
 from pathlib import Path
 from typing import Any, Callable
 
 from documa.adapters.base import ParseOptions
 from documa.adapters.registry import adapter_for_source
+from documa.collections import registry as registry_store
+from documa.collections.email_collection import MailboxIngestionOptions, ingest_mailbox_collection
 from documa.core.errors import DocumaError
-from documa.core.ir import DocumentIR, to_plain_data
+from documa.core.ir import DocumentBlockIR, DocumentBlockType, DocumentIR, to_plain_data
 from documa.core.serialization import document_from_plain_data
 from documa.exporters import BlockJsonExporter, ExportOptions, JsonExporter, MarkdownExporter, RagJsonExporter
+from documa.interfaces import citation
 from documa.interfaces.tool_schemas import documa_tool_schemas
 from documa.pipeline import (
     BlockKeywordExtractionStage,
@@ -34,6 +39,15 @@ _WORD_RE = re.compile(r"\S+")
 _DEFAULT_SEARCH_FIELDS = ["title", "preview", "search_terms", "keywords", "new_words"]
 _DEFAULT_SNIPPET_FIELDS = {"body", "title", "preview"}
 _SEARCH_VERBOSITIES = {"compact", "standard", "debug"}
+_DATE_PATTERN = re.compile(r"\b(?:19|20)\d{2}\b|\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b")
+_NUMBER_PATTERN = re.compile(r"[-+]?\d+(?:\.\d+)?\s*(?:%|percent|percentage|pp|bps|x|times)?", re.IGNORECASE)
+_TREND_PATTERN = re.compile(
+    r"\b(increase|decrease|decline|declined|rise|rose|rising|fall|fell|growth|grew|drop|dropped|higher|lower|trend)\b",
+    re.IGNORECASE,
+)
+_DEFINITION_PATTERN = re.compile(r"\b(is defined as|refers to|means|definition|defined as)\b", re.IGNORECASE)
+_CAUSE_PATTERN = re.compile(r"\b(because|due to|driven by|caused by|reason|therefore|as a result)\b", re.IGNORECASE)
+_COMPARISON_PATTERN = re.compile(r"\b(compared with|compared to|versus|vs\.?|relative to|more than|less than)\b", re.IGNORECASE)
 _SEARCH_FIELD_WEIGHTS = {
     "title": 4,
     "search_terms": 3,
@@ -51,8 +65,50 @@ def _documa_error_payload(exc: DocumaError) -> ToolPayload:
     return payload
 
 
+_ADAPTER_DISTRIBUTIONS = {
+    "pymupdf": "PyMuPDF",
+    "docx": "python-docx",
+    "pptx": "python-pptx",
+    "html": "beautifulsoup4",
+    "msg": "extract-msg",
+    "ipynb": "nbformat",
+}
+
+
+def _stamp_provenance(document: DocumentIR, pipeline_profile: str | None = None) -> None:
+    """Record producer/adapter versions and the pipeline profile on the IR."""
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        document.producer_version = version("documa")
+    except PackageNotFoundError:
+        document.producer_version = None
+    distribution = _ADAPTER_DISTRIBUTIONS.get(document.parser or "")
+    if distribution:
+        try:
+            document.adapter_version = f"{document.parser}/{version(distribution)}"
+        except PackageNotFoundError:
+            document.adapter_version = None
+    document.pipeline_profile = pipeline_profile
+
+
 def load_document(path: str | Path) -> DocumentIR:
-    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    """Load an IR document from a file path or a registry document_id.
+
+    Resolution rule: an existing file path always wins; otherwise a ``doc-``
+    prefixed reference is looked up in the local registry (``./.documa``).
+    """
+    resolved = Path(path)
+    if not resolved.exists():
+        ref = str(path)
+        if ref.startswith(registry_store.DOCUMENT_ID_PREFIX):
+            registry_path = registry_store.resolve_ir_path(registry_store.DEFAULT_STORE_DIR, ref)
+            if registry_path is None or not registry_path.exists():
+                raise FileNotFoundError(
+                    f"DOCUMENT_ID_NOT_FOUND: no file at {ref!r} and no registry entry in ./{registry_store.DEFAULT_STORE_DIR}"
+                )
+            resolved = registry_path
+    payload = json.loads(resolved.read_text(encoding="utf-8"))
     return document_from_plain_data(payload)
 
 
@@ -113,6 +169,7 @@ def parse_document_tool(
     except DocumaError as exc:
         return _documa_error_payload(exc)
 
+    _stamp_provenance(document)
     payload = to_plain_data(document)
     output_path = None
     if output_dir:
@@ -136,6 +193,7 @@ def process_document_tool(
     lang: str = "auto",
     max_chars: int = 1200,
     export_formats: list[str] | str | None = None,
+    ocr: bool = False,
 ) -> ToolPayload:
     output_dir = Path(out) if out else None
     asset_dir = output_dir / "assets" if output_dir else None
@@ -152,9 +210,18 @@ def process_document_tool(
     except DocumaError as exc:
         return _documa_error_payload(exc)
 
-    context = PipelineContext(settings={"max_chars": max_chars})
+    context = PipelineContext(
+        settings={"max_chars": max_chars, "ocr": ocr, "source_path": str(Path(source).resolve())}
+    )
     pipeline_run = run_default_pipeline(document, context, include_chunking=True)
+    _stamp_provenance(pipeline_run.document, pipeline_profile="ocr" if ocr else "default")
     payload = to_plain_data(pipeline_run.document)
+
+    warnings = []
+    for stage in pipeline_run.stage_results:
+        reason = stage.report.get("skipped_reason")
+        if stage.stage_name == "ocr" and ocr and reason:
+            warnings.append(f"ocr: {reason}")
     output_path = None
     export_paths: dict[str, str] = {}
 
@@ -188,9 +255,63 @@ def process_document_tool(
         "relation_count": len(pipeline_run.document.relations),
         "output_path": str(output_path) if output_path else None,
         "export_paths": export_paths,
+        "warnings": warnings,
         "pipeline": pipeline_run.report(),
         "document": None if output_path else payload,
     }
+
+
+def ingest_mailbox_tool(
+    source: str,
+    out: str,
+    lang: str = "auto",
+    max_chars: int = 1200,
+    export_formats: list[str] | str | None = None,
+    recursive: bool = False,
+    continue_on_error: bool = True,
+    progress: str = "text",
+) -> ToolPayload:
+    if isinstance(export_formats, str):
+        export_formats = [export_formats]
+    export_formats = export_formats or ["rag-json", "block-json"]
+
+    def process_message(
+        message_source: str,
+        message_out: str,
+        message_lang: str,
+        message_max_chars: int,
+        message_export_formats: list[str] | None,
+    ) -> ToolPayload:
+        return process_document_tool(
+            source=message_source,
+            out=message_out,
+            lang=message_lang,
+            max_chars=message_max_chars,
+            export_formats=message_export_formats,
+        )
+
+    payload = ingest_mailbox_collection(
+        MailboxIngestionOptions(
+            source=Path(source),
+            out=Path(out),
+            lang=lang,
+            max_chars=max_chars,
+            export_formats=export_formats,
+            recursive=recursive,
+            continue_on_error=continue_on_error,
+            progress=progress,
+        ),
+        process_message=process_message,
+    )
+    if payload.get("status") in {"ok", "partial"}:
+        manifest = payload.pop("manifest")
+        write_payload(payload["manifest_path"], manifest)
+        if progress == "jsonl":
+            progress_path = Path(out) / "documa.mailbox.progress.jsonl"
+            lines = "\n".join(json.dumps(event, ensure_ascii=False) for event in payload.get("progress_events", []))
+            write_payload(progress_path, f"{lines}\n" if lines else "")
+            payload["progress_path"] = str(progress_path)
+    return payload
 
 
 def export_document_tool(
@@ -407,6 +528,80 @@ def _normalized_verbosity(value: str | None) -> str:
     return verbosity if verbosity in _SEARCH_VERBOSITIES else "compact"
 
 
+def _block_doc_region(block: DocumentBlockIR, by_id: dict[str, DocumentBlockIR]) -> str:
+    title = " ".join(_block_path(block.id, by_id) + [block.title or ""]).casefold()
+    source_type = str(block.metadata.get("source_block_type") or "").casefold()
+    role = str(block.metadata.get("role") or "").casefold()
+    if block.type == DocumentBlockType.TOC or "table of contents" in title or "contents" == title.strip():
+        return "toc"
+    if block.type == DocumentBlockType.METADATA:
+        return "metadata"
+    if "page_header" in {source_type, role} or "page_footer" in {source_type, role}:
+        return "header_footer"
+    if any(term in title for term in ("references", "bibliography", "works cited")):
+        return "references"
+    if "appendix" in title or "annex" in title:
+        return "appendix"
+    return "body"
+
+
+def _block_neighbor_metadata(block: DocumentBlockIR, document: DocumentIR) -> dict[str, Any]:
+    ordered = sorted(document.document_blocks, key=lambda item: (item.order_index is None, item.order_index or 0))
+    positions = {item.id: index for index, item in enumerate(ordered)}
+    index = positions.get(block.id)
+    prev_id = ordered[index - 1].id if index is not None and index > 0 else None
+    next_id = ordered[index + 1].id if index is not None and index + 1 < len(ordered) else None
+    text = (block.text_preview or "").strip()
+    needs_next = block.type == DocumentBlockType.TABLE or (bool(text) and text[-1:] not in {".", "!", "?", "。", "！", "？"})
+    return {"prev": prev_id, "next": next_id, "needs_next": needs_next}
+
+
+def _block_answer_tags(text: str, block: DocumentBlockIR) -> list[str]:
+    tags: list[str] = []
+    if _DEFINITION_PATTERN.search(text):
+        tags.append("definition")
+    if _TREND_PATTERN.search(text):
+        tags.append("trend")
+    if _COMPARISON_PATTERN.search(text):
+        tags.append("comparison")
+    if _CAUSE_PATTERN.search(text):
+        tags.append("cause")
+    if _NUMBER_PATTERN.search(text):
+        tags.append("numeric")
+    if _DATE_PATTERN.search(text):
+        tags.append("date")
+    if block.type == DocumentBlockType.TABLE:
+        tags.append("table")
+    return list(dict.fromkeys(tags))
+
+
+def _selection_metadata(block: DocumentBlockIR, document: DocumentIR, by_id: dict[str, DocumentBlockIR]) -> dict[str, Any]:
+    content = document_block_text(document, block)
+    selection_text = " ".join(part for part in [block.title or "", block.text_preview or "", content[:1200]] if part)
+    char_count = len(content)
+    token_estimate = max(1, math.ceil(char_count / 4)) if char_count else 0
+    doc_region = _block_doc_region(block, by_id)
+    return {
+        "block_id": block.id,
+        "block_type": block.type.value,
+        "heading_path": _block_path(block.id, by_id),
+        "doc_region": doc_region,
+        "answer_tags": _block_answer_tags(selection_text, block),
+        "char_count": char_count,
+        "token_estimate": token_estimate,
+        "recommended_read_chars": min(3000, max(800, char_count if char_count else len(block.text_preview or ""))),
+        "neighbors": _block_neighbor_metadata(block, document),
+        "flags": {
+            "has_numeric": bool(_NUMBER_PATTERN.search(selection_text)),
+            "has_date": bool(_DATE_PATTERN.search(selection_text)),
+            "has_table": block.type == DocumentBlockType.TABLE,
+            "is_reference": doc_region == "references",
+            "is_header_footer": doc_region == "header_footer",
+        },
+        "dedupe_key": block.content_hash or hashlib.sha1(selection_text.encode("utf-8", errors="ignore")).hexdigest()[:16],
+    }
+
+
 def list_blocks_tool(
     ir_path: str,
     depth: int | None = None,
@@ -527,7 +722,7 @@ def search_blocks_tool(
     snippet_fields: list[str] | None = None,
     verbosity: str = "compact",
     include_snippets: bool = True,
-    max_snippets_per_block: int = 5,
+    max_snippets_per_block: int = 2,
     search_body: bool = True,
     context_chars: int = 24,
     context_words: int = 8,
@@ -630,19 +825,37 @@ def search_blocks_tool(
             continue
         row = {
             "id": block.id,
+            "block_id": block.id,
             "type": block.type.value,
+            "block_type": block.type.value,
             "title": block.title,
+            "heading_path": _block_path(block.id, by_id),
             "score": score,
             "page_refs": block.page_refs,
             **page_citation_metadata(block.page_refs, page_citations),
             "children_count": len(block.child_ids),
             "matched": matched,
+            "matched_terms": matched,
+            "matched_terms_count": len(set(matched)),
             "snippets": snippets,
         }
+        selection = _selection_metadata(block, document, by_id)
+        row.update(
+            {
+                "doc_region": selection["doc_region"],
+                "answer_tags": selection["answer_tags"],
+                "token_estimate": selection["token_estimate"],
+                "recommended_read_chars": selection["recommended_read_chars"],
+                "neighbors": selection["neighbors"],
+                "flags": selection["flags"],
+                "dedupe_key": selection["dedupe_key"],
+            }
+        )
         if output_verbosity in {"standard", "debug"}:
             row.update(
                 {
                     "block_path": _block_path(block.id, by_id),
+                    "selection_metadata": selection,
                     "text_preview": block.text_preview,
                     "keywords": block.metadata.get("keyword_terms", [])[:5],
                     "source_block_ids": block.source_block_ids,
@@ -760,6 +973,9 @@ def benchmark_tool(
     fixtures_dir: str = "fixtures/pdf",
     out: str | None = None,
     require_files: bool = False,
+    mode: str = "readiness",
+    gold_dir: str = "fixtures/pdf/gold",
+    quality_threshold: float = 0.85,
 ) -> ToolPayload:
     try:
         payload = run_fixture_benchmark(
@@ -767,6 +983,9 @@ def benchmark_tool(
                 manifest_path=Path(manifest_path),
                 fixtures_dir=Path(fixtures_dir),
                 require_files=require_files,
+                mode=mode,
+                gold_dir=Path(gold_dir),
+                quality_threshold=quality_threshold,
             )
         )
     except (OSError, KeyError, ValueError) as exc:
@@ -787,6 +1006,86 @@ def doctor_tool(project_root: str = ".", include_benchmark: bool = True) -> Tool
         return {"status": "error", "message": str(exc)}
 
 
+def _load_document_or_error(ir_path: str) -> DocumentIR | ToolPayload:
+    try:
+        document = load_document(ir_path)
+    except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
+        return {"status": "error", "code": "IR_LOAD_FAILED", "message": str(exc), "ir_path": str(ir_path)}
+    _ensure_document_blocks(document)
+    return document
+
+
+def cite_block_tool(ir_path: str, block_id: str, style: str = "page-bbox") -> ToolPayload:
+    document = _load_document_or_error(ir_path)
+    if isinstance(document, dict):
+        return document
+    return citation.cite_block(document, block_id, style)
+
+
+def cite_chunk_tool(ir_path: str, chunk_id: str, style: str = "page-bbox") -> ToolPayload:
+    document = _load_document_or_error(ir_path)
+    if isinstance(document, dict):
+        return document
+    return citation.cite_chunk(document, chunk_id, style)
+
+
+def render_citation_tool(ir_path: str, ref_id: str, style: str = "page-bbox") -> ToolPayload:
+    document = _load_document_or_error(ir_path)
+    if isinstance(document, dict):
+        return document
+    return citation.render_citation(document, ref_id, style)
+
+
+def source_window_tool(ir_path: str, block_id: str, before: int = 1, after: int = 1) -> ToolPayload:
+    document = _load_document_or_error(ir_path)
+    if isinstance(document, dict):
+        return document
+    return citation.source_window(document, block_id, before=before, after=after)
+
+
+def verify_citations_tool(ir_path: str, block_ids: list[str] | str) -> ToolPayload:
+    if isinstance(block_ids, str):
+        block_ids = [part.strip() for part in block_ids.split(",") if part.strip()]
+    document = _load_document_or_error(ir_path)
+    if isinstance(document, dict):
+        return document
+    return citation.verify_citations(document, block_ids)
+
+
+def ingest_document_tool(
+    source: str,
+    store_dir: str = registry_store.DEFAULT_STORE_DIR,
+    lang: str = "auto",
+    max_chars: int = 1200,
+    ocr: bool = False,
+) -> ToolPayload:
+    return registry_store.ingest_document(source, store_dir=store_dir, lang=lang, max_chars=max_chars, ocr=ocr)
+
+
+def list_documents_tool(store_dir: str = registry_store.DEFAULT_STORE_DIR) -> ToolPayload:
+    return registry_store.list_documents(store_dir=store_dir)
+
+
+def delete_document_tool(
+    document_id: str,
+    store_dir: str = registry_store.DEFAULT_STORE_DIR,
+    yes: bool = False,
+) -> ToolPayload:
+    return registry_store.delete_document(document_id, store_dir=store_dir, yes=yes)
+
+
+def validate_ir_tool(ir_path: str) -> ToolPayload:
+    from documa.core.schema_validation import validate_document_payload
+
+    try:
+        payload = json.loads(Path(ir_path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {"status": "error", "code": "IR_LOAD_FAILED", "message": str(exc), "ir_path": str(ir_path)}
+    result = validate_document_payload(payload)
+    result.update({"status": "ok" if result["valid"] else "invalid", "ir_path": str(ir_path)})
+    return result
+
+
 def list_documa_tools() -> list[dict[str, Any]]:
     return documa_tool_schemas()
 
@@ -795,6 +1094,7 @@ def _tool_registry() -> dict[str, Callable[..., ToolPayload]]:
     return {
         "documa_parse": parse_document_tool,
         "documa_process": process_document_tool,
+        "documa_ingest_mailbox": ingest_mailbox_tool,
         "documa_export": export_document_tool,
         "documa_inspect": inspect_document_tool,
         "documa_view": view_document_tool,
@@ -806,6 +1106,14 @@ def _tool_registry() -> dict[str, Callable[..., ToolPayload]]:
         "documa_block_xref": block_xref_tool,
         "documa_benchmark": benchmark_tool,
         "documa_doctor": doctor_tool,
+        "documa_cite_block": cite_block_tool,
+        "documa_cite_chunk": cite_chunk_tool,
+        "documa_render_citation": render_citation_tool,
+        "documa_source_window": source_window_tool,
+        "documa_verify_citations": verify_citations_tool,
+        "documa_validate_ir": validate_ir_tool,
+        "documa_ingest": ingest_document_tool,
+        "documa_list_documents": list_documents_tool,
     }
 
 
