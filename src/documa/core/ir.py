@@ -83,14 +83,6 @@ class Confidence(SerializableEnum):
     UNKNOWN = "unknown"
 
 
-class JobState(SerializableEnum):
-    QUEUED = "queued"
-    RUNNING = "running"
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-    CANCELED = "canceled"
-
-
 class FixtureIssueType(SerializableEnum):
     INLINE_SUPERSCRIPT_AND_STYLE = "inline_superscript_and_style"
     HUMAN_READING_ORDER = "human_reading_order"
@@ -226,8 +218,12 @@ class DocumentBlockIR:
 class DocumentIR:
     id: str
     source_name: str
-    ir_version: str = "0.1"
+    # ir_version follows semver semantics: minor bumps are strictly additive.
+    ir_version: str = "0.2"
     parser: str | None = None
+    producer_version: str | None = None
+    adapter_version: str | None = None
+    pipeline_profile: str | None = None
     pages: list[PageIR] = field(default_factory=list)
     tables: list[TableIR] = field(default_factory=list)
     relations: list[RelationIR] = field(default_factory=list)

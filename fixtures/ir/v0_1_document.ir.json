@@ -1,0 +1,4575 @@
+{
+  "id": "doc_v01_compat_fixture",
+  "source_name": "fixtures\\pdf\\real\\annual-report.pdf",
+  "ir_version": "0.1",
+  "parser": "pymupdf",
+  "pages": [
+    {
+      "id": "page_1",
+      "page_number": 1,
+      "width": 595.0,
+      "height": 842.0,
+      "rotation": 0,
+      "blocks": [
+        {
+          "id": "p1_b1",
+          "type": "heading",
+          "page_number": 1,
+          "text": {
+            "raw_text": "Aurora Materials Annual Report",
+            "normalized_text": "Aurora Materials Annual Report",
+            "unicode_form": "NFC",
+            "width_normalized": false,
+            "simplified_traditional_converted": false
+          },
+          "bbox": [
+            56.0,
+            96.45999908447266,
+            387.2759094238281,
+            126.75399780273438
+          ],
+          "spans": [
+            {
+              "id": "p1_s1_0",
+              "text": {
+                "raw_text": "Aurora Materials Annual Report",
+                "normalized_text": "Aurora Materials Annual Report",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                96.45999908447266,
+                387.2759094238281,
+                126.75399780273438
+              ],
+              "font_size": 22.0,
+              "font_name": "Helvetica-Bold",
+              "style": [
+                "bold"
+              ],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  120.0
+                ]
+              }
+            }
+          ],
+          "confidence": "high",
+          "order_index": 1,
+          "source_refs": [
+            "pymupdf:block:1:1"
+          ],
+          "metadata": {
+            "source_type": "pymupdf_text_block",
+            "original_order_index": 1,
+            "reading_order": {
+              "column_index": 0,
+              "strategy": "simple_column_gap"
+            },
+            "layout_classification": {
+              "previous_type": "text",
+              "strategy": "font_size_and_page_position",
+              "median_font_size": 10.0,
+              "block_font_size": 22.0
+            }
+          }
+        },
+        {
+          "id": "p1_b2",
+          "type": "heading",
+          "page_number": 1,
+          "text": {
+            "raw_text": "Fiscal Year Summary",
+            "normalized_text": "Fiscal Year Summary",
+            "unicode_form": "NFC",
+            "width_normalized": false,
+            "simplified_traditional_converted": false
+          },
+          "bbox": [
+            56.0,
+            136.08999633789062,
+            180.24098205566406,
+            153.69200134277344
+          ],
+          "spans": [
+            {
+              "id": "p1_s1_1",
+              "text": {
+                "raw_text": "Fiscal Year Summary",
+                "normalized_text": "Fiscal Year Summary",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                136.08999633789062,
+                180.24098205566406,
+                153.69200134277344
+              ],
+              "font_size": 13.0,
+              "font_name": "Helvetica-Oblique",
+              "style": [
+                "italic",
+                "italic"
+              ],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  150.0
+                ]
+              }
+            }
+          ],
+          "confidence": "high",
+          "order_index": 2,
+          "source_refs": [
+            "pymupdf:block:1:2"
+          ],
+          "metadata": {
+            "source_type": "pymupdf_text_block",
+            "original_order_index": 2,
+            "reading_order": {
+              "column_index": 0,
+              "strategy": "simple_column_gap"
+            },
+            "layout_classification": {
+              "previous_type": "text",
+              "strategy": "font_size_and_page_position",
+              "median_font_size": 10.0,
+              "block_font_size": 13.0
+            }
+          }
+        },
+        {
+          "id": "p1_b3",
+          "type": "heading",
+          "page_number": 1,
+          "text": {
+            "raw_text": "Contents",
+            "normalized_text": "Contents",
+            "unicode_form": "NFC",
+            "width_normalized": false,
+            "simplified_traditional_converted": false
+          },
+          "bbox": [
+            56.0,
+            205.02000427246094,
+            116.66201782226562,
+            224.29800415039062
+          ],
+          "spans": [
+            {
+              "id": "p1_s1_2",
+              "text": {
+                "raw_text": "Contents",
+                "normalized_text": "Contents",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                205.02000427246094,
+                116.66201782226562,
+                224.29800415039062
+              ],
+              "font_size": 14.0,
+              "font_name": "Helvetica-Bold",
+              "style": [
+                "bold"
+              ],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  220.0
+                ]
+              }
+            }
+          ],
+          "confidence": "high",
+          "order_index": 3,
+          "source_refs": [
+            "pymupdf:block:1:3"
+          ],
+          "metadata": {
+            "source_type": "pymupdf_text_block",
+            "original_order_index": 3,
+            "reading_order": {
+              "column_index": 0,
+              "strategy": "simple_column_gap"
+            },
+            "layout_classification": {
+              "previous_type": "text",
+              "strategy": "font_size_and_page_position",
+              "median_font_size": 10.0,
+              "block_font_size": 14.0
+            }
+          }
+        },
+        {
+          "id": "p1_b4",
+          "type": "table_of_content",
+          "page_number": 1,
+          "text": {
+            "raw_text": "1. Overview ................................................ 2",
+            "normalized_text": "1. Overview ................................................ 2",
+            "unicode_form": "NFC",
+            "width_normalized": false,
+            "simplified_traditional_converted": false
+          },
+          "bbox": [
+            56.0,
+            239.25,
+            253.34994506835938,
+            252.99000549316406
+          ],
+          "spans": [
+            {
+              "id": "p1_s1_3",
+              "text": {
+                "raw_text": "1. Overview ................................................ 2",
+                "normalized_text": "1. Overview ................................................ 2",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                239.25,
+                253.34994506835938,
+                252.99000549316406
+              ],
+              "font_size": 10.0,
+              "font_name": "Helvetica",
+              "style": [],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  250.0
+                ]
+              }
+            }
+          ],
+          "confidence": "high",
+          "order_index": 4,
+          "source_refs": [
+            "pymupdf:block:1:4"
+          ],
+          "metadata": {
+            "source_type": "pymupdf_text_block",
+            "original_order_index": 4,
+            "reading_order": {
+              "column_index": 0,
+              "strategy": "simple_column_gap"
+            },
+            "toc_title": "1. Overview",
+            "toc_items": [
+              {
+                "title": "1. Overview",
+                "page_number": 2,
+                "page_label": "2"
+              }
+            ],
+            "layout_classification": {
+              "previous_type": "text",
+              "strategy": "toc_leader_dots",
+              "median_font_size": 10.0,
+              "block_font_size": 10.0
+            }
+          }
+        },
+        {
+          "id": "p1_b5",
+          "type": "table_of_content",
+          "page_number": 1,
+          "text": {
+            "raw_text": "2. Financial Results ................................................ 2",
+            "normalized_text": "2. Financial Results ................................................ 2",
+            "unicode_form": "NFC",
+            "width_normalized": false,
+            "simplified_traditional_converted": false
+          },
+          "bbox": [
+            56.0,
+            259.25,
+            287.8099365234375,
+            272.989990234375
+          ],
+          "spans": [
+            {
+              "id": "p1_s1_4",
+              "text": {
+                "raw_text": "2. Financial Results ................................................ 2",
+                "normalized_text": "2. Financial Results ................................................ 2",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                259.25,
+                287.8099365234375,
+                272.989990234375
+              ],
+              "font_size": 10.0,
+              "font_name": "Helvetica",
+              "style": [],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  270.0
+                ]
+              }
+            }
+          ],
+          "confidence": "high",
+          "order_index": 5,
+          "source_refs": [
+            "pymupdf:block:1:5"
+          ],
+          "metadata": {
+            "source_type": "pymupdf_text_block",
+            "original_order_index": 5,
+            "reading_order": {
+              "column_index": 0,
+              "strategy": "simple_column_gap"
+            },
+            "toc_title": "2. Financial Results",
+            "toc_items": [
+              {
+                "title": "2. Financial Results",
+                "page_number": 2,
+                "page_label": "2"
+              }
+            ],
+            "layout_classification": {
+              "previous_type": "text",
+              "strategy": "toc_leader_dots",
+              "median_font_size": 10.0,
+              "block_font_size": 10.0
+            }
+          }
+        },
+        {
+          "id": "p1_b6",
+          "type": "table_of_content",
+          "page_number": 1,
+          "text": {
+            "raw_text": "3. Outlook ................................................ 3",
+            "normalized_text": "3. Outlook ................................................ 3",
+            "unicode_form": "NFC",
+            "width_normalized": false,
+            "simplified_traditional_converted": false
+          },
+          "bbox": [
+            56.0,
+            279.25,
+            246.1399383544922,
+            292.989990234375
+          ],
+          "spans": [
+            {
+              "id": "p1_s1_5",
+              "text": {
+                "raw_text": "3. Outlook ................................................ 3",
+                "normalized_text": "3. Outlook ................................................ 3",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                279.25,
+                246.1399383544922,
+                292.989990234375
+              ],
+              "font_size": 10.0,
+              "font_name": "Helvetica",
+              "style": [],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  290.0
+                ]
+              }
+            }
+          ],
+          "confidence": "high",
+          "order_index": 6,
+          "source_refs": [
+            "pymupdf:block:1:6"
+          ],
+          "metadata": {
+            "source_type": "pymupdf_text_block",
+            "original_order_index": 6,
+            "reading_order": {
+              "column_index": 0,
+              "strategy": "simple_column_gap"
+            },
+            "toc_title": "3. Outlook",
+            "toc_items": [
+              {
+                "title": "3. Outlook",
+                "page_number": 3,
+                "page_label": "3"
+              }
+            ],
+            "layout_classification": {
+              "previous_type": "text",
+              "strategy": "toc_leader_dots",
+              "median_font_size": 10.0,
+              "block_font_size": 10.0
+            }
+          }
+        }
+      ],
+      "images": [],
+      "metadata": {
+        "label": "",
+        "links": [],
+        "annotations": []
+      }
+    },
+    {
+      "id": "page_2",
+      "page_number": 2,
+      "width": 595.0,
+      "height": 842.0,
+      "rotation": 0,
+      "blocks": [
+        {
+          "id": "p2_b1",
+          "type": "heading",
+          "page_number": 2,
+          "text": {
+            "raw_text": "1. Overview",
+            "normalized_text": "1. Overview",
+            "unicode_form": "NFC",
+            "width_normalized": false,
+            "simplified_traditional_converted": false
+          },
+          "bbox": [
+            56.0,
+            72.87999725341797,
+            144.94400024414062,
+            94.91200256347656
+          ],
+          "spans": [
+            {
+              "id": "p2_s1_0",
+              "text": {
+                "raw_text": "1. Overview",
+                "normalized_text": "1. Overview",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                72.87999725341797,
+                144.94400024414062,
+                94.91200256347656
+              ],
+              "font_size": 16.0,
+              "font_name": "Helvetica-Bold",
+              "style": [
+                "bold"
+              ],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  90.0
+                ]
+              }
+            }
+          ],
+          "confidence": "high",
+          "order_index": 1,
+          "source_refs": [
+            "pymupdf:block:2:1"
+          ],
+          "metadata": {
+            "source_type": "pymupdf_text_block",
+            "original_order_index": 1,
+            "reading_order": {
+              "column_index": 0,
+              "strategy": "simple_column_gap"
+            },
+            "layout_classification": {
+              "previous_type": "text",
+              "strategy": "font_size_and_page_position",
+              "median_font_size": 10.0,
+              "block_font_size": 16.0
+            }
+          }
+        },
+        {
+          "id": "p2_b2",
+          "type": "text",
+          "page_number": 2,
+          "text": {
+            "raw_text": "Aurora Materials develops high-durability composite panels for the construction sector. During the fiscal yearthe company expanded its coating facility and completed certification for two new panel families. Revenuegrew across all regions",
+            "normalized_text": "Aurora Materials develops high-durability composite panels for the construction sector. During the fiscal yearthe company expanded its coating facility and completed certification for two new panel families. Revenuegrew across all regions",
+            "unicode_form": "NFC",
+            "width_normalized": false,
+            "simplified_traditional_converted": false
+          },
+          "bbox": [
+            56.0,
+            105.0,
+            535.0698852539062,
+            148.28102111816406
+          ],
+          "spans": [
+            {
+              "id": "p2_s1_1",
+              "text": {
+                "raw_text": "Aurora Materials develops high-durability composite panels for the construction sector. During the fiscal year",
+                "normalized_text": "Aurora Materials develops high-durability composite panels for the construction sector. During the fiscal year",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                105.0,
+                535.0698852539062,
+                118.73999786376953
+              ],
+              "font_size": 10.0,
+              "font_name": "Helvetica",
+              "style": [],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  115.75
+                ]
+              }
+            },
+            {
+              "id": "p2_s2_1",
+              "text": {
+                "raw_text": "the company expanded its coating facility and completed certification for two new panel families. Revenue",
+                "normalized_text": "the company expanded its coating facility and completed certification for two new panel families. Revenue",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                119.7705078125,
+                523.4298706054688,
+                133.51051330566406
+              ],
+              "font_size": 10.0,
+              "font_name": "Helvetica",
+              "style": [],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  130.5205078125
+                ]
+              }
+            },
+            {
+              "id": "p2_s3_1",
+              "text": {
+                "raw_text": "grew across all regions",
+                "normalized_text": "grew across all regions",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                134.541015625,
+                158.24998474121094,
+                148.28102111816406
+              ],
+              "font_size": 10.0,
+              "font_name": "Helvetica",
+              "style": [],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  145.291015625
+                ]
+              }
+            }
+          ],
+          "confidence": "high",
+          "order_index": 2,
+          "source_refs": [
+            "pymupdf:block:2:2"
+          ],
+          "metadata": {
+            "source_type": "pymupdf_text_block",
+            "original_order_index": 2,
+            "reading_order": {
+              "column_index": 0,
+              "strategy": "simple_column_gap"
+            }
+          }
+        },
+        {
+          "id": "p2_b3",
+          "type": "text",
+          "page_number": 2,
+          "text": {
+            "raw_text": "1 , led by the Asia-Pacific segment.",
+            "normalized_text": "1 , led by the Asia-Pacific segment.",
+            "unicode_form": "NFC",
+            "width_normalized": false,
+            "simplified_traditional_converted": false
+          },
+          "bbox": [
+            228.0,
+            145.75,
+            381.8399658203125,
+            162.99000549316406
+          ],
+          "spans": [
+            {
+              "id": "p2_s1_2",
+              "text": {
+                "raw_text": "1",
+                "normalized_text": "1",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                228.0,
+                149.5124969482422,
+                231.61399841308594,
+                158.44349670410156
+              ],
+              "font_size": 6.5,
+              "font_name": "Helvetica",
+              "style": [],
+              "language": {
+                "language": "auto",
+                "script": null,
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  228.0,
+                  156.5
+                ]
+              }
+            },
+            {
+              "id": "p2_s2_2",
+              "text": {
+                "raw_text": " , led by the Asia-Pacific segment.",
+                "normalized_text": " , led by the Asia-Pacific segment.",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                231.61399841308594,
+                145.75,
+                381.8399658203125,
+                162.99000549316406
+              ],
+              "font_size": 10.0,
+              "font_name": "Helvetica",
+              "style": [],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  231.61399841308594,
+                  156.5
+                ]
+              }
+            }
+          ],
+          "confidence": "high",
+          "order_index": 3,
+          "source_refs": [
+            "pymupdf:block:2:3"
+          ],
+          "metadata": {
+            "source_type": "pymupdf_text_block",
+            "original_order_index": 3,
+            "reading_order": {
+              "column_index": 0,
+              "strategy": "simple_column_gap"
+            }
+          }
+        },
+        {
+          "id": "p2_b4",
+          "type": "heading",
+          "page_number": 2,
+          "text": {
+            "raw_text": "2. Financial Results",
+            "normalized_text": "2. Financial Results",
+            "unicode_form": "NFC",
+            "width_normalized": false,
+            "simplified_traditional_converted": false
+          },
+          "bbox": [
+            56.0,
+            202.8800048828125,
+            205.39199829101562,
+            224.91200256347656
+          ],
+          "spans": [
+            {
+              "id": "p2_s1_3",
+              "text": {
+                "raw_text": "2. Financial Results",
+                "normalized_text": "2. Financial Results",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                202.8800048828125,
+                205.39199829101562,
+                224.91200256347656
+              ],
+              "font_size": 16.0,
+              "font_name": "Helvetica-Bold",
+              "style": [
+                "bold"
+              ],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  220.0
+                ]
+              }
+            }
+          ],
+          "confidence": "high",
+          "order_index": 4,
+          "source_refs": [
+            "pymupdf:block:2:4"
+          ],
+          "metadata": {
+            "source_type": "pymupdf_text_block",
+            "original_order_index": 4,
+            "reading_order": {
+              "column_index": 0,
+              "strategy": "simple_column_gap"
+            },
+            "layout_classification": {
+              "previous_type": "text",
+              "strategy": "font_size_and_page_position",
+              "median_font_size": 10.0,
+              "block_font_size": 16.0
+            }
+          }
+        },
+        {
+          "id": "p2_table1",
+          "type": "table",
+          "page_number": 2,
+          "text": {
+            "raw_text": "Region | Revenue (M) | Growth | Share\nAsia-Pacific | 412.5 | 18% | 41%\nEurope | 301.2 | 9% | 30%\nAmericas | 289.9 | 6% | 29%",
+            "normalized_text": "Region | Revenue (M) | Growth | Share\nAsia-Pacific | 412.5 | 18% | 41%\nEurope | 301.2 | 9% | 30%\nAmericas | 289.9 | 6% | 29%",
+            "unicode_form": "NFC",
+            "width_normalized": false,
+            "simplified_traditional_converted": false
+          },
+          "bbox": [
+            56.0,
+            240.0,
+            486.0,
+            328.0
+          ],
+          "spans": [],
+          "confidence": "medium",
+          "order_index": 5,
+          "source_refs": [
+            "pymupdf:block:2:5",
+            "pymupdf:block:2:6",
+            "pymupdf:block:2:7",
+            "pymupdf:block:2:8"
+          ],
+          "metadata": {
+            "source_type": "pymupdf_table",
+            "table_rows": [
+              [
+                "Region",
+                "Revenue (M)",
+                "Growth",
+                "Share"
+              ],
+              [
+                "Asia-Pacific",
+                "412.5",
+                "18%",
+                "41%"
+              ],
+              [
+                "Europe",
+                "301.2",
+                "9%",
+                "30%"
+              ],
+              [
+                "Americas",
+                "289.9",
+                "6%",
+                "29%"
+              ]
+            ],
+            "source_block_ids": [
+              "p2_b5",
+              "p2_b6",
+              "p2_b7",
+              "p2_b8"
+            ],
+            "source_blocks": [
+              {
+                "id": "p2_b5",
+                "bbox": [
+                  62.0,
+                  245.3699951171875,
+                  427.010986328125,
+                  257.76300048828125
+                ],
+                "text": "RegionRevenue (M)GrowthShare",
+                "source_refs": [
+                  "pymupdf:block:2:5"
+                ]
+              },
+              {
+                "id": "p2_b6",
+                "bbox": [
+                  62.0,
+                  267.32501220703125,
+                  420.0090026855469,
+                  279.6910095214844
+                ],
+                "text": "Asia-Pacific412.518%41%",
+                "source_refs": [
+                  "pymupdf:block:2:6"
+                ]
+              },
+              {
+                "id": "p2_b7",
+                "bbox": [
+                  62.0,
+                  289.32501220703125,
+                  420.0090026855469,
+                  301.6910095214844
+                ],
+                "text": "Europe301.29%30%",
+                "source_refs": [
+                  "pymupdf:block:2:7"
+                ]
+              },
+              {
+                "id": "p2_b8",
+                "bbox": [
+                  62.0,
+                  311.32501220703125,
+                  420.0090026855469,
+                  323.6910095214844
+                ],
+                "text": "Americas289.96%29%",
+                "source_refs": [
+                  "pymupdf:block:2:8"
+                ]
+              }
+            ],
+            "extraction_strategy": "pymupdf_find_tables",
+            "original_order_index": 5,
+            "reading_order": {
+              "column_index": 0,
+              "strategy": "simple_column_gap"
+            },
+            "table_id": "table_p2_table1"
+          }
+        },
+        {
+          "id": "p2_b9",
+          "type": "text",
+          "page_number": 2,
+          "text": {
+            "raw_text": "Gross margin improved by two percentage points as raw-material costs stabilized. Operating expensesremained flat in absolute terms.",
+            "normalized_text": "Gross margin improved by two percentage points as raw-material costs stabilized. Operating expensesremained flat in absolute terms.",
+            "unicode_form": "NFC",
+            "width_normalized": false,
+            "simplified_traditional_converted": false
+          },
+          "bbox": [
+            56.0,
+            340.0,
+            510.6098327636719,
+            368.510498046875
+          ],
+          "spans": [
+            {
+              "id": "p2_s1_8",
+              "text": {
+                "raw_text": "Gross margin improved by two percentage points as raw-material costs stabilized. Operating expenses",
+                "normalized_text": "Gross margin improved by two percentage points as raw-material costs stabilized. Operating expenses",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                340.0,
+                510.6098327636719,
+                353.739990234375
+              ],
+              "font_size": 10.0,
+              "font_name": "Helvetica",
+              "style": [],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  350.75
+                ]
+              }
+            },
+            {
+              "id": "p2_s2_8",
+              "text": {
+                "raw_text": "remained flat in absolute terms.",
+                "normalized_text": "remained flat in absolute terms.",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                354.7705078125,
+                195.49996948242188,
+                368.510498046875
+              ],
+              "font_size": 10.0,
+              "font_name": "Helvetica",
+              "style": [],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  365.5205078125
+                ]
+              }
+            }
+          ],
+          "confidence": "high",
+          "order_index": 6,
+          "source_refs": [
+            "pymupdf:block:2:9"
+          ],
+          "metadata": {
+            "source_type": "pymupdf_text_block",
+            "original_order_index": 9,
+            "reading_order": {
+              "column_index": 0,
+              "strategy": "simple_column_gap"
+            }
+          }
+        },
+        {
+          "id": "p2_b10",
+          "type": "text",
+          "page_number": 2,
+          "text": {
+            "raw_text": "1  Revenue figures are unaudited management estimates.",
+            "normalized_text": "1  Revenue figures are unaudited management estimates.",
+            "unicode_form": "NFC",
+            "width_normalized": false,
+            "simplified_traditional_converted": false
+          },
+          "bbox": [
+            56.0,
+            762.8624877929688,
+            273.6585388183594,
+            778.54150390625
+          ],
+          "spans": [
+            {
+              "id": "p2_s1_9",
+              "text": {
+                "raw_text": "1",
+                "normalized_text": "1",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                765.0125122070312,
+                59.61399841308594,
+                773.9434814453125
+              ],
+              "font_size": 6.5,
+              "font_name": "Helvetica",
+              "style": [],
+              "language": {
+                "language": "auto",
+                "script": null,
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  772.0
+                ]
+              }
+            },
+            {
+              "id": "p2_s2_9",
+              "text": {
+                "raw_text": "  Revenue figures are unaudited management estimates.",
+                "normalized_text": "  Revenue figures are unaudited management estimates.",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                59.61399841308594,
+                762.8624877929688,
+                273.6585388183594,
+                778.54150390625
+              ],
+              "font_size": 8.5,
+              "font_name": "Helvetica",
+              "style": [],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  59.61399841308594,
+                  772.0
+                ]
+              }
+            }
+          ],
+          "confidence": "high",
+          "order_index": 7,
+          "source_refs": [
+            "pymupdf:block:2:10"
+          ],
+          "metadata": {
+            "source_type": "pymupdf_text_block",
+            "original_order_index": 10,
+            "reading_order": {
+              "column_index": 0,
+              "strategy": "simple_column_gap"
+            }
+          }
+        }
+      ],
+      "images": [],
+      "metadata": {
+        "label": "",
+        "links": [],
+        "annotations": []
+      }
+    },
+    {
+      "id": "page_3",
+      "page_number": 3,
+      "width": 595.0,
+      "height": 842.0,
+      "rotation": 0,
+      "blocks": [
+        {
+          "id": "p3_b1",
+          "type": "heading",
+          "page_number": 3,
+          "text": {
+            "raw_text": "3. Outlook",
+            "normalized_text": "3. Outlook",
+            "unicode_form": "NFC",
+            "width_normalized": false,
+            "simplified_traditional_converted": false
+          },
+          "bbox": [
+            56.0,
+            72.87999725341797,
+            134.24000549316406,
+            94.91200256347656
+          ],
+          "spans": [
+            {
+              "id": "p3_s1_0",
+              "text": {
+                "raw_text": "3. Outlook",
+                "normalized_text": "3. Outlook",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                72.87999725341797,
+                134.24000549316406,
+                94.91200256347656
+              ],
+              "font_size": 16.0,
+              "font_name": "Helvetica-Bold",
+              "style": [
+                "bold"
+              ],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  90.0
+                ]
+              }
+            }
+          ],
+          "confidence": "high",
+          "order_index": 1,
+          "source_refs": [
+            "pymupdf:block:3:1"
+          ],
+          "metadata": {
+            "source_type": "pymupdf_text_block",
+            "original_order_index": 1,
+            "reading_order": {
+              "column_index": 0,
+              "strategy": "simple_column_gap"
+            },
+            "layout_classification": {
+              "previous_type": "text",
+              "strategy": "font_size_and_page_position",
+              "median_font_size": 10.0,
+              "block_font_size": 16.0
+            }
+          }
+        },
+        {
+          "id": "p3_table1",
+          "type": "table",
+          "page_number": 3,
+          "text": {
+            "raw_text": "Initiative | Target Year | Status\nCoating line 2 | Next year | Approved\nRecycled feedstock | Two years | Pilot",
+            "normalized_text": "Initiative | Target Year | Status\nCoating line 2 | Next year | Approved\nRecycled feedstock | Two years | Pilot",
+            "unicode_form": "NFC",
+            "width_normalized": false,
+            "simplified_traditional_converted": false
+          },
+          "bbox": [
+            56.0,
+            110.0,
+            456.0,
+            176.0
+          ],
+          "spans": [],
+          "confidence": "medium",
+          "order_index": 2,
+          "source_refs": [
+            "pymupdf:block:3:2",
+            "pymupdf:block:3:3",
+            "pymupdf:block:3:4"
+          ],
+          "metadata": {
+            "source_type": "pymupdf_table",
+            "table_rows": [
+              [
+                "Initiative",
+                "Target Year",
+                "Status"
+              ],
+              [
+                "Coating line 2",
+                "Next year",
+                "Approved"
+              ],
+              [
+                "Recycled feedstock",
+                "Two years",
+                "Pilot"
+              ]
+            ],
+            "source_block_ids": [
+              "p3_b2",
+              "p3_b3",
+              "p3_b4"
+            ],
+            "source_blocks": [
+              {
+                "id": "p3_b2",
+                "bbox": [
+                  62.0,
+                  115.37000274658203,
+                  389.5039978027344,
+                  127.76300048828125
+                ],
+                "text": "InitiativeTarget YearStatus",
+                "source_refs": [
+                  "pymupdf:block:3:2"
+                ]
+              },
+              {
+                "id": "p3_b3",
+                "bbox": [
+                  62.0,
+                  137.3249969482422,
+                  400.5199890136719,
+                  149.6909942626953
+                ],
+                "text": "Coating line 2Next yearApproved",
+                "source_refs": [
+                  "pymupdf:block:3:3"
+                ]
+              },
+              {
+                "id": "p3_b4",
+                "bbox": [
+                  62.0,
+                  159.3249969482422,
+                  379.5049743652344,
+                  171.6909942626953
+                ],
+                "text": "Recycled feedstockTwo yearsPilot",
+                "source_refs": [
+                  "pymupdf:block:3:4"
+                ]
+              }
+            ],
+            "extraction_strategy": "pymupdf_find_tables",
+            "original_order_index": 2,
+            "reading_order": {
+              "column_index": 0,
+              "strategy": "simple_column_gap"
+            },
+            "table_id": "table_p3_table1"
+          }
+        },
+        {
+          "id": "p3_b5",
+          "type": "text",
+          "page_number": 3,
+          "text": {
+            "raw_text": "Management expects demand to remain firm. Capacity utilisation is projected to stay above ninety percentthrough the planning horizon, supported by the order backlog carried into the new fiscal year.",
+            "normalized_text": "Management expects demand to remain firm. Capacity utilisation is projected to stay above ninety percentthrough the planning horizon, supported by the order backlog carried into the new fiscal year.",
+            "unicode_form": "NFC",
+            "width_normalized": false,
+            "simplified_traditional_converted": false
+          },
+          "bbox": [
+            56.0,
+            190.0,
+            525.0899047851562,
+            218.51051330566406
+          ],
+          "spans": [
+            {
+              "id": "p3_s1_4",
+              "text": {
+                "raw_text": "Management expects demand to remain firm. Capacity utilisation is projected to stay above ninety percent",
+                "normalized_text": "Management expects demand to remain firm. Capacity utilisation is projected to stay above ninety percent",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                190.0,
+                525.0899047851562,
+                203.74000549316406
+              ],
+              "font_size": 10.0,
+              "font_name": "Helvetica",
+              "style": [],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  200.75
+                ]
+              }
+            },
+            {
+              "id": "p3_s2_4",
+              "text": {
+                "raw_text": "through the planning horizon, supported by the order backlog carried into the new fiscal year.",
+                "normalized_text": "through the planning horizon, supported by the order backlog carried into the new fiscal year.",
+                "unicode_form": "NFC",
+                "width_normalized": false,
+                "simplified_traditional_converted": false
+              },
+              "bbox": [
+                56.0,
+                204.7705078125,
+                466.75982666015625,
+                218.51051330566406
+              ],
+              "font_size": 10.0,
+              "font_name": "Helvetica",
+              "style": [],
+              "language": {
+                "language": "en",
+                "script": "Latin",
+                "text_direction": "ltr"
+              },
+              "metadata": {
+                "origin": [
+                  56.0,
+                  215.5205078125
+                ]
+              }
+            }
+          ],
+          "confidence": "high",
+          "order_index": 3,
+          "source_refs": [
+            "pymupdf:block:3:5"
+          ],
+          "metadata": {
+            "source_type": "pymupdf_text_block",
+            "original_order_index": 5,
+            "reading_order": {
+              "column_index": 0,
+              "strategy": "simple_column_gap"
+            }
+          }
+        }
+      ],
+      "images": [],
+      "metadata": {
+        "label": "",
+        "links": [],
+        "annotations": []
+      }
+    }
+  ],
+  "tables": [
+    {
+      "id": "table_p2_table1",
+      "block_id": "p2_table1",
+      "rows": [
+        [
+          "Region",
+          "Revenue (M)",
+          "Growth",
+          "Share"
+        ],
+        [
+          "Asia-Pacific",
+          "412.5",
+          "18%",
+          "41%"
+        ],
+        [
+          "Europe",
+          "301.2",
+          "9%",
+          "30%"
+        ],
+        [
+          "Americas",
+          "289.9",
+          "6%",
+          "29%"
+        ]
+      ],
+      "html": null,
+      "markdown": "| Region | Revenue (M) | Growth | Share |\n| --- | --- | --- | --- |\n| Asia-Pacific | 412.5 | 18% | 41% |\n| Europe | 301.2 | 9% | 30% |\n| Americas | 289.9 | 6% | 29% |",
+      "confidence": "medium",
+      "metadata": {
+        "source": "block_metadata_table_rows",
+        "source_page": 2,
+        "source_block_id": "p2_table1"
+      }
+    },
+    {
+      "id": "table_p3_table1",
+      "block_id": "p3_table1",
+      "rows": [
+        [
+          "Initiative",
+          "Target Year",
+          "Status"
+        ],
+        [
+          "Coating line 2",
+          "Next year",
+          "Approved"
+        ],
+        [
+          "Recycled feedstock",
+          "Two years",
+          "Pilot"
+        ]
+      ],
+      "html": null,
+      "markdown": "| Initiative | Target Year | Status |\n| --- | --- | --- |\n| Coating line 2 | Next year | Approved |\n| Recycled feedstock | Two years | Pilot |",
+      "confidence": "medium",
+      "metadata": {
+        "source": "block_metadata_table_rows",
+        "source_page": 3,
+        "source_block_id": "p3_table1"
+      }
+    }
+  ],
+  "relations": [
+    {
+      "id": "rel_toc_1",
+      "type": "toc_item_to_heading",
+      "from_id": "p1_b4",
+      "to_id": "p2_b1",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "heading_title_exact_match",
+        "title=1. Overview"
+      ],
+      "metadata": {
+        "toc_title": "1. Overview",
+        "target_page": 2,
+        "stage": "toc_linking"
+      }
+    },
+    {
+      "id": "rel_toc_2",
+      "type": "toc_item_to_heading",
+      "from_id": "p1_b5",
+      "to_id": "p2_b4",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "heading_title_exact_match",
+        "title=2. Financial Results"
+      ],
+      "metadata": {
+        "toc_title": "2. Financial Results",
+        "target_page": 2,
+        "stage": "toc_linking"
+      }
+    },
+    {
+      "id": "rel_toc_3",
+      "type": "toc_item_to_heading",
+      "from_id": "p1_b6",
+      "to_id": "p3_b1",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "heading_title_exact_match",
+        "title=3. Outlook"
+      ],
+      "metadata": {
+        "toc_title": "3. Outlook",
+        "target_page": 3,
+        "stage": "toc_linking"
+      }
+    },
+    {
+      "id": "rel_toc_4",
+      "type": "toc_item_to_heading",
+      "from_id": "doc_c56f7c73b96542389c4d1701906a62d2#toc:1",
+      "to_id": "p2_b1",
+      "confidence": "low",
+      "state": "inferred",
+      "evidence": [
+        "heading_page_match",
+        "title=Overview"
+      ],
+      "metadata": {
+        "toc_title": "Overview",
+        "target_page": 2,
+        "stage": "toc_linking"
+      }
+    },
+    {
+      "id": "rel_toc_5",
+      "type": "toc_item_to_heading",
+      "from_id": "doc_c56f7c73b96542389c4d1701906a62d2#toc:2",
+      "to_id": "p2_b1",
+      "confidence": "low",
+      "state": "inferred",
+      "evidence": [
+        "heading_page_match",
+        "title=Financial Results"
+      ],
+      "metadata": {
+        "toc_title": "Financial Results",
+        "target_page": 2,
+        "stage": "toc_linking"
+      }
+    },
+    {
+      "id": "rel_toc_6",
+      "type": "toc_item_to_heading",
+      "from_id": "doc_c56f7c73b96542389c4d1701906a62d2#toc:3",
+      "to_id": "p3_b1",
+      "confidence": "low",
+      "state": "inferred",
+      "evidence": [
+        "heading_page_match",
+        "title=Outlook"
+      ],
+      "metadata": {
+        "toc_title": "Outlook",
+        "target_page": 3,
+        "stage": "toc_linking"
+      }
+    },
+    {
+      "id": "rel_block_parent_db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0002",
+      "type": "block_parent_child",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_root",
+      "to_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0002",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_parent_id"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "child_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0002"
+      }
+    },
+    {
+      "id": "rel_block_source_db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0002_p1_b1",
+      "type": "block_to_source",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0002",
+      "to_id": "p1_b1",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_source_block_ids"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "source_block_id": "p1_b1"
+      }
+    },
+    {
+      "id": "rel_block_parent_db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0003",
+      "type": "block_parent_child",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_root",
+      "to_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0003",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_parent_id"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "child_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0003"
+      }
+    },
+    {
+      "id": "rel_block_source_db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0003_p1_b2",
+      "type": "block_to_source",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0003",
+      "to_id": "p1_b2",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_source_block_ids"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "source_block_id": "p1_b2"
+      }
+    },
+    {
+      "id": "rel_block_parent_db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0004",
+      "type": "block_parent_child",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_root",
+      "to_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0004",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_parent_id"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "child_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0004"
+      }
+    },
+    {
+      "id": "rel_block_source_db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0004_p1_b3",
+      "type": "block_to_source",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0004",
+      "to_id": "p1_b3",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_source_block_ids"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "source_block_id": "p1_b3"
+      }
+    },
+    {
+      "id": "rel_block_parent_db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0005",
+      "type": "block_parent_child",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_root",
+      "to_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0005",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_parent_id"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "child_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0005"
+      }
+    },
+    {
+      "id": "rel_block_source_db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0005_p2_b1",
+      "type": "block_to_source",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0005",
+      "to_id": "p2_b1",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_source_block_ids"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "source_block_id": "p2_b1"
+      }
+    },
+    {
+      "id": "rel_block_parent_db_doc_c56f7c73b96542389c4d1701906a62d2_p2_1",
+      "type": "block_parent_child",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0005",
+      "to_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_1",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_parent_id"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "child_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_1"
+      }
+    },
+    {
+      "id": "rel_block_parent_db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b2",
+      "type": "block_parent_child",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_1",
+      "to_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b2",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_parent_id"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "child_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b2"
+      }
+    },
+    {
+      "id": "rel_block_source_db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b2_p2_b2",
+      "type": "block_to_source",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b2",
+      "to_id": "p2_b2",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_source_block_ids"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "source_block_id": "p2_b2"
+      }
+    },
+    {
+      "id": "rel_block_parent_db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b3",
+      "type": "block_parent_child",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_1",
+      "to_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b3",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_parent_id"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "child_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b3"
+      }
+    },
+    {
+      "id": "rel_block_source_db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b3_p2_b3",
+      "type": "block_to_source",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b3",
+      "to_id": "p2_b3",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_source_block_ids"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "source_block_id": "p2_b3"
+      }
+    },
+    {
+      "id": "rel_block_parent_db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0009",
+      "type": "block_parent_child",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_root",
+      "to_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0009",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_parent_id"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "child_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0009"
+      }
+    },
+    {
+      "id": "rel_block_source_db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0009_p2_b4",
+      "type": "block_to_source",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0009",
+      "to_id": "p2_b4",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_source_block_ids"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "source_block_id": "p2_b4"
+      }
+    },
+    {
+      "id": "rel_block_parent_db_doc_c56f7c73b96542389c4d1701906a62d2_p2_2",
+      "type": "block_parent_child",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0009",
+      "to_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_2",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_parent_id"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "child_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_2"
+      }
+    },
+    {
+      "id": "rel_block_parent_db_doc_c56f7c73b96542389c4d1701906a62d2_p2_table1",
+      "type": "block_parent_child",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_2",
+      "to_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_table1",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_parent_id"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "child_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_table1"
+      }
+    },
+    {
+      "id": "rel_block_source_db_doc_c56f7c73b96542389c4d1701906a62d2_p2_table1_p2_table1",
+      "type": "block_to_source",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_table1",
+      "to_id": "p2_table1",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_source_block_ids"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "source_block_id": "p2_table1"
+      }
+    },
+    {
+      "id": "rel_block_parent_db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b9",
+      "type": "block_parent_child",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_2",
+      "to_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b9",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_parent_id"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "child_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b9"
+      }
+    },
+    {
+      "id": "rel_block_source_db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b9_p2_b9",
+      "type": "block_to_source",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b9",
+      "to_id": "p2_b9",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_source_block_ids"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "source_block_id": "p2_b9"
+      }
+    },
+    {
+      "id": "rel_block_parent_db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b10",
+      "type": "block_parent_child",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_2",
+      "to_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b10",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_parent_id"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "child_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b10"
+      }
+    },
+    {
+      "id": "rel_block_source_db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b10_p2_b10",
+      "type": "block_to_source",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b10",
+      "to_id": "p2_b10",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_source_block_ids"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "source_block_id": "p2_b10"
+      }
+    },
+    {
+      "id": "rel_block_parent_db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0014",
+      "type": "block_parent_child",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_root",
+      "to_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0014",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_parent_id"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "child_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0014"
+      }
+    },
+    {
+      "id": "rel_block_source_db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0014_p3_b1",
+      "type": "block_to_source",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0014",
+      "to_id": "p3_b1",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_source_block_ids"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "source_block_id": "p3_b1"
+      }
+    },
+    {
+      "id": "rel_block_parent_db_doc_c56f7c73b96542389c4d1701906a62d2_p3_3",
+      "type": "block_parent_child",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0014",
+      "to_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_3",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_parent_id"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "child_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_3"
+      }
+    },
+    {
+      "id": "rel_block_parent_db_doc_c56f7c73b96542389c4d1701906a62d2_p3_table1",
+      "type": "block_parent_child",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_3",
+      "to_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_table1",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_parent_id"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "child_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_table1"
+      }
+    },
+    {
+      "id": "rel_block_source_db_doc_c56f7c73b96542389c4d1701906a62d2_p3_table1_p3_table1",
+      "type": "block_to_source",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_table1",
+      "to_id": "p3_table1",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_source_block_ids"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "source_block_id": "p3_table1"
+      }
+    },
+    {
+      "id": "rel_block_parent_db_doc_c56f7c73b96542389c4d1701906a62d2_p3_b5",
+      "type": "block_parent_child",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_3",
+      "to_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_b5",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_parent_id"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "child_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_b5"
+      }
+    },
+    {
+      "id": "rel_block_source_db_doc_c56f7c73b96542389c4d1701906a62d2_p3_b5_p3_b5",
+      "type": "block_to_source",
+      "from_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_b5",
+      "to_id": "p3_b5",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "document_block_source_block_ids"
+      ],
+      "metadata": {
+        "stage": "block_tree",
+        "source_block_id": "p3_b5"
+      }
+    },
+    {
+      "id": "rel_chunk_chunk_doc_c56f7c73b96542389c4d1701906a62d2_0001_1",
+      "type": "chunk_to_source",
+      "from_id": "chunk_doc_c56f7c73b96542389c4d1701906a62d2_0001",
+      "to_id": "p2_b2",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "chunk_source_block_ids",
+        "source_block_id=p2_b2"
+      ],
+      "metadata": {
+        "source_block_id": "p2_b2",
+        "stage": "provenance_linking"
+      }
+    },
+    {
+      "id": "rel_chunk_chunk_doc_c56f7c73b96542389c4d1701906a62d2_0002_1",
+      "type": "chunk_to_source",
+      "from_id": "chunk_doc_c56f7c73b96542389c4d1701906a62d2_0002",
+      "to_id": "p2_b3",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "chunk_source_block_ids",
+        "source_block_id=p2_b3"
+      ],
+      "metadata": {
+        "source_block_id": "p2_b3",
+        "stage": "provenance_linking"
+      }
+    },
+    {
+      "id": "rel_chunk_chunk_doc_c56f7c73b96542389c4d1701906a62d2_0003_1",
+      "type": "chunk_to_source",
+      "from_id": "chunk_doc_c56f7c73b96542389c4d1701906a62d2_0003",
+      "to_id": "p2_table1",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "chunk_source_block_ids",
+        "source_block_id=p2_table1"
+      ],
+      "metadata": {
+        "source_block_id": "p2_table1",
+        "stage": "provenance_linking"
+      }
+    },
+    {
+      "id": "rel_chunk_chunk_doc_c56f7c73b96542389c4d1701906a62d2_0004_1",
+      "type": "chunk_to_source",
+      "from_id": "chunk_doc_c56f7c73b96542389c4d1701906a62d2_0004",
+      "to_id": "p2_b9",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "chunk_source_block_ids",
+        "source_block_id=p2_b9"
+      ],
+      "metadata": {
+        "source_block_id": "p2_b9",
+        "stage": "provenance_linking"
+      }
+    },
+    {
+      "id": "rel_chunk_chunk_doc_c56f7c73b96542389c4d1701906a62d2_0005_1",
+      "type": "chunk_to_source",
+      "from_id": "chunk_doc_c56f7c73b96542389c4d1701906a62d2_0005",
+      "to_id": "p2_b10",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "chunk_source_block_ids",
+        "source_block_id=p2_b10"
+      ],
+      "metadata": {
+        "source_block_id": "p2_b10",
+        "stage": "provenance_linking"
+      }
+    },
+    {
+      "id": "rel_chunk_chunk_doc_c56f7c73b96542389c4d1701906a62d2_0006_1",
+      "type": "chunk_to_source",
+      "from_id": "chunk_doc_c56f7c73b96542389c4d1701906a62d2_0006",
+      "to_id": "p3_table1",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "chunk_source_block_ids",
+        "source_block_id=p3_table1"
+      ],
+      "metadata": {
+        "source_block_id": "p3_table1",
+        "stage": "provenance_linking"
+      }
+    },
+    {
+      "id": "rel_chunk_chunk_doc_c56f7c73b96542389c4d1701906a62d2_0007_1",
+      "type": "chunk_to_source",
+      "from_id": "chunk_doc_c56f7c73b96542389c4d1701906a62d2_0007",
+      "to_id": "p3_b5",
+      "confidence": "high",
+      "state": "inferred",
+      "evidence": [
+        "chunk_source_block_ids",
+        "source_block_id=p3_b5"
+      ],
+      "metadata": {
+        "source_block_id": "p3_b5",
+        "stage": "provenance_linking"
+      }
+    }
+  ],
+  "document_blocks": [
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_root",
+      "type": "document",
+      "title": "fixtures\\pdf\\real\\annual-report.pdf",
+      "parent_id": null,
+      "child_ids": [
+        "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0002",
+        "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0003",
+        "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0004",
+        "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0005",
+        "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0009",
+        "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0014"
+      ],
+      "source_block_ids": [],
+      "source_chunk_ids": [],
+      "page_refs": [
+        1,
+        2,
+        3
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          96.45999908447266,
+          387.2759094238281,
+          126.75399780273438
+        ],
+        [
+          56.0,
+          136.08999633789062,
+          180.24098205566406,
+          153.69200134277344
+        ],
+        [
+          56.0,
+          205.02000427246094,
+          116.66201782226562,
+          224.29800415039062
+        ],
+        [
+          56.0,
+          72.87999725341797,
+          144.94400024414062,
+          94.91200256347656
+        ],
+        [
+          56.0,
+          202.8800048828125,
+          205.39199829101562,
+          224.91200256347656
+        ],
+        [
+          56.0,
+          72.87999725341797,
+          134.24000549316406,
+          94.91200256347656
+        ]
+      ],
+      "text_preview": null,
+      "content_hash": null,
+      "depth": 0,
+      "order_index": 1,
+      "confidence": "high",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "build_strategy": "document_root",
+        "furniture": [],
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.1, PDF p.2, PDF p.3",
+        "keyword_terms": [
+          "the",
+          "fiscal",
+          "year",
+          "materials",
+          "management",
+          "asia-pacific",
+          "revenue",
+          "coating",
+          "two",
+          "aurora",
+          "by",
+          "new"
+        ],
+        "new_word_terms": [],
+        "search_terms": [
+          "fixtures\\pdf\\real\\annual-report.pdf",
+          "the",
+          "fiscal",
+          "year",
+          "materials",
+          "management",
+          "asia-pacific",
+          "revenue",
+          "coating",
+          "two",
+          "aurora",
+          "by",
+          "new"
+        ],
+        "keyword_thresholds": {
+          "min_support": 1,
+          "min_freq": 2,
+          "leaf_count": 10,
+          "text_length": 948,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "the": 6,
+            "year": 4,
+            "fiscal": 3,
+            "two": 3,
+            "by": 3,
+            "aurora": 2,
+            "materials": 2,
+            "for": 2,
+            "coating": 2,
+            "new": 2,
+            "asia-pacific": 2,
+            "revenue": 2,
+            "management": 2,
+            "to": 2,
+            "annual": 1,
+            "report": 1,
+            "summary": 1,
+            "contents": 1,
+            "develops": 1,
+            "high-durability": 1,
+            "composite": 1,
+            "panels": 1,
+            "construction": 1,
+            "sector": 1,
+            "during": 1,
+            "yearthe": 1,
+            "company": 1,
+            "expanded": 1,
+            "its": 1,
+            "facility": 1,
+            "and": 1,
+            "completed": 1,
+            "certification": 1,
+            "panel": 1,
+            "families": 1,
+            "revenuegrew": 1,
+            "across": 1,
+            "all": 1,
+            "regions": 1,
+            "led": 1,
+            "segment": 1,
+            "region": 1,
+            "growth": 1,
+            "share": 1,
+            "europe": 1,
+            "americas": 1,
+            "gross": 1,
+            "margin": 1,
+            "improved": 1,
+            "percentage": 1,
+            "points": 1,
+            "as": 1,
+            "raw-material": 1,
+            "costs": 1,
+            "stabilized": 1,
+            "operating": 1,
+            "expensesremained": 1,
+            "flat": 1,
+            "in": 1,
+            "absolute": 1,
+            "terms": 1,
+            "figures": 1,
+            "are": 1,
+            "unaudited": 1,
+            "estimates": 1,
+            "initiative": 1,
+            "target": 1,
+            "status": 1,
+            "line": 1,
+            "next": 1,
+            "approved": 1,
+            "recycled": 1,
+            "feedstock": 1,
+            "years": 1,
+            "pilot": 1,
+            "expects": 1,
+            "demand": 1,
+            "remain": 1,
+            "firm": 1,
+            "capacity": 1,
+            "utilisation": 1,
+            "is": 1,
+            "projected": 1,
+            "stay": 1,
+            "above": 1,
+            "ninety": 1,
+            "percentthrough": 1,
+            "planning": 1,
+            "horizon": 1,
+            "supported": 1,
+            "order": 1,
+            "backlog": 1,
+            "carried": 1,
+            "into": 1
+          },
+          "child_support": {
+            "fiscal": 3,
+            "year": 3,
+            "the": 3,
+            "two": 3,
+            "by": 3,
+            "aurora": 2,
+            "materials": 2,
+            "coating": 2,
+            "new": 2,
+            "asia-pacific": 2,
+            "revenue": 2,
+            "management": 2,
+            "annual": 1,
+            "report": 1,
+            "summary": 1,
+            "contents": 1,
+            "develops": 1,
+            "high-durability": 1,
+            "composite": 1,
+            "panels": 1,
+            "for": 1,
+            "construction": 1,
+            "sector": 1,
+            "during": 1,
+            "yearthe": 1,
+            "company": 1,
+            "expanded": 1,
+            "its": 1,
+            "facility": 1,
+            "and": 1,
+            "completed": 1,
+            "certification": 1,
+            "panel": 1,
+            "families": 1,
+            "revenuegrew": 1,
+            "across": 1,
+            "all": 1,
+            "regions": 1,
+            "led": 1,
+            "segment": 1,
+            "region": 1,
+            "growth": 1,
+            "share": 1,
+            "europe": 1,
+            "americas": 1,
+            "gross": 1,
+            "margin": 1,
+            "improved": 1,
+            "percentage": 1,
+            "points": 1,
+            "as": 1,
+            "raw-material": 1,
+            "costs": 1,
+            "stabilized": 1,
+            "operating": 1,
+            "expensesremained": 1,
+            "flat": 1,
+            "in": 1,
+            "absolute": 1,
+            "terms": 1,
+            "figures": 1,
+            "are": 1,
+            "unaudited": 1,
+            "estimates": 1,
+            "initiative": 1,
+            "target": 1,
+            "status": 1,
+            "line": 1,
+            "next": 1,
+            "approved": 1,
+            "recycled": 1,
+            "feedstock": 1,
+            "years": 1,
+            "pilot": 1,
+            "expects": 1,
+            "demand": 1,
+            "to": 1,
+            "remain": 1,
+            "firm": 1,
+            "capacity": 1,
+            "utilisation": 1,
+            "is": 1,
+            "projected": 1,
+            "stay": 1,
+            "above": 1,
+            "ninety": 1,
+            "percentthrough": 1,
+            "planning": 1,
+            "horizon": 1,
+            "supported": 1,
+            "order": 1,
+            "backlog": 1,
+            "carried": 1,
+            "into": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0002",
+      "type": "section",
+      "title": "Aurora Materials Annual Report",
+      "parent_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_root",
+      "child_ids": [],
+      "source_block_ids": [
+        "p1_b1"
+      ],
+      "source_chunk_ids": [],
+      "page_refs": [
+        1
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          96.45999908447266,
+          387.2759094238281,
+          126.75399780273438
+        ]
+      ],
+      "text_preview": "Aurora Materials Annual Report",
+      "content_hash": "d539502edeb632a9c0b5691ecb33c43556a1112ba6ce180230291103bd155a10",
+      "depth": 1,
+      "order_index": 2,
+      "confidence": "high",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "heading_level": 1,
+        "build_strategy": "heading_block",
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.1",
+        "source_range": null,
+        "keyword_terms": [],
+        "new_word_terms": [],
+        "search_terms": [
+          "Aurora Materials Annual Report"
+        ],
+        "keyword_thresholds": {
+          "min_support": 2,
+          "min_freq": 2,
+          "leaf_count": 1,
+          "text_length": 30,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "aurora": 1,
+            "materials": 1,
+            "annual": 1,
+            "report": 1
+          },
+          "child_support": {
+            "aurora": 1,
+            "materials": 1,
+            "annual": 1,
+            "report": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0003",
+      "type": "section",
+      "title": "Fiscal Year Summary",
+      "parent_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_root",
+      "child_ids": [],
+      "source_block_ids": [
+        "p1_b2"
+      ],
+      "source_chunk_ids": [],
+      "page_refs": [
+        1
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          136.08999633789062,
+          180.24098205566406,
+          153.69200134277344
+        ]
+      ],
+      "text_preview": "Fiscal Year Summary",
+      "content_hash": "08639f68636e4ae1cbb8526e1849c39bc156bc23175bf6ede012d67371d37b92",
+      "depth": 1,
+      "order_index": 3,
+      "confidence": "high",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "heading_level": 1,
+        "build_strategy": "heading_block",
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.1",
+        "source_range": null,
+        "keyword_terms": [],
+        "new_word_terms": [],
+        "search_terms": [
+          "Fiscal Year Summary"
+        ],
+        "keyword_thresholds": {
+          "min_support": 2,
+          "min_freq": 2,
+          "leaf_count": 1,
+          "text_length": 19,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "fiscal": 1,
+            "year": 1,
+            "summary": 1
+          },
+          "child_support": {
+            "fiscal": 1,
+            "year": 1,
+            "summary": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0004",
+      "type": "section",
+      "title": "Contents",
+      "parent_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_root",
+      "child_ids": [],
+      "source_block_ids": [
+        "p1_b3"
+      ],
+      "source_chunk_ids": [],
+      "page_refs": [
+        1
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          205.02000427246094,
+          116.66201782226562,
+          224.29800415039062
+        ]
+      ],
+      "text_preview": "Contents",
+      "content_hash": "437aea62a5bd6ad4762e494c81b88532809a231477c82bdecf6fd6636908b7ab",
+      "depth": 1,
+      "order_index": 4,
+      "confidence": "high",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "heading_level": 1,
+        "build_strategy": "heading_block",
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.1",
+        "source_range": null,
+        "keyword_terms": [],
+        "new_word_terms": [],
+        "search_terms": [
+          "Contents"
+        ],
+        "keyword_thresholds": {
+          "min_support": 2,
+          "min_freq": 2,
+          "leaf_count": 1,
+          "text_length": 8,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "contents": 1
+          },
+          "child_support": {
+            "contents": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0005",
+      "type": "section",
+      "title": "1. Overview",
+      "parent_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_root",
+      "child_ids": [
+        "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_1"
+      ],
+      "source_block_ids": [
+        "p2_b1"
+      ],
+      "source_chunk_ids": [],
+      "page_refs": [
+        2
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          72.87999725341797,
+          144.94400024414062,
+          94.91200256347656
+        ]
+      ],
+      "text_preview": "1. Overview",
+      "content_hash": "1fcb3bd0656d7cd18cd97fdb3ea4b0a89924a6bbd809f9945d4fc6a038e1654b",
+      "depth": 1,
+      "order_index": 5,
+      "confidence": "high",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "heading_level": 1,
+        "build_strategy": "heading_block",
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.2",
+        "source_range": null,
+        "keyword_terms": [
+          "the"
+        ],
+        "new_word_terms": [],
+        "search_terms": [
+          "1. Overview",
+          "the"
+        ],
+        "keyword_thresholds": {
+          "min_support": 2,
+          "min_freq": 2,
+          "leaf_count": 2,
+          "text_length": 274,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "the": 3,
+            "for": 2,
+            "aurora": 1,
+            "materials": 1,
+            "develops": 1,
+            "high-durability": 1,
+            "composite": 1,
+            "panels": 1,
+            "construction": 1,
+            "sector": 1,
+            "during": 1,
+            "fiscal": 1,
+            "yearthe": 1,
+            "company": 1,
+            "expanded": 1,
+            "its": 1,
+            "coating": 1,
+            "facility": 1,
+            "and": 1,
+            "completed": 1,
+            "certification": 1,
+            "two": 1,
+            "new": 1,
+            "panel": 1,
+            "families": 1,
+            "revenuegrew": 1,
+            "across": 1,
+            "all": 1,
+            "regions": 1,
+            "led": 1,
+            "by": 1,
+            "asia-pacific": 1,
+            "segment": 1
+          },
+          "child_support": {
+            "the": 2,
+            "aurora": 1,
+            "materials": 1,
+            "develops": 1,
+            "high-durability": 1,
+            "composite": 1,
+            "panels": 1,
+            "for": 1,
+            "construction": 1,
+            "sector": 1,
+            "during": 1,
+            "fiscal": 1,
+            "yearthe": 1,
+            "company": 1,
+            "expanded": 1,
+            "its": 1,
+            "coating": 1,
+            "facility": 1,
+            "and": 1,
+            "completed": 1,
+            "certification": 1,
+            "two": 1,
+            "new": 1,
+            "panel": 1,
+            "families": 1,
+            "revenuegrew": 1,
+            "across": 1,
+            "all": 1,
+            "regions": 1,
+            "led": 1,
+            "by": 1,
+            "asia-pacific": 1,
+            "segment": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_1",
+      "type": "page",
+      "title": "Page 2",
+      "parent_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0005",
+      "child_ids": [
+        "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b2",
+        "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b3"
+      ],
+      "source_block_ids": [],
+      "source_chunk_ids": [],
+      "page_refs": [
+        2
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          105.0,
+          535.0698852539062,
+          148.28102111816406
+        ],
+        [
+          228.0,
+          145.75,
+          381.8399658203125,
+          162.99000549316406
+        ]
+      ],
+      "text_preview": null,
+      "content_hash": null,
+      "depth": 2,
+      "order_index": 6,
+      "confidence": "high",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "build_strategy": "page_boundary",
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.2",
+        "keyword_terms": [
+          "the",
+          "for"
+        ],
+        "new_word_terms": [],
+        "search_terms": [
+          "Page 2",
+          "the",
+          "for"
+        ],
+        "keyword_thresholds": {
+          "min_support": 1,
+          "min_freq": 2,
+          "leaf_count": 2,
+          "text_length": 274,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "the": 3,
+            "for": 2,
+            "aurora": 1,
+            "materials": 1,
+            "develops": 1,
+            "high-durability": 1,
+            "composite": 1,
+            "panels": 1,
+            "construction": 1,
+            "sector": 1,
+            "during": 1,
+            "fiscal": 1,
+            "yearthe": 1,
+            "company": 1,
+            "expanded": 1,
+            "its": 1,
+            "coating": 1,
+            "facility": 1,
+            "and": 1,
+            "completed": 1,
+            "certification": 1,
+            "two": 1,
+            "new": 1,
+            "panel": 1,
+            "families": 1,
+            "revenuegrew": 1,
+            "across": 1,
+            "all": 1,
+            "regions": 1,
+            "led": 1,
+            "by": 1,
+            "asia-pacific": 1,
+            "segment": 1
+          },
+          "child_support": {
+            "the": 2,
+            "aurora": 1,
+            "materials": 1,
+            "develops": 1,
+            "high-durability": 1,
+            "composite": 1,
+            "panels": 1,
+            "for": 1,
+            "construction": 1,
+            "sector": 1,
+            "during": 1,
+            "fiscal": 1,
+            "yearthe": 1,
+            "company": 1,
+            "expanded": 1,
+            "its": 1,
+            "coating": 1,
+            "facility": 1,
+            "and": 1,
+            "completed": 1,
+            "certification": 1,
+            "two": 1,
+            "new": 1,
+            "panel": 1,
+            "families": 1,
+            "revenuegrew": 1,
+            "across": 1,
+            "all": 1,
+            "regions": 1,
+            "led": 1,
+            "by": 1,
+            "asia-pacific": 1,
+            "segment": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b2",
+      "type": "paragraph",
+      "title": null,
+      "parent_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_1",
+      "child_ids": [],
+      "source_block_ids": [
+        "p2_b2"
+      ],
+      "source_chunk_ids": [],
+      "page_refs": [
+        2
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          105.0,
+          535.0698852539062,
+          148.28102111816406
+        ]
+      ],
+      "text_preview": "Aurora Materials develops high-durability composite panels for the construction sector. During the fiscal yearthe company expanded its coating facility and comp",
+      "content_hash": "2e26bbed7b5ec6c94e991c24ea37560efdebbfe474397ef0bb89057c637b4c00",
+      "depth": 3,
+      "order_index": 7,
+      "confidence": "high",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "source_block_type": "text",
+        "build_strategy": "page_local_block",
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.2",
+        "source_range": null,
+        "keyword_terms": [
+          "revenuegrew",
+          "materials",
+          "high-durability",
+          "families",
+          "facility",
+          "expanded",
+          "develops",
+          "construction",
+          "composite",
+          "completed",
+          "certification",
+          "yearthe"
+        ],
+        "new_word_terms": [],
+        "search_terms": [
+          "revenuegrew",
+          "materials",
+          "high-durability",
+          "families",
+          "facility",
+          "expanded",
+          "develops",
+          "construction",
+          "composite",
+          "completed",
+          "certification",
+          "yearthe"
+        ],
+        "keyword_thresholds": {
+          "min_support": 1,
+          "min_freq": 1,
+          "leaf_count": 1,
+          "text_length": 238,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "for": 2,
+            "the": 2,
+            "aurora": 1,
+            "materials": 1,
+            "develops": 1,
+            "high-durability": 1,
+            "composite": 1,
+            "panels": 1,
+            "construction": 1,
+            "sector": 1,
+            "during": 1,
+            "fiscal": 1,
+            "yearthe": 1,
+            "company": 1,
+            "expanded": 1,
+            "its": 1,
+            "coating": 1,
+            "facility": 1,
+            "and": 1,
+            "completed": 1,
+            "certification": 1,
+            "two": 1,
+            "new": 1,
+            "panel": 1,
+            "families": 1,
+            "revenuegrew": 1,
+            "across": 1,
+            "all": 1,
+            "regions": 1
+          },
+          "child_support": {
+            "aurora": 1,
+            "materials": 1,
+            "develops": 1,
+            "high-durability": 1,
+            "composite": 1,
+            "panels": 1,
+            "for": 1,
+            "the": 1,
+            "construction": 1,
+            "sector": 1,
+            "during": 1,
+            "fiscal": 1,
+            "yearthe": 1,
+            "company": 1,
+            "expanded": 1,
+            "its": 1,
+            "coating": 1,
+            "facility": 1,
+            "and": 1,
+            "completed": 1,
+            "certification": 1,
+            "two": 1,
+            "new": 1,
+            "panel": 1,
+            "families": 1,
+            "revenuegrew": 1,
+            "across": 1,
+            "all": 1,
+            "regions": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b3",
+      "type": "paragraph",
+      "title": null,
+      "parent_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_1",
+      "child_ids": [],
+      "source_block_ids": [
+        "p2_b3"
+      ],
+      "source_chunk_ids": [],
+      "page_refs": [
+        2
+      ],
+      "bbox_refs": [
+        [
+          228.0,
+          145.75,
+          381.8399658203125,
+          162.99000549316406
+        ]
+      ],
+      "text_preview": "1 , led by the Asia-Pacific segment.",
+      "content_hash": "a4fbb3b50504d27fd7a3ed3dadec7b3b09e155df2d27e78289d2747aae9ac77b",
+      "depth": 3,
+      "order_index": 8,
+      "confidence": "high",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "source_block_type": "text",
+        "build_strategy": "page_local_block",
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.2",
+        "source_range": null,
+        "keyword_terms": [
+          "asia-pacific",
+          "segment",
+          "the",
+          "led",
+          "by"
+        ],
+        "new_word_terms": [],
+        "search_terms": [
+          "asia-pacific",
+          "segment",
+          "the",
+          "led",
+          "by"
+        ],
+        "keyword_thresholds": {
+          "min_support": 1,
+          "min_freq": 1,
+          "leaf_count": 1,
+          "text_length": 36,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "led": 1,
+            "by": 1,
+            "the": 1,
+            "asia-pacific": 1,
+            "segment": 1
+          },
+          "child_support": {
+            "led": 1,
+            "by": 1,
+            "the": 1,
+            "asia-pacific": 1,
+            "segment": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0009",
+      "type": "section",
+      "title": "2. Financial Results",
+      "parent_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_root",
+      "child_ids": [
+        "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_2"
+      ],
+      "source_block_ids": [
+        "p2_b4"
+      ],
+      "source_chunk_ids": [],
+      "page_refs": [
+        2
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          202.8800048828125,
+          205.39199829101562,
+          224.91200256347656
+        ]
+      ],
+      "text_preview": "2. Financial Results",
+      "content_hash": "b2dcd02770476658168f0ca20f07e8e83e1d3bb7f76f12295393bb663167d964",
+      "depth": 1,
+      "order_index": 9,
+      "confidence": "high",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "heading_level": 1,
+        "build_strategy": "heading_block",
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.2",
+        "source_range": null,
+        "keyword_terms": [
+          "revenue"
+        ],
+        "new_word_terms": [],
+        "search_terms": [
+          "2. Financial Results",
+          "revenue"
+        ],
+        "keyword_thresholds": {
+          "min_support": 2,
+          "min_freq": 2,
+          "leaf_count": 3,
+          "text_length": 309,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "revenue": 2,
+            "region": 1,
+            "growth": 1,
+            "share": 1,
+            "asia-pacific": 1,
+            "europe": 1,
+            "americas": 1,
+            "gross": 1,
+            "margin": 1,
+            "improved": 1,
+            "by": 1,
+            "two": 1,
+            "percentage": 1,
+            "points": 1,
+            "as": 1,
+            "raw-material": 1,
+            "costs": 1,
+            "stabilized": 1,
+            "operating": 1,
+            "expensesremained": 1,
+            "flat": 1,
+            "in": 1,
+            "absolute": 1,
+            "terms": 1,
+            "figures": 1,
+            "are": 1,
+            "unaudited": 1,
+            "management": 1,
+            "estimates": 1
+          },
+          "child_support": {
+            "revenue": 2,
+            "region": 1,
+            "growth": 1,
+            "share": 1,
+            "asia-pacific": 1,
+            "europe": 1,
+            "americas": 1,
+            "gross": 1,
+            "margin": 1,
+            "improved": 1,
+            "by": 1,
+            "two": 1,
+            "percentage": 1,
+            "points": 1,
+            "as": 1,
+            "raw-material": 1,
+            "costs": 1,
+            "stabilized": 1,
+            "operating": 1,
+            "expensesremained": 1,
+            "flat": 1,
+            "in": 1,
+            "absolute": 1,
+            "terms": 1,
+            "figures": 1,
+            "are": 1,
+            "unaudited": 1,
+            "management": 1,
+            "estimates": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_2",
+      "type": "page",
+      "title": "Page 2",
+      "parent_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0009",
+      "child_ids": [
+        "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_table1",
+        "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b9",
+        "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b10"
+      ],
+      "source_block_ids": [],
+      "source_chunk_ids": [],
+      "page_refs": [
+        2
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          240.0,
+          486.0,
+          328.0
+        ],
+        [
+          56.0,
+          340.0,
+          510.6098327636719,
+          368.510498046875
+        ],
+        [
+          56.0,
+          762.8624877929688,
+          273.6585388183594,
+          778.54150390625
+        ]
+      ],
+      "text_preview": null,
+      "content_hash": null,
+      "depth": 2,
+      "order_index": 10,
+      "confidence": "high",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "build_strategy": "page_boundary",
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.2",
+        "keyword_terms": [
+          "revenue"
+        ],
+        "new_word_terms": [],
+        "search_terms": [
+          "Page 2",
+          "revenue"
+        ],
+        "keyword_thresholds": {
+          "min_support": 1,
+          "min_freq": 2,
+          "leaf_count": 3,
+          "text_length": 309,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "revenue": 2,
+            "region": 1,
+            "growth": 1,
+            "share": 1,
+            "asia-pacific": 1,
+            "europe": 1,
+            "americas": 1,
+            "gross": 1,
+            "margin": 1,
+            "improved": 1,
+            "by": 1,
+            "two": 1,
+            "percentage": 1,
+            "points": 1,
+            "as": 1,
+            "raw-material": 1,
+            "costs": 1,
+            "stabilized": 1,
+            "operating": 1,
+            "expensesremained": 1,
+            "flat": 1,
+            "in": 1,
+            "absolute": 1,
+            "terms": 1,
+            "figures": 1,
+            "are": 1,
+            "unaudited": 1,
+            "management": 1,
+            "estimates": 1
+          },
+          "child_support": {
+            "revenue": 2,
+            "region": 1,
+            "growth": 1,
+            "share": 1,
+            "asia-pacific": 1,
+            "europe": 1,
+            "americas": 1,
+            "gross": 1,
+            "margin": 1,
+            "improved": 1,
+            "by": 1,
+            "two": 1,
+            "percentage": 1,
+            "points": 1,
+            "as": 1,
+            "raw-material": 1,
+            "costs": 1,
+            "stabilized": 1,
+            "operating": 1,
+            "expensesremained": 1,
+            "flat": 1,
+            "in": 1,
+            "absolute": 1,
+            "terms": 1,
+            "figures": 1,
+            "are": 1,
+            "unaudited": 1,
+            "management": 1,
+            "estimates": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_table1",
+      "type": "table",
+      "title": null,
+      "parent_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_2",
+      "child_ids": [],
+      "source_block_ids": [
+        "p2_table1"
+      ],
+      "source_chunk_ids": [],
+      "page_refs": [
+        2
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          240.0,
+          486.0,
+          328.0
+        ]
+      ],
+      "text_preview": "Region | Revenue (M) | Growth | Share Asia-Pacific | 412.5 | 18% | 41% Europe | 301.2 | 9% | 30% Americas | 289.9 | 6% | 29%",
+      "content_hash": "34c76671d6fbb518edeb1b01f193f8aef4037fae270d81da7aacd7f50f5c8638",
+      "depth": 3,
+      "order_index": 11,
+      "confidence": "medium",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "source_block_type": "table",
+        "build_strategy": "page_local_block",
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.2",
+        "source_range": null,
+        "keyword_terms": [
+          "asia-pacific",
+          "americas",
+          "revenue",
+          "region",
+          "growth",
+          "europe",
+          "share"
+        ],
+        "new_word_terms": [],
+        "search_terms": [
+          "asia-pacific",
+          "americas",
+          "revenue",
+          "region",
+          "growth",
+          "europe",
+          "share"
+        ],
+        "keyword_thresholds": {
+          "min_support": 1,
+          "min_freq": 1,
+          "leaf_count": 1,
+          "text_length": 124,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "region": 1,
+            "revenue": 1,
+            "growth": 1,
+            "share": 1,
+            "asia-pacific": 1,
+            "europe": 1,
+            "americas": 1
+          },
+          "child_support": {
+            "region": 1,
+            "revenue": 1,
+            "growth": 1,
+            "share": 1,
+            "asia-pacific": 1,
+            "europe": 1,
+            "americas": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b9",
+      "type": "paragraph",
+      "title": null,
+      "parent_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_2",
+      "child_ids": [],
+      "source_block_ids": [
+        "p2_b9"
+      ],
+      "source_chunk_ids": [],
+      "page_refs": [
+        2
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          340.0,
+          510.6098327636719,
+          368.510498046875
+        ]
+      ],
+      "text_preview": "Gross margin improved by two percentage points as raw-material costs stabilized. Operating expensesremained flat in absolute terms.",
+      "content_hash": "c16b0e9158bc77fa6c16b6b94a99ce8de03aad056fc00b54faa9af59f9c38e5c",
+      "depth": 3,
+      "order_index": 12,
+      "confidence": "high",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "source_block_type": "text",
+        "build_strategy": "page_local_block",
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.2",
+        "source_range": null,
+        "keyword_terms": [
+          "stabilized",
+          "raw-material",
+          "percentage",
+          "operating",
+          "improved",
+          "expensesremained",
+          "absolute",
+          "points",
+          "margin",
+          "terms",
+          "gross",
+          "costs"
+        ],
+        "new_word_terms": [],
+        "search_terms": [
+          "stabilized",
+          "raw-material",
+          "percentage",
+          "operating",
+          "improved",
+          "expensesremained",
+          "absolute",
+          "points",
+          "margin",
+          "terms",
+          "gross",
+          "costs"
+        ],
+        "keyword_thresholds": {
+          "min_support": 1,
+          "min_freq": 1,
+          "leaf_count": 1,
+          "text_length": 131,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "gross": 1,
+            "margin": 1,
+            "improved": 1,
+            "by": 1,
+            "two": 1,
+            "percentage": 1,
+            "points": 1,
+            "as": 1,
+            "raw-material": 1,
+            "costs": 1,
+            "stabilized": 1,
+            "operating": 1,
+            "expensesremained": 1,
+            "flat": 1,
+            "in": 1,
+            "absolute": 1,
+            "terms": 1
+          },
+          "child_support": {
+            "gross": 1,
+            "margin": 1,
+            "improved": 1,
+            "by": 1,
+            "two": 1,
+            "percentage": 1,
+            "points": 1,
+            "as": 1,
+            "raw-material": 1,
+            "costs": 1,
+            "stabilized": 1,
+            "operating": 1,
+            "expensesremained": 1,
+            "flat": 1,
+            "in": 1,
+            "absolute": 1,
+            "terms": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b10",
+      "type": "paragraph",
+      "title": null,
+      "parent_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_2",
+      "child_ids": [],
+      "source_block_ids": [
+        "p2_b10"
+      ],
+      "source_chunk_ids": [],
+      "page_refs": [
+        2
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          762.8624877929688,
+          273.6585388183594,
+          778.54150390625
+        ]
+      ],
+      "text_preview": "1 Revenue figures are unaudited management estimates.",
+      "content_hash": "3b2d3e2d7950b7e5f24e5b04558053f9aa4e81e02736dc0e78f24ca1a8dc6548",
+      "depth": 3,
+      "order_index": 13,
+      "confidence": "high",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "source_block_type": "text",
+        "build_strategy": "page_local_block",
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.2",
+        "source_range": null,
+        "keyword_terms": [
+          "unaudited",
+          "management",
+          "estimates",
+          "revenue",
+          "figures",
+          "are"
+        ],
+        "new_word_terms": [],
+        "search_terms": [
+          "unaudited",
+          "management",
+          "estimates",
+          "revenue",
+          "figures",
+          "are"
+        ],
+        "keyword_thresholds": {
+          "min_support": 1,
+          "min_freq": 1,
+          "leaf_count": 1,
+          "text_length": 54,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "revenue": 1,
+            "figures": 1,
+            "are": 1,
+            "unaudited": 1,
+            "management": 1,
+            "estimates": 1
+          },
+          "child_support": {
+            "revenue": 1,
+            "figures": 1,
+            "are": 1,
+            "unaudited": 1,
+            "management": 1,
+            "estimates": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0014",
+      "type": "section",
+      "title": "3. Outlook",
+      "parent_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_root",
+      "child_ids": [
+        "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_3"
+      ],
+      "source_block_ids": [
+        "p3_b1"
+      ],
+      "source_chunk_ids": [],
+      "page_refs": [
+        3
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          72.87999725341797,
+          134.24000549316406,
+          94.91200256347656
+        ]
+      ],
+      "text_preview": "3. Outlook",
+      "content_hash": "cbcb6f35e6d50e6987e597f3d53b9d4327ce6350a383c73a6cfcfba18410d032",
+      "depth": 1,
+      "order_index": 14,
+      "confidence": "high",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "heading_level": 1,
+        "build_strategy": "heading_block",
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.3",
+        "source_range": null,
+        "keyword_terms": [
+          "year"
+        ],
+        "new_word_terms": [],
+        "search_terms": [
+          "3. Outlook",
+          "year"
+        ],
+        "keyword_thresholds": {
+          "min_support": 2,
+          "min_freq": 2,
+          "leaf_count": 2,
+          "text_length": 308,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "year": 3,
+            "the": 3,
+            "to": 2,
+            "initiative": 1,
+            "target": 1,
+            "status": 1,
+            "coating": 1,
+            "line": 1,
+            "next": 1,
+            "approved": 1,
+            "recycled": 1,
+            "feedstock": 1,
+            "two": 1,
+            "years": 1,
+            "pilot": 1,
+            "management": 1,
+            "expects": 1,
+            "demand": 1,
+            "remain": 1,
+            "firm": 1,
+            "capacity": 1,
+            "utilisation": 1,
+            "is": 1,
+            "projected": 1,
+            "stay": 1,
+            "above": 1,
+            "ninety": 1,
+            "percentthrough": 1,
+            "planning": 1,
+            "horizon": 1,
+            "supported": 1,
+            "by": 1,
+            "order": 1,
+            "backlog": 1,
+            "carried": 1,
+            "into": 1,
+            "new": 1,
+            "fiscal": 1
+          },
+          "child_support": {
+            "year": 2,
+            "initiative": 1,
+            "target": 1,
+            "status": 1,
+            "coating": 1,
+            "line": 1,
+            "next": 1,
+            "approved": 1,
+            "recycled": 1,
+            "feedstock": 1,
+            "two": 1,
+            "years": 1,
+            "pilot": 1,
+            "management": 1,
+            "expects": 1,
+            "demand": 1,
+            "to": 1,
+            "remain": 1,
+            "firm": 1,
+            "capacity": 1,
+            "utilisation": 1,
+            "is": 1,
+            "projected": 1,
+            "stay": 1,
+            "above": 1,
+            "ninety": 1,
+            "percentthrough": 1,
+            "the": 1,
+            "planning": 1,
+            "horizon": 1,
+            "supported": 1,
+            "by": 1,
+            "order": 1,
+            "backlog": 1,
+            "carried": 1,
+            "into": 1,
+            "new": 1,
+            "fiscal": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_3",
+      "type": "page",
+      "title": "Page 3",
+      "parent_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_sec_0014",
+      "child_ids": [
+        "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_table1",
+        "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_b5"
+      ],
+      "source_block_ids": [],
+      "source_chunk_ids": [],
+      "page_refs": [
+        3
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          110.0,
+          456.0,
+          176.0
+        ],
+        [
+          56.0,
+          190.0,
+          525.0899047851562,
+          218.51051330566406
+        ]
+      ],
+      "text_preview": null,
+      "content_hash": null,
+      "depth": 2,
+      "order_index": 15,
+      "confidence": "high",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "build_strategy": "page_boundary",
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.3",
+        "keyword_terms": [
+          "year",
+          "the",
+          "to"
+        ],
+        "new_word_terms": [],
+        "search_terms": [
+          "Page 3",
+          "year",
+          "the",
+          "to"
+        ],
+        "keyword_thresholds": {
+          "min_support": 1,
+          "min_freq": 2,
+          "leaf_count": 2,
+          "text_length": 308,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "year": 3,
+            "the": 3,
+            "to": 2,
+            "initiative": 1,
+            "target": 1,
+            "status": 1,
+            "coating": 1,
+            "line": 1,
+            "next": 1,
+            "approved": 1,
+            "recycled": 1,
+            "feedstock": 1,
+            "two": 1,
+            "years": 1,
+            "pilot": 1,
+            "management": 1,
+            "expects": 1,
+            "demand": 1,
+            "remain": 1,
+            "firm": 1,
+            "capacity": 1,
+            "utilisation": 1,
+            "is": 1,
+            "projected": 1,
+            "stay": 1,
+            "above": 1,
+            "ninety": 1,
+            "percentthrough": 1,
+            "planning": 1,
+            "horizon": 1,
+            "supported": 1,
+            "by": 1,
+            "order": 1,
+            "backlog": 1,
+            "carried": 1,
+            "into": 1,
+            "new": 1,
+            "fiscal": 1
+          },
+          "child_support": {
+            "year": 2,
+            "initiative": 1,
+            "target": 1,
+            "status": 1,
+            "coating": 1,
+            "line": 1,
+            "next": 1,
+            "approved": 1,
+            "recycled": 1,
+            "feedstock": 1,
+            "two": 1,
+            "years": 1,
+            "pilot": 1,
+            "management": 1,
+            "expects": 1,
+            "demand": 1,
+            "to": 1,
+            "remain": 1,
+            "firm": 1,
+            "capacity": 1,
+            "utilisation": 1,
+            "is": 1,
+            "projected": 1,
+            "stay": 1,
+            "above": 1,
+            "ninety": 1,
+            "percentthrough": 1,
+            "the": 1,
+            "planning": 1,
+            "horizon": 1,
+            "supported": 1,
+            "by": 1,
+            "order": 1,
+            "backlog": 1,
+            "carried": 1,
+            "into": 1,
+            "new": 1,
+            "fiscal": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_table1",
+      "type": "table",
+      "title": null,
+      "parent_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_3",
+      "child_ids": [],
+      "source_block_ids": [
+        "p3_table1"
+      ],
+      "source_chunk_ids": [],
+      "page_refs": [
+        3
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          110.0,
+          456.0,
+          176.0
+        ]
+      ],
+      "text_preview": "Initiative | Target Year | Status Coating line 2 | Next year | Approved Recycled feedstock | Two years | Pilot",
+      "content_hash": "b268f90e6d1f3588eb591309f975c14e41ed04760469cc25d302f4a016a6c184",
+      "depth": 3,
+      "order_index": 16,
+      "confidence": "medium",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "source_block_type": "table",
+        "build_strategy": "page_local_block",
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.3",
+        "source_range": null,
+        "keyword_terms": [
+          "year",
+          "recycled",
+          "initiative",
+          "feedstock",
+          "approved",
+          "coating",
+          "target",
+          "status",
+          "years",
+          "pilot",
+          "next",
+          "line"
+        ],
+        "new_word_terms": [],
+        "search_terms": [
+          "year",
+          "recycled",
+          "initiative",
+          "feedstock",
+          "approved",
+          "coating",
+          "target",
+          "status",
+          "years",
+          "pilot",
+          "next",
+          "line"
+        ],
+        "keyword_thresholds": {
+          "min_support": 1,
+          "min_freq": 1,
+          "leaf_count": 1,
+          "text_length": 110,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "year": 2,
+            "initiative": 1,
+            "target": 1,
+            "status": 1,
+            "coating": 1,
+            "line": 1,
+            "next": 1,
+            "approved": 1,
+            "recycled": 1,
+            "feedstock": 1,
+            "two": 1,
+            "years": 1,
+            "pilot": 1
+          },
+          "child_support": {
+            "initiative": 1,
+            "target": 1,
+            "year": 1,
+            "status": 1,
+            "coating": 1,
+            "line": 1,
+            "next": 1,
+            "approved": 1,
+            "recycled": 1,
+            "feedstock": 1,
+            "two": 1,
+            "years": 1,
+            "pilot": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_b5",
+      "type": "paragraph",
+      "title": null,
+      "parent_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_3",
+      "child_ids": [],
+      "source_block_ids": [
+        "p3_b5"
+      ],
+      "source_chunk_ids": [],
+      "page_refs": [
+        3
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          190.0,
+          525.0899047851562,
+          218.51051330566406
+        ]
+      ],
+      "text_preview": "Management expects demand to remain firm. Capacity utilisation is projected to stay above ninety percentthrough the planning horizon, supported by the order bac",
+      "content_hash": "311ec0023855a2d335e5a2a5820047890f166399ff06b3ec10d7d3dd37daf9f1",
+      "depth": 3,
+      "order_index": 17,
+      "confidence": "high",
+      "metadata": {
+        "stage": "block_tree",
+        "role": "body",
+        "source_block_type": "text",
+        "build_strategy": "page_local_block",
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.3",
+        "source_range": null,
+        "keyword_terms": [
+          "the",
+          "utilisation",
+          "supported",
+          "projected",
+          "planning",
+          "percentthrough",
+          "management",
+          "capacity",
+          "horizon",
+          "expects",
+          "carried",
+          "backlog"
+        ],
+        "new_word_terms": [],
+        "search_terms": [
+          "the",
+          "utilisation",
+          "supported",
+          "projected",
+          "planning",
+          "percentthrough",
+          "management",
+          "capacity",
+          "horizon",
+          "expects",
+          "carried",
+          "backlog"
+        ],
+        "keyword_thresholds": {
+          "min_support": 1,
+          "min_freq": 1,
+          "leaf_count": 1,
+          "text_length": 198,
+          "strategy": "bottom_up_aggregation"
+        },
+        "keyword_stats": {
+          "term_freq": {
+            "the": 3,
+            "to": 2,
+            "management": 1,
+            "expects": 1,
+            "demand": 1,
+            "remain": 1,
+            "firm": 1,
+            "capacity": 1,
+            "utilisation": 1,
+            "is": 1,
+            "projected": 1,
+            "stay": 1,
+            "above": 1,
+            "ninety": 1,
+            "percentthrough": 1,
+            "planning": 1,
+            "horizon": 1,
+            "supported": 1,
+            "by": 1,
+            "order": 1,
+            "backlog": 1,
+            "carried": 1,
+            "into": 1,
+            "new": 1,
+            "fiscal": 1,
+            "year": 1
+          },
+          "child_support": {
+            "management": 1,
+            "expects": 1,
+            "demand": 1,
+            "to": 1,
+            "remain": 1,
+            "firm": 1,
+            "capacity": 1,
+            "utilisation": 1,
+            "is": 1,
+            "projected": 1,
+            "stay": 1,
+            "above": 1,
+            "ninety": 1,
+            "percentthrough": 1,
+            "the": 1,
+            "planning": 1,
+            "horizon": 1,
+            "supported": 1,
+            "by": 1,
+            "order": 1,
+            "backlog": 1,
+            "carried": 1,
+            "into": 1,
+            "new": 1,
+            "fiscal": 1,
+            "year": 1
+          }
+        }
+      }
+    }
+  ],
+  "chunks": [
+    {
+      "id": "chunk_doc_c56f7c73b96542389c4d1701906a62d2_0001",
+      "text": {
+        "raw_text": "Aurora Materials develops high-durability composite panels for the construction sector. During the fiscal yearthe company expanded its coating facility and completed certification for two new panel families. Revenuegrew across all regions",
+        "normalized_text": "Aurora Materials develops high-durability composite panels for the construction sector. During the fiscal yearthe company expanded its coating facility and completed certification for two new panel families. Revenuegrew across all regions",
+        "unicode_form": "NFC",
+        "width_normalized": false,
+        "simplified_traditional_converted": false
+      },
+      "source_block_ids": [
+        "p2_b2"
+      ],
+      "parent_block_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b2",
+      "heading_path": [
+        "1. Overview"
+      ],
+      "page_refs": [
+        2
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          105.0,
+          535.0698852539062,
+          148.28102111816406
+        ]
+      ],
+      "asset_refs": [],
+      "relation_ids": [
+        "rel_chunk_chunk_doc_c56f7c73b96542389c4d1701906a62d2_0001_1"
+      ],
+      "metadata": {
+        "stage": "rag_chunking",
+        "chunk_kind": "paragraph",
+        "parent_block_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b2",
+        "block_path": [
+          "1. Overview"
+        ],
+        "block_types": [
+          "text"
+        ],
+        "intra_block_view": true,
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.2"
+      }
+    },
+    {
+      "id": "chunk_doc_c56f7c73b96542389c4d1701906a62d2_0002",
+      "text": {
+        "raw_text": "1 , led by the Asia-Pacific segment.",
+        "normalized_text": "1 , led by the Asia-Pacific segment.",
+        "unicode_form": "NFC",
+        "width_normalized": false,
+        "simplified_traditional_converted": false
+      },
+      "source_block_ids": [
+        "p2_b3"
+      ],
+      "parent_block_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b3",
+      "heading_path": [
+        "1. Overview"
+      ],
+      "page_refs": [
+        2
+      ],
+      "bbox_refs": [
+        [
+          228.0,
+          145.75,
+          381.8399658203125,
+          162.99000549316406
+        ]
+      ],
+      "asset_refs": [],
+      "relation_ids": [
+        "rel_chunk_chunk_doc_c56f7c73b96542389c4d1701906a62d2_0002_1"
+      ],
+      "metadata": {
+        "stage": "rag_chunking",
+        "chunk_kind": "paragraph",
+        "parent_block_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b3",
+        "block_path": [
+          "1. Overview"
+        ],
+        "block_types": [
+          "text"
+        ],
+        "intra_block_view": true,
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.2"
+      }
+    },
+    {
+      "id": "chunk_doc_c56f7c73b96542389c4d1701906a62d2_0003",
+      "text": {
+        "raw_text": "Section: 2. Financial Results\n| Region | Revenue (M) | Growth | Share |\n| --- | --- | --- | --- |\n| Asia-Pacific | 412.5 | 18% | 41% |\n| Europe | 301.2 | 9% | 30% |\n| Americas | 289.9 | 6% | 29% |",
+        "normalized_text": "Section: 2. Financial Results\n| Region | Revenue (M) | Growth | Share |\n| --- | --- | --- | --- |\n| Asia-Pacific | 412.5 | 18% | 41% |\n| Europe | 301.2 | 9% | 30% |\n| Americas | 289.9 | 6% | 29% |",
+        "unicode_form": "NFC",
+        "width_normalized": false,
+        "simplified_traditional_converted": false
+      },
+      "source_block_ids": [
+        "p2_table1"
+      ],
+      "parent_block_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_table1",
+      "heading_path": [
+        "2. Financial Results"
+      ],
+      "page_refs": [
+        2
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          240.0,
+          486.0,
+          328.0
+        ]
+      ],
+      "asset_refs": [],
+      "relation_ids": [
+        "rel_chunk_chunk_doc_c56f7c73b96542389c4d1701906a62d2_0003_1"
+      ],
+      "metadata": {
+        "stage": "rag_chunking",
+        "chunk_kind": "table",
+        "parent_block_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_table1",
+        "block_path": [
+          "2. Financial Results"
+        ],
+        "block_types": [
+          "table"
+        ],
+        "intra_block_view": true,
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.2",
+        "table_context_included": true,
+        "repeated_fields": [
+          "section_path",
+          "table_title",
+          "table_caption",
+          "column_headers"
+        ]
+      }
+    },
+    {
+      "id": "chunk_doc_c56f7c73b96542389c4d1701906a62d2_0004",
+      "text": {
+        "raw_text": "Gross margin improved by two percentage points as raw-material costs stabilized. Operating expensesremained flat in absolute terms.",
+        "normalized_text": "Gross margin improved by two percentage points as raw-material costs stabilized. Operating expensesremained flat in absolute terms.",
+        "unicode_form": "NFC",
+        "width_normalized": false,
+        "simplified_traditional_converted": false
+      },
+      "source_block_ids": [
+        "p2_b9"
+      ],
+      "parent_block_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b9",
+      "heading_path": [
+        "2. Financial Results"
+      ],
+      "page_refs": [
+        2
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          340.0,
+          510.6098327636719,
+          368.510498046875
+        ]
+      ],
+      "asset_refs": [],
+      "relation_ids": [
+        "rel_chunk_chunk_doc_c56f7c73b96542389c4d1701906a62d2_0004_1"
+      ],
+      "metadata": {
+        "stage": "rag_chunking",
+        "chunk_kind": "paragraph",
+        "parent_block_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b9",
+        "block_path": [
+          "2. Financial Results"
+        ],
+        "block_types": [
+          "text"
+        ],
+        "intra_block_view": true,
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.2"
+      }
+    },
+    {
+      "id": "chunk_doc_c56f7c73b96542389c4d1701906a62d2_0005",
+      "text": {
+        "raw_text": "1  Revenue figures are unaudited management estimates.",
+        "normalized_text": "1  Revenue figures are unaudited management estimates.",
+        "unicode_form": "NFC",
+        "width_normalized": false,
+        "simplified_traditional_converted": false
+      },
+      "source_block_ids": [
+        "p2_b10"
+      ],
+      "parent_block_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b10",
+      "heading_path": [
+        "2. Financial Results"
+      ],
+      "page_refs": [
+        2
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          762.8624877929688,
+          273.6585388183594,
+          778.54150390625
+        ]
+      ],
+      "asset_refs": [],
+      "relation_ids": [
+        "rel_chunk_chunk_doc_c56f7c73b96542389c4d1701906a62d2_0005_1"
+      ],
+      "metadata": {
+        "stage": "rag_chunking",
+        "chunk_kind": "paragraph",
+        "parent_block_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p2_b10",
+        "block_path": [
+          "2. Financial Results"
+        ],
+        "block_types": [
+          "text"
+        ],
+        "intra_block_view": true,
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.2"
+      }
+    },
+    {
+      "id": "chunk_doc_c56f7c73b96542389c4d1701906a62d2_0006",
+      "text": {
+        "raw_text": "Section: 3. Outlook\n| Initiative | Target Year | Status |\n| --- | --- | --- |\n| Coating line 2 | Next year | Approved |\n| Recycled feedstock | Two years | Pilot |",
+        "normalized_text": "Section: 3. Outlook\n| Initiative | Target Year | Status |\n| --- | --- | --- |\n| Coating line 2 | Next year | Approved |\n| Recycled feedstock | Two years | Pilot |",
+        "unicode_form": "NFC",
+        "width_normalized": false,
+        "simplified_traditional_converted": false
+      },
+      "source_block_ids": [
+        "p3_table1"
+      ],
+      "parent_block_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_table1",
+      "heading_path": [
+        "3. Outlook"
+      ],
+      "page_refs": [
+        3
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          110.0,
+          456.0,
+          176.0
+        ]
+      ],
+      "asset_refs": [],
+      "relation_ids": [
+        "rel_chunk_chunk_doc_c56f7c73b96542389c4d1701906a62d2_0006_1"
+      ],
+      "metadata": {
+        "stage": "rag_chunking",
+        "chunk_kind": "table",
+        "parent_block_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_table1",
+        "block_path": [
+          "3. Outlook"
+        ],
+        "block_types": [
+          "table"
+        ],
+        "intra_block_view": true,
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.3",
+        "table_context_included": true,
+        "repeated_fields": [
+          "section_path",
+          "table_title",
+          "table_caption",
+          "column_headers"
+        ]
+      }
+    },
+    {
+      "id": "chunk_doc_c56f7c73b96542389c4d1701906a62d2_0007",
+      "text": {
+        "raw_text": "Management expects demand to remain firm. Capacity utilisation is projected to stay above ninety percentthrough the planning horizon, supported by the order backlog carried into the new fiscal year.",
+        "normalized_text": "Management expects demand to remain firm. Capacity utilisation is projected to stay above ninety percentthrough the planning horizon, supported by the order backlog carried into the new fiscal year.",
+        "unicode_form": "NFC",
+        "width_normalized": false,
+        "simplified_traditional_converted": false
+      },
+      "source_block_ids": [
+        "p3_b5"
+      ],
+      "parent_block_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_b5",
+      "heading_path": [
+        "3. Outlook"
+      ],
+      "page_refs": [
+        3
+      ],
+      "bbox_refs": [
+        [
+          56.0,
+          190.0,
+          525.0899047851562,
+          218.51051330566406
+        ]
+      ],
+      "asset_refs": [],
+      "relation_ids": [
+        "rel_chunk_chunk_doc_c56f7c73b96542389c4d1701906a62d2_0007_1"
+      ],
+      "metadata": {
+        "stage": "rag_chunking",
+        "chunk_kind": "paragraph",
+        "parent_block_id": "db_doc_c56f7c73b96542389c4d1701906a62d2_p3_b5",
+        "block_path": [
+          "3. Outlook"
+        ],
+        "block_types": [
+          "text"
+        ],
+        "intra_block_view": true,
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_labels": [],
+        "pdf_page_labels": [],
+        "citation_label": "PDF p.3"
+      }
+    }
+  ],
+  "metadata": {
+    "page_count": 3,
+    "toc": [
+      [
+        1,
+        "Overview",
+        2,
+        {
+          "kind": 1,
+          "xref": 56,
+          "page": 1,
+          "to": "Point(72.0, 36.0)",
+          "zoom": 0.0
+        }
+      ],
+      [
+        1,
+        "Financial Results",
+        2,
+        {
+          "kind": 1,
+          "xref": 57,
+          "page": 1,
+          "to": "Point(72.0, 36.0)",
+          "zoom": 0.0
+        }
+      ],
+      [
+        1,
+        "Outlook",
+        3,
+        {
+          "kind": 1,
+          "xref": 58,
+          "page": 2,
+          "to": "Point(72.0, 36.0)",
+          "zoom": 0.0
+        }
+      ]
+    ],
+    "adapter": "pymupdf",
+    "page_citations": {
+      "1": {
+        "page_ref": 1,
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_label": null,
+        "pdf_page_label": null,
+        "citation_label": "PDF p.1"
+      },
+      "2": {
+        "page_ref": 2,
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_label": null,
+        "pdf_page_label": null,
+        "citation_label": "PDF p.2"
+      },
+      "3": {
+        "page_ref": 3,
+        "page_ref_kind": "physical_page_number_1_based",
+        "printed_page_label": null,
+        "pdf_page_label": null,
+        "citation_label": "PDF p.3"
+      }
+    },
+    "page_ref_kind": "physical_page_number_1_based"
+  }
+}
