@@ -50,6 +50,11 @@ def header_footer_role_score(document: dict[str, Any], excluded_texts: list[str]
     }
 
 
+def _squash(text: str) -> str:
+    """OCR-tolerant normalization: engines often drop spaces entirely."""
+    return "".join(str(text or "").split()).lower()
+
+
 def ocr_text_recall(document: dict[str, Any], expected_texts: list[str]) -> dict[str, Any]:
     if not expected_texts:
         return {"score": 1.0, "expected": 0, "found": 0, "missing": []}
@@ -57,12 +62,12 @@ def ocr_text_recall(document: dict[str, Any], expected_texts: list[str]) -> dict
     haystacks: list[str] = []
     for page in document.get("pages", []) or []:
         for block in page.get("blocks", []) or []:
-            haystacks.append(_normalize((block.get("text") or {}).get("raw_text", "")))
+            haystacks.append(_squash((block.get("text") or {}).get("raw_text", "")))
         for image in page.get("images", []) or []:
-            haystacks.append(_normalize((image.get("metadata") or {}).get("ocr_text", "")))
-    combined = " \n ".join(haystacks)
+            haystacks.append(_squash((image.get("metadata") or {}).get("ocr_text", "")))
+    combined = "\n".join(haystacks)
 
-    missing = [text for text in expected_texts if _normalize(text) not in combined]
+    missing = [text for text in expected_texts if _squash(text) not in combined]
     found = len(expected_texts) - len(missing)
     return {
         "score": round(found / len(expected_texts), 4),

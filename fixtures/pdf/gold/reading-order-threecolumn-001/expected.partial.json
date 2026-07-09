@@ -1,0 +1,13 @@
+{
+  "case_id": "reading-order-threecolumn-001",
+  "annotator": "documa-fixture-author",
+  "annotated_at": "2026-07-10",
+  "source": "real/three-column-newsletter.pdf",
+  "note": "One anchor per column (paragraphs inside a column may merge). Human order: title, then columns left to right.",
+  "reading_order": [
+    "Materials Weekly",
+    "Curing ovens on line two",
+    "Field crews in the northern region",
+    "The materials lab validated"
+  ]
+}

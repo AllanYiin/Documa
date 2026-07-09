@@ -188,16 +188,29 @@ def _order_unit(
 
     content_x0, content_x1 = _content_bounds(blocks)
     content_width = max(content_x1 - content_x0, 1.0)
+    direct_gutters = [
+        g for g in _detect_gutters(blocks, min_gutter) if _sides_coexist_vertically(blocks, g)
+    ]
+
+    def crosses_a_gutter(block: BlockIR) -> bool:
+        return any(block.bbox[0] < g0 and block.bbox[2] > g1 for g0, g1 in direct_gutters)
+
+    type_spanners = [block for block in blocks if block.type in _SPANNER_TYPES]
+    ratio_spanners = [
+        block
+        for block in blocks
+        if block.type not in _SPANNER_TYPES
+        and (block.bbox[2] - block.bbox[0]) >= spanner_ratio * content_width
+    ]
+    if direct_gutters:
+        # Columns are already visible: a wide block only outranks them when it
+        # actually bridges a gutter (true cross-layout element). A wide main
+        # column next to a full-height sidebar must NOT band the sidebar apart.
+        ratio_spanners = [block for block in ratio_spanners if crosses_a_gutter(block)]
     spanners = sorted(
-        (
-            block
-            for block in blocks
-            if block.type in _SPANNER_TYPES
-            or (block.bbox[2] - block.bbox[0]) >= spanner_ratio * content_width
-        ),
-        key=lambda block: (block.bbox[1], block.bbox[0]),
+        type_spanners + ratio_spanners, key=lambda block: (block.bbox[1], block.bbox[0])
     )
-    if not spanners and not _detect_gutters(blocks, min_gutter):
+    if not spanners and not direct_gutters:
         spanners = sorted(
             _gutter_crossing_spanners(blocks, min_gutter),
             key=lambda block: (block.bbox[1], block.bbox[0]),
@@ -241,7 +254,7 @@ def _order_unit(
         )
         return placements
 
-    gutters = [g for g in _detect_gutters(blocks, min_gutter) if _sides_coexist_vertically(blocks, g)]
+    gutters = direct_gutters
     column_count = len(gutters) + 1
     is_grid = _looks_like_grid(blocks, gutters)
     if is_grid:

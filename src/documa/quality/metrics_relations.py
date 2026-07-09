@@ -68,6 +68,12 @@ def relation_link_score(document: dict[str, Any], gold_relations: list[dict[str,
             and str(rel.get("to_id")) in resolved["to_ids"]
         )
 
+    def rel_anchored(rel: dict[str, Any], resolved: dict[str, Any]) -> bool:
+        return (
+            str(rel.get("type")) == resolved["type"]
+            and str(rel.get("from_id")) in resolved["from_ids"]
+        )
+
     matched_gold = []
     missing = []
     for resolved in resolved_gold:
@@ -82,11 +88,15 @@ def relation_link_score(document: dict[str, Any], gold_relations: list[dict[str,
                 }
             )
 
-    correct_actual = sum(
-        1 for rel in actual if any(rel_matches(rel, resolved) for resolved in resolved_gold)
+    # Gold annotates a SAMPLE of the true links, so unannotated relations are
+    # not evidence of error. Precision is therefore anchored: only relations
+    # whose from-endpoint hits a gold anchor are judged right or wrong.
+    anchored = [rel for rel in actual if any(rel_anchored(rel, resolved) for resolved in resolved_gold)]
+    correct_anchored = sum(
+        1 for rel in anchored if any(rel_matches(rel, resolved) for resolved in resolved_gold)
     )
     recall = len(matched_gold) / len(gold_relations)
-    precision = correct_actual / len(actual) if actual else 0.0
+    precision = correct_anchored / len(anchored) if anchored else (1.0 if matched_gold else 0.0)
     f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) else 0.0
     return {
         "precision": round(precision, 4),
@@ -95,5 +105,5 @@ def relation_link_score(document: dict[str, Any], gold_relations: list[dict[str,
         "score": round(f1, 4),
         "matched": len(matched_gold),
         "missing": missing,
-        "spurious": len(actual) - correct_actual,
+        "spurious": len(anchored) - correct_anchored,
     }

@@ -95,14 +95,24 @@ class TestRelationScore:
         assert result["recall"] == 0.5
         assert len(result["missing"]) == 1
 
-    def test_spurious_relation_lowers_precision(self):
+    def test_mislink_from_an_annotated_anchor_lowers_precision(self):
         document = self._document()
-        document["relations"].append({"type": "footnote_marker_to_body", "from_id": "b3", "to_id": "b1"})
+        # Same anchored from-endpoint (b1) linked to a wrong target.
+        document["relations"].append({"type": "footnote_marker_to_body", "from_id": "b1", "to_id": "b3"})
         gold = [{"type": "footnote_marker_to_body", "from_text": "Revenue grew", "to_text": "1 Revenue figures"}]
         result = relation_link_score(document, gold)
         assert result["recall"] == 1.0
         assert result["precision"] == 0.5
         assert result["spurious"] == 1
+
+    def test_unannotated_relations_do_not_count_as_spurious(self):
+        document = self._document()
+        # A legitimate link whose from-endpoint is no gold anchor (e.g. outline-based).
+        document["relations"].append({"type": "footnote_marker_to_body", "from_id": "doc_x", "to_id": "b2"})
+        gold = [{"type": "footnote_marker_to_body", "from_text": "Revenue grew", "to_text": "1 Revenue figures"}]
+        result = relation_link_score(document, gold)
+        assert result["precision"] == 1.0
+        assert result["spurious"] == 0
 
     def test_empty_gold_is_perfect(self):
         assert relation_link_score(self._document(), [])["f1"] == 1.0

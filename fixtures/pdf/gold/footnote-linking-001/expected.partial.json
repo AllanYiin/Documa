@@ -1,0 +1,14 @@
+{
+  "case_id": "footnote-linking-001",
+  "annotator": "documa-fixture-author",
+  "annotated_at": "2026-07-10",
+  "source": "real/annual-report.pdf",
+  "note": "KNOWN PIPELINE GAP (2026-07-10): FootnoteLinkingStage currently emits no footnote_marker_to_body relation for this superscript marker; the case fails on purpose until the stage improves. Do not lower the threshold to hide it.",
+  "relations": [
+    {
+      "type": "footnote_marker_to_body",
+      "from_text": "1 , led by the Asia-Pacific segment",
+      "to_text": "1  Revenue figures are unaudited"
+    }
+  ]
+}

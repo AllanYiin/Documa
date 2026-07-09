@@ -1,0 +1,14 @@
+{
+  "case_id": "table-merged-cells-001",
+  "annotator": "documa-fixture-author",
+  "annotated_at": "2026-07-10",
+  "source": "real/merged-cells-report.pdf",
+  "note": "Header cell spans two columns (colspan=2); grid convention keeps content in the left-most covered cell.",
+  "tables": [
+    {
+      "table_index": 0,
+      "page": 1,
+      "html": "<table><tr><td>Zone</td><td colspan=\"2\">Checks (passed / failed)</td><td>Status</td></tr><tr><td>Zone A</td><td>58</td><td>2</td><td>Open</td></tr><tr><td>Zone B</td><td>61</td><td>0</td><td>Closed</td></tr><tr><td>Zone C</td><td>44</td><td>5</td><td>Open</td></tr></table>"
+    }
+  ]
+}

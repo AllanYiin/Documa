@@ -1,0 +1,14 @@
+{
+  "case_id": "image-chart-asset-extraction-001",
+  "annotator": "documa-fixture-author",
+  "annotated_at": "2026-07-10",
+  "source": "real/mixed-media-brief.pdf",
+  "note": "KNOWN PIPELINE GAP (2026-07-10): CaptionLinkingStage does not link the 'Image 1:' caption to the embedded image; the case fails on purpose until the stage improves. Do not lower the threshold to hide it.",
+  "relations": [
+    {
+      "type": "caption_to_image",
+      "from_text": "Image 1: Thermal distribution",
+      "to_image_on_page": 1
+    }
+  ]
+}

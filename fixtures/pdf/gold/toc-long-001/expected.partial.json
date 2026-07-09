@@ -1,0 +1,12 @@
+{
+  "case_id": "toc-long-001",
+  "annotator": "documa-fixture-author",
+  "annotated_at": "2026-07-10",
+  "source": "real/long-toc-manual.pdf",
+  "note": "Sampled TOC links (first, middle, last) from visual TOC lines to their section headings.",
+  "relations": [
+    {"type": "toc_item_to_heading", "from_text": "1. Scope and Definitions", "to_text": "1. Scope and Definitions"},
+    {"type": "toc_item_to_heading", "from_text": "6. Labeling Standard", "to_text": "6. Labeling Standard"},
+    {"type": "toc_item_to_heading", "from_text": "10. Revision History", "to_text": "10. Revision History"}
+  ]
+}

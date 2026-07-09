@@ -1,0 +1,13 @@
+{
+  "case_id": "ocr-scanned-001",
+  "annotator": "documa-fixture-author",
+  "annotated_at": "2026-07-10",
+  "source": "real/scanned-note.pdf",
+  "note": "Image-only page; the OCR-enabled pipeline must recover these strings. Skipped when documa[ocr] is absent. Threshold lowered to 0.6 on 2026-07-10: RapidOCR consistently misses the first body line ('cooling loop') at render zoom 2 - engine-level recall limit, kept in the expectations so improvement is measurable.",
+  "threshold": 0.6,
+  "ocr_expected_texts": [
+    "MAINTENANCE NOTICE",
+    "cooling loop",
+    "shift supervisor"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "case_id": "table-crosspage-001",
+  "annotator": "documa-fixture-author",
+  "annotated_at": "2026-07-10",
+  "source": "real/cross-page-table.pdf",
+  "note": "One logical table split across pages; extractor emits one table per page with the header repeated on page 2.",
+  "tables": [
+    {
+      "table_index": 0,
+      "page": 1,
+      "html": "<table><tr><td>Site</td><td>Output (t)</td><td>Yield</td><td>Downtime (h)</td></tr><tr><td>Taipei North</td><td>1,204</td><td>97.1%</td><td>6.5</td></tr><tr><td>Taipei South</td><td>998</td><td>96.4%</td><td>8.0</td></tr><tr><td>Kaohsiung</td><td>1,655</td><td>98.2%</td><td>3.2</td></tr><tr><td>Taichung</td><td>1,340</td><td>97.8%</td><td>4.1</td></tr></table>"
+    },
+    {
+      "table_index": 1,
+      "page": 2,
+      "html": "<table><tr><td>Site</td><td>Output (t)</td><td>Yield</td><td>Downtime (h)</td></tr><tr><td>Hsinchu</td><td>876</td><td>95.9%</td><td>9.7</td></tr><tr><td>Tainan</td><td>1,102</td><td>97.3%</td><td>5.4</td></tr><tr><td>Total</td><td>7,175</td><td>97.2%</td><td>36.9</td></tr></table>"
+    }
+  ]
+}

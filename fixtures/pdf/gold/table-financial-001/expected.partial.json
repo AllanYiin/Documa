@@ -1,0 +1,14 @@
+{
+  "case_id": "table-financial-001",
+  "annotator": "documa-fixture-author",
+  "annotated_at": "2026-07-10",
+  "source": "real/financial-statement.pdf",
+  "note": "Financial statement: thousands separators, parenthesized negatives, indented account rows.",
+  "tables": [
+    {
+      "table_index": 0,
+      "page": 1,
+      "html": "<table><tr><td>Account</td><td>This Year</td><td>Last Year</td></tr><tr><td>Revenue</td><td>1,003,600</td><td>894,100</td></tr><tr><td>Product sales</td><td>912,400</td><td>820,500</td></tr><tr><td>Service income</td><td>91,200</td><td>73,600</td></tr><tr><td>Cost of revenue</td><td>(612,300)</td><td>(559,800)</td></tr><tr><td>Gross profit</td><td>391,300</td><td>334,300</td></tr><tr><td>Operating expenses</td><td>(228,700)</td><td>(214,900)</td></tr><tr><td>Research and development</td><td>(96,400)</td><td>(88,200)</td></tr><tr><td>Selling and administrative</td><td>(132,300)</td><td>(126,700)</td></tr><tr><td>Operating income</td><td>162,600</td><td>119,400</td></tr><tr><td>Interest expense</td><td>(8,100)</td><td>(9,300)</td></tr><tr><td>Income before tax</td><td>154,500</td><td>110,100</td></tr></table>"
+    }
+  ]
+}

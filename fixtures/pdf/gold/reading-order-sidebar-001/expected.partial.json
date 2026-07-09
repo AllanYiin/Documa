@@ -1,0 +1,12 @@
+{
+  "case_id": "reading-order-sidebar-001",
+  "annotator": "documa-fixture-author",
+  "annotated_at": "2026-07-10",
+  "source": "real/sidebar-note.pdf",
+  "note": "Main column reads fully before the full-height sidebar; sidebar content must not interleave.",
+  "reading_order": [
+    "Installation Guide",
+    "Begin by fixing the base rail",
+    "SAFETY NOTE"
+  ]
+}

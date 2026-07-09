@@ -1,0 +1,14 @@
+{
+  "case_id": "layout-header-footer-001",
+  "annotator": "documa-fixture-author",
+  "annotated_at": "2026-07-10",
+  "source": "real/header-footer-noise.pdf",
+  "note": "The confidential banner repeats on every page and must be classified as page furniture (header/footer). Anchor is 'Aurora Materials' because the base-14 helv font substitutes the em-dash during extraction.",
+  "excluded_texts": [
+    "Aurora Materials"
+  ],
+  "reading_order": [
+    "Chapter 1",
+    "Chapter one covers intake procedures"
+  ]
+}

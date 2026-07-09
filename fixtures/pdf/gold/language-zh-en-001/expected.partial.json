@@ -1,0 +1,12 @@
+{
+  "case_id": "language-zh-en-001",
+  "annotator": "documa-fixture-author",
+  "annotated_at": "2026-07-10",
+  "source": "real/zh-en-mixed-brief.pdf",
+  "note": "Mixed zh-Hant/English brief; section order must follow the visual sequence.",
+  "reading_order": [
+    "營運月報 Monthly Operations Brief",
+    "一、產能概況",
+    "二、品質事件"
+  ]
+}

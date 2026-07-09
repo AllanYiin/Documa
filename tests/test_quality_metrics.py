@@ -159,7 +159,7 @@ class TestQualityBenchmark:
         assert 0.0 <= order_scores["reading_order"]["score"] <= 1.0
 
         # Cases without gold stay in readiness mode.
-        readiness_case = by_id["footnote-linking-001"]
+        readiness_case = by_id["rag-rlm-chunking-001"]
         assert readiness_case["checks"][0] == {"name": "mode", "status": "readiness", "details": {"gold": None}}
 
     def test_orphan_gold_directory_is_an_error(self, tmp_path):
