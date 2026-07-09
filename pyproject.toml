@@ -21,7 +21,10 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Topic :: Text Processing :: Markup",
 ]
-dependencies = []
+# filelock is the sole runtime dependency (pure Python, zero transitive deps):
+# it guards registry read-modify-write against concurrent MCP/CLI processes.
+# Any new runtime dependency must document its justification here.
+dependencies = ["filelock>=3.12"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "pytest-cov>=5", "pytest-regressions>=2.5", "jsonschema>=4.21"]

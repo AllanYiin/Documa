@@ -16,6 +16,14 @@
   generated from `src/documa/core/ir.py` by `scripts/generate_schema.py` —
   never edit the schema file by hand.
 
+## Dependencies
+
+- Core runtime dependencies are exceptional: each one must be justified in a
+  comment next to its entry in `pyproject.toml` (current sole entry: filelock,
+  guarding registry concurrency). ML/LLM inference never enters core or CI —
+  pluggable interfaces live in core, implementations live in `examples/` or
+  optional extras.
+
 ## Testing
 
 - Snapshot regression tests (`tests/test_ir_snapshot_regression.py`) guard
