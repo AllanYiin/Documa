@@ -15,6 +15,7 @@ from documa.pipeline.footnotes import FootnoteLinkingStage
 from documa.pipeline.images import ImageNormalizationStage
 from documa.pipeline.inline_semantics import InlineSemanticsStage
 from documa.pipeline.layout import LayoutClassificationStage
+from documa.pipeline.ocr import OcrStage
 from documa.pipeline.paragraphs import ParagraphGroupingStage
 from documa.pipeline.provenance import ProvenanceLinkingStage
 from documa.pipeline.reading_order import ReadingOrderStage
@@ -43,6 +44,7 @@ class PipelineRun:
 
 def default_pipeline_stages(*, include_chunking: bool = True) -> list[PipelineStage]:
     stages: list[PipelineStage] = [
+        OcrStage(),
         ReadingOrderStage(),
         InlineSemanticsStage(),
         LayoutClassificationStage(),
