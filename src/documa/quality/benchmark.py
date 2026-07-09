@@ -14,7 +14,9 @@ from pathlib import Path
 from typing import Any
 
 from documa.quality.fixture_manifest import FixtureCase, load_fixture_manifest
+from documa.quality.metrics_layout_roles import header_footer_role_score, ocr_text_recall
 from documa.quality.metrics_reading_order import reading_order_score
+from documa.quality.metrics_relations import relation_link_score
 from documa.quality.metrics_table_teds import score_table
 
 
@@ -121,6 +123,35 @@ def _ordered_block_texts(document: dict[str, Any]) -> list[str]:
     return [text for _page, _order, text in blocks]
 
 
+def _ocr_extra_available() -> bool:
+    try:
+        import rapidocr_onnxruntime  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+def _reading_order_stats(document: dict[str, Any]) -> dict[str, Any]:
+    """Trace-derived health stats: fallback share and zone composition."""
+    total_blocks = 0
+    fallback_blocks = 0
+    zone_kinds: dict[str, int] = {}
+    for page in document.get("pages", []) or []:
+        for block in page.get("blocks", []) or []:
+            total_blocks += 1
+            rule = ((block.get("metadata") or {}).get("reading_order") or {}).get("rule")
+            if rule == "fallback_row_major":
+                fallback_blocks += 1
+        trace = (page.get("metadata") or {}).get("reading_order_trace") or {}
+        for zone in trace.get("zones", []) or []:
+            kind = str(zone.get("kind"))
+            zone_kinds[kind] = zone_kinds.get(kind, 0) + 1
+    return {
+        "fallback_block_ratio": round(fallback_blocks / total_blocks, 4) if total_blocks else 0.0,
+        "zone_kinds": zone_kinds,
+    }
+
+
 def _quality_case_result(case: FixtureCase, options: BenchmarkOptions, gold_path: Path) -> BenchmarkCaseResult:
     fixture_path = _fixture_path(case, options)
     base = BenchmarkCaseResult(
@@ -140,12 +171,24 @@ def _quality_case_result(case: FixtureCase, options: BenchmarkOptions, gold_path
         base.message = f"Cannot read gold annotation: {exc}"
         return base
 
+    threshold = gold.get("threshold", options.quality_threshold)
+    if not isinstance(threshold, (int, float)) or not 0.0 <= float(threshold) <= 1.0:
+        base.message = f"threshold must be in [0,1], got {threshold!r} ({gold_path})"
+        return base
+    threshold = float(threshold)
+
+    needs_ocr = bool(gold.get("ocr_expected_texts"))
+    if needs_ocr and not _ocr_extra_available():
+        base.status = "skipped"
+        base.message = "Gold expects OCR output but the documa[ocr] extra is not installed."
+        return base
+
     # Lazy import through the tools layer: the metrics stay pipeline-free, the
     # orchestrator needs a processed document to score.
     from documa.interfaces.tools import process_document_tool
 
     try:
-        payload = process_document_tool(source=str(fixture_path))
+        payload = process_document_tool(source=str(fixture_path), ocr=needs_ocr)
     except Exception as exc:  # pipeline failure is a case error, not a crash
         base.message = f"Pipeline failed: {exc}"
         return base
@@ -164,18 +207,26 @@ def _quality_case_result(case: FixtureCase, options: BenchmarkOptions, gold_path
         scores[f"table_{index}"] = score_table(actual_tables[index].get("rows") or [], gold_table.get("html", ""))
     if gold.get("reading_order"):
         scores["reading_order"] = reading_order_score(gold["reading_order"], _ordered_block_texts(document))
+    if gold.get("relations"):
+        scores["relations"] = relation_link_score(document, gold["relations"])
+    if gold.get("excluded_texts"):
+        scores["header_footer"] = header_footer_role_score(document, gold["excluded_texts"])
+    if gold.get("ocr_expected_texts"):
+        scores["ocr_recall"] = ocr_text_recall(document, gold["ocr_expected_texts"])
 
     flat_scores = []
     for entry in scores.values():
         if "score" in entry:
             flat_scores.append(float(entry["score"]))
-        if "teds_s" in entry:
+        elif "teds_s" in entry:
             flat_scores.append(float(entry["teds_s"]))
-    passed = bool(flat_scores) and all(value >= options.quality_threshold for value in flat_scores)
+    passed = bool(flat_scores) and all(value >= threshold for value in flat_scores)
 
     base.status = "passed" if passed else "failed"
     base.checks = [
         {"name": "quality_scores", "status": base.status, "details": scores},
+        {"name": "quality_threshold", "status": "info", "details": {"threshold": threshold}},
+        {"name": "reading_order_stats", "status": "info", "details": _reading_order_stats(document)},
     ]
     base.message = None if flat_scores else "Gold annotation contains nothing to score."
     if not flat_scores:
@@ -221,6 +272,14 @@ def run_fixture_benchmark(options: BenchmarkOptions | None = None) -> dict[str, 
         "errors": sum(1 for item in case_results if item.status == "error"),
         "issue_types": sorted(manifest.issue_type_values()),
     }
+    if options.mode == "quality":
+        fallback_ratios = [
+            check["details"]["fallback_block_ratio"]
+            for item in case_results
+            for check in item.checks
+            if check.get("name") == "reading_order_stats"
+        ]
+        summary["fallback_block_ratio_max"] = max(fallback_ratios, default=0.0)
     return {
         "status": "ok" if summary["failed"] == 0 and summary["errors"] == 0 else "failed",
         "mode": options.mode,

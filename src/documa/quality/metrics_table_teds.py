@@ -40,40 +40,92 @@ def table_tree_from_rows(rows: list[list[Any]]) -> TableTreeNode:
 
 
 class _TableHtmlParser(HTMLParser):
-    """Minimal stdlib parser for gold table HTML (td/th; thead/tbody flattened)."""
+    """Minimal stdlib parser for gold table HTML (td/th; thead/tbody flattened).
+
+    Collects per-row cells with colspan/rowspan so the tree builder can expand
+    them into the flat grid convention used by the PDF table extractor:
+    merged-cell content lives in the top-left covered position, all other
+    covered positions are empty cells (verified against PyMuPDF output on
+    fixtures/pdf/real/merged-cells-report.pdf).
+    """
 
     def __init__(self) -> None:
         super().__init__()
-        self.table = TableTreeNode("table")
-        self._row: TableTreeNode | None = None
-        self._cell: TableTreeNode | None = None
-        self._cell_text: list[str] = []
+        self.rows: list[list[tuple[str, int, int]]] = []
+        self._row: list[tuple[str, int, int]] | None = None
+        self._cell_text: list[str] | None = None
+        self._cell_spans: tuple[int, int] = (1, 1)
 
     def handle_starttag(self, tag: str, attrs) -> None:
         if tag == "tr":
-            self._row = TableTreeNode("tr")
-            self.table.children.append(self._row)
+            self._row = []
+            self.rows.append(self._row)
         elif tag in ("td", "th") and self._row is not None:
-            self._cell = TableTreeNode("td")
+            attributes = dict(attrs)
+            self._cell_spans = (
+                max(int(attributes.get("colspan", 1) or 1), 1),
+                max(int(attributes.get("rowspan", 1) or 1), 1),
+            )
             self._cell_text = []
-            self._row.children.append(self._cell)
 
     def handle_endtag(self, tag: str) -> None:
-        if tag in ("td", "th") and self._cell is not None:
-            self._cell.text = _normalize_cell("".join(self._cell_text))
-            self._cell = None
+        if tag in ("td", "th") and self._cell_text is not None and self._row is not None:
+            self._row.append(("".join(self._cell_text), *self._cell_spans))
+            self._cell_text = None
         elif tag == "tr":
             self._row = None
 
     def handle_data(self, data: str) -> None:
-        if self._cell is not None:
+        if self._cell_text is not None:
             self._cell_text.append(data)
+
+
+def _expand_spans_to_grid(rows: list[list[tuple[str, int, int]]]) -> list[list[str]]:
+    """Expand colspan/rowspan cells into the flat extractor grid convention."""
+    grid: list[list[str | None]] = []
+    pending: dict[tuple[int, int], str] = {}  # (row, col) -> "" placeholders from rowspans
+
+    for r, row in enumerate(rows):
+        grid_row: list[str | None] = []
+        col = 0
+        cells = iter(row)
+        while True:
+            while (r, col) in pending:
+                grid_row.append(pending.pop((r, col)))
+                col += 1
+            cell = next(cells, None)
+            if cell is None:
+                break
+            text, colspan, rowspan = cell
+            grid_row.append(text)
+            for extra_row in range(1, rowspan):
+                pending[(r + extra_row, col)] = ""
+            col += 1
+            for _ in range(1, colspan):
+                while (r, col) in pending:
+                    grid_row.append(pending.pop((r, col)))
+                    col += 1
+                grid_row.append("")
+                for extra_row in range(1, rowspan):
+                    pending[(r + extra_row, col)] = ""
+                col += 1
+        while (r, col) in pending:
+            grid_row.append(pending.pop((r, col)))
+            col += 1
+        grid.append(grid_row)
+    return grid
 
 
 def table_tree_from_html(html: str) -> TableTreeNode:
     parser = _TableHtmlParser()
     parser.feed(html or "")
-    return parser.table
+    table = TableTreeNode("table")
+    for grid_row in _expand_spans_to_grid(parser.rows):
+        tr = TableTreeNode("tr")
+        for cell in grid_row:
+            tr.children.append(TableTreeNode("td", text=_normalize_cell(cell)))
+        table.children.append(tr)
+    return table
 
 
 def tree_size(node: TableTreeNode) -> int:
