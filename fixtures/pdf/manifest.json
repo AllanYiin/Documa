@@ -111,6 +111,106 @@
         "preserve_chart_candidate_label"
       ],
       "file": "real/mixed-media-brief.pdf"
+    },
+    {
+      "id": "reading-order-threecolumn-001",
+      "title": "Three-column newsletter reading order",
+      "issue_type": "human_reading_order",
+      "description": "Three text columns under a full-width title; human order reads each column fully.",
+      "expected_capabilities": [
+        "resolve_column_order",
+        "emit_order_index",
+        "emit_reading_order_trace"
+      ],
+      "file": "real/three-column-newsletter.pdf"
+    },
+    {
+      "id": "reading-order-sidebar-001",
+      "title": "Sidebar beside main text column",
+      "issue_type": "human_reading_order",
+      "description": "Narrow full-height sidebar next to the main column must not interleave with it.",
+      "expected_capabilities": [
+        "resolve_column_order",
+        "emit_reading_order_trace"
+      ],
+      "file": "real/sidebar-note.pdf"
+    },
+    {
+      "id": "table-crosspage-001",
+      "title": "Table continued across pages with repeated header",
+      "issue_type": "table_structure",
+      "description": "One logical table split over two pages, header repeated on the continuation page.",
+      "expected_capabilities": [
+        "emit_structured_cells",
+        "emit_markdown_table"
+      ],
+      "file": "real/cross-page-table.pdf"
+    },
+    {
+      "id": "table-merged-cells-001",
+      "title": "Table with a merged header cell",
+      "issue_type": "table_structure",
+      "description": "Header cell visually spans two columns; grid must stay consistent.",
+      "expected_capabilities": [
+        "emit_structured_cells",
+        "emit_markdown_table"
+      ],
+      "file": "real/merged-cells-report.pdf"
+    },
+    {
+      "id": "table-financial-001",
+      "title": "Financial statement table",
+      "issue_type": "table_structure",
+      "description": "Thousands separators, parenthesized negatives, and indented account rows.",
+      "expected_capabilities": [
+        "emit_structured_cells",
+        "preserve_raw_text"
+      ],
+      "file": "real/financial-statement.pdf"
+    },
+    {
+      "id": "layout-header-footer-001",
+      "title": "Repeated page header and footer",
+      "issue_type": "human_reading_order",
+      "description": "Confidential header and page-number footer repeat on every page and must be classified as page furniture.",
+      "expected_capabilities": [
+        "classify_page_header_footer",
+        "emit_order_index"
+      ],
+      "file": "real/header-footer-noise.pdf"
+    },
+    {
+      "id": "language-zh-en-001",
+      "title": "Mixed Traditional Chinese and English text",
+      "issue_type": "paragraph_grouping",
+      "description": "CJK and Latin text in the same paragraphs; grouping and punctuation handling must hold.",
+      "expected_capabilities": [
+        "group_rows_into_paragraph",
+        "handle_cjk_punctuation"
+      ],
+      "file": "real/zh-en-mixed-brief.pdf"
+    },
+    {
+      "id": "toc-long-001",
+      "title": "Long table of contents with outline",
+      "issue_type": "toc_linking",
+      "description": "Ten TOC entries plus a PDF outline linked to numbered section headings.",
+      "expected_capabilities": [
+        "parse_toc_items",
+        "link_toc_to_heading_or_page"
+      ],
+      "file": "real/long-toc-manual.pdf"
+    },
+    {
+      "id": "ocr-scanned-001",
+      "title": "Image-only scanned page requiring OCR",
+      "issue_type": "image_chart_asset_extraction",
+      "description": "Scanned page with no native text; OCR must produce flagged text blocks.",
+      "expected_capabilities": [
+        "emit_image_asset_ref",
+        "flag_ocr_origin_metadata"
+      ],
+      "file": "real/scanned-note.pdf"
     }
   ]
 }

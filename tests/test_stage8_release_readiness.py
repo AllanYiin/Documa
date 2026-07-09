@@ -10,9 +10,12 @@ class Stage8ReleaseReadinessTests(unittest.TestCase):
     def test_doctor_reports_environment_readiness(self):
         payload = run_doctor(DoctorOptions(project_root=".", include_benchmark=True))
 
+        repo_cases = len(
+            json.loads(open("fixtures/pdf/manifest.json", encoding="utf-8").read())["cases"]
+        )
         self.assertEqual(payload["status"], "ok")
         self.assertGreaterEqual(payload["summary"]["checks"], 7)
-        self.assertEqual(payload["benchmark_summary"]["case_count"], 9)
+        self.assertEqual(payload["benchmark_summary"]["case_count"], repo_cases)
 
     def test_direct_doctor_tool_returns_structured_content(self):
         result = call_documa_tool("documa_doctor", {"project_root": ".", "include_benchmark": False})
