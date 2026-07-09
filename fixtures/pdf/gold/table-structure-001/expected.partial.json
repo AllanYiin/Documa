@@ -1,0 +1,18 @@
+{
+  "case_id": "table-structure-001",
+  "annotator": "documa-fixture-author",
+  "annotated_at": "2026-07-09",
+  "source": "real/annual-report.pdf",
+  "tables": [
+    {
+      "table_index": 0,
+      "page": 2,
+      "html": "<table><tr><td>Region</td><td>Revenue (M)</td><td>Growth</td><td>Share</td></tr><tr><td>Asia-Pacific</td><td>412.5</td><td>18%</td><td>41%</td></tr><tr><td>Europe</td><td>301.2</td><td>9%</td><td>30%</td></tr><tr><td>Americas</td><td>289.9</td><td>6%</td><td>29%</td></tr></table>"
+    },
+    {
+      "table_index": 1,
+      "page": 3,
+      "html": "<table><tr><td>Initiative</td><td>Target Year</td><td>Status</td></tr><tr><td>Coating line 2</td><td>Next year</td><td>Approved</td></tr><tr><td>Recycled feedstock</td><td>Two years</td><td>Pilot</td></tr></table>"
+    }
+  ]
+}

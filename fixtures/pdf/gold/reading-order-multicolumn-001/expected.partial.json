@@ -1,0 +1,14 @@
+{
+  "case_id": "reading-order-multicolumn-001",
+  "annotator": "documa-fixture-author",
+  "annotated_at": "2026-07-09",
+  "source": "real/two-column-article.pdf",
+  "note": "Anchors are block-start aligned. Human order reads the left column fully before the right column.",
+  "reading_order": [
+    "Signal Propagation in Layered Media",
+    "A short synthetic article",
+    "In practical assemblies the layers are rarely uniform",
+    "The second parameter is loss",
+    "Figure 1: Measurement setup"
+  ]
+}
