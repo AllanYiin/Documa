@@ -33,3 +33,29 @@ jobs:
         run: python -m pytest
       - name: Run Documa doctor
         run: documa doctor
+
+  # Observational quality gate: never blocks merges while thresholds are being
+  # calibrated. Promotion to a hard gate is documented in CHANGELOG.md.
+  quality-benchmark:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install package
+        run: python -m pip install -e ".[dev,documents]"
+      - name: Run quality benchmark
+        continue-on-error: true
+        run: documa benchmark --mode quality --out bench.json
+      - name: Publish score summary
+        run: python .github/scripts/benchmark_summary.py bench.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload benchmark artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-benchmark
+          path: bench.json
+          retention-days: 30
