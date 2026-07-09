@@ -93,6 +93,90 @@ class TestEndToEndFlow:
         assert cited["grounding"] in {"visual", "logical"}
 
 
+class TestColumnFlowEndToEnd:
+    def test_three_column_ingest_cite_window_evidence_flow(self, tmp_path, monkeypatch):
+        from documa.interfaces.answer_support import build_evidence_bundle
+        from documa.interfaces.tools import source_window_tool
+
+        monkeypatch.chdir(tmp_path)
+        source = REPO_ROOT / "fixtures" / "pdf" / "real" / "three-column-newsletter.pdf"
+        ingested = ingest_document_tool(source=str(source))
+        assert ingested["status"] == "ok"
+        document_id = ingested["document_id"]
+
+        found = search_blocks_tool(ir_path=document_id, query="recycled feedstock")
+        assert found["results"], "expected a hit in the third column"
+        block_id = found["results"][0]["id"]
+
+        cited = cite_block_tool(ir_path=document_id, block_id=block_id)
+        assert cited["status"] == "ok"
+        assert cited["grounding"] == "visual"
+
+        window = source_window_tool(ir_path=document_id, block_id=block_id, before=1, after=1)
+        assert window["status"] == "ok"
+        offsets = [item["offset"] for item in window["window"]]
+        assert offsets == sorted(offsets)
+
+        document = load_document(document_id)
+        bundle = build_evidence_bundle(document, [block_id])
+        assert bundle.is_complete
+        assert bundle.items[0].citation_string
+
+        verified = verify_citations_tool(ir_path=document_id, block_ids=[block_id])
+        assert verified["overall_valid"] is True
+
+    def test_column_first_order_survives_the_full_pipeline(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        source = REPO_ROOT / "fixtures" / "pdf" / "real" / "three-column-newsletter.pdf"
+        ingested = ingest_document_tool(source=str(source))
+        document = load_document(ingested["document_id"])
+
+        page = document.pages[0]
+        texts_in_order = [b.text.raw_text for b in page.blocks if b.text]
+        col1 = next(i for i, t in enumerate(texts_in_order) if t.startswith("Curing ovens"))
+        col2 = next(i for i, t in enumerate(texts_in_order) if t.startswith("Field crews"))
+        col3 = next(i for i, t in enumerate(texts_in_order) if t.startswith("The materials lab"))
+        assert col1 < col2 < col3
+
+
+class TestQualityDeterminism:
+    def test_quality_benchmark_is_deterministic_across_runs(self, monkeypatch):
+        import json as json_module
+
+        from documa.quality.benchmark import BenchmarkOptions, run_fixture_benchmark
+
+        monkeypatch.chdir(REPO_ROOT)
+        first = run_fixture_benchmark(BenchmarkOptions(mode="quality"))
+        second = run_fixture_benchmark(BenchmarkOptions(mode="quality"))
+        assert json_module.dumps(first["summary"], sort_keys=True) == json_module.dumps(
+            second["summary"], sort_keys=True
+        )
+        first_scores = {c["case_id"]: c["checks"] for c in first["cases"]}
+        second_scores = {c["case_id"]: c["checks"] for c in second["cases"]}
+        assert first_scores == second_scores
+
+
+class TestStoreCliBoundaries:
+    def test_doctor_with_store_dir_reports_health_via_cli(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.chdir(tmp_path)
+        ingest_document_tool(source=str(ANNUAL_REPORT))
+        exit_code, payload = _run_cli(
+            ["doctor", "--no-benchmark", "--project-root", str(REPO_ROOT), "--store-dir", ".documa"],
+            capsys,
+        )
+        assert exit_code == 0
+        assert payload["store_health"]["document_count"] == 1
+
+    def test_inspect_store_cli_flags_orphan_dirs(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.chdir(tmp_path)
+        ingest_document_tool(source=str(ANNUAL_REPORT))
+        (tmp_path / ".documa" / "documents" / "doc-orphan0000000000").mkdir()
+        exit_code, payload = _run_cli(["inspect-store"], capsys)
+        assert exit_code == 0
+        assert payload["status"] == "warning"
+        assert payload["orphan_dirs"] == ["doc-orphan0000000000"]
+
+
 class TestRegistryScale:
     def test_lookup_stays_fast_with_ten_thousand_entries(self, tmp_path):
         store = tmp_path / ".documa"
