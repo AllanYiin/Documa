@@ -313,6 +313,7 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
                 "properties": {
                     "project_root": {"type": "string", "default": "."},
                     "include_benchmark": {"type": "boolean", "default": True},
+                    "store_dir": {"type": ["string", "null"], "default": None},
                 },
             },
             "outputSchema": {
@@ -513,6 +514,32 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
                     "status": {"type": "string"},
                     "document_count": {"type": "integer"},
                     "documents": {"type": "array"},
+                },
+                "required": ["status"],
+            },
+            "annotations": {"readOnlyHint": True},
+        },
+        {
+            "name": "documa_inspect_store",
+            "title": "Inspect local document store health",
+            "description": (
+                "Report store health: index integrity, entries with missing IR files, orphan "
+                "document directories, and registry lock state."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "store_dir": {"type": "string", "default": ".documa"},
+                },
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "document_count": {"type": "integer"},
+                    "missing_ir": {"type": "array"},
+                    "orphan_dirs": {"type": "array"},
+                    "lock": {"type": "object"},
                 },
                 "required": ["status"],
             },

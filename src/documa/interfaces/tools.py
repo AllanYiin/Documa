@@ -999,11 +999,20 @@ def benchmark_tool(
     return payload
 
 
-def doctor_tool(project_root: str = ".", include_benchmark: bool = True) -> ToolPayload:
+def doctor_tool(
+    project_root: str = ".",
+    include_benchmark: bool = True,
+    store_dir: str | None = None,
+) -> ToolPayload:
     try:
-        return run_doctor(DoctorOptions(project_root=Path(project_root), include_benchmark=include_benchmark))
+        payload = run_doctor(DoctorOptions(project_root=Path(project_root), include_benchmark=include_benchmark))
     except (OSError, KeyError, ValueError) as exc:
         return {"status": "error", "message": str(exc)}
+    if store_dir is not None:
+        payload["store_health"] = registry_store.store_health(store_dir=store_dir)
+        if payload["store_health"]["status"] != "ok" and payload.get("status") == "ok":
+            payload["status"] = "warning"
+    return payload
 
 
 def _load_document_or_error(ir_path: str) -> DocumentIR | ToolPayload:
@@ -1074,6 +1083,10 @@ def delete_document_tool(
     return registry_store.delete_document(document_id, store_dir=store_dir, yes=yes)
 
 
+def inspect_store_tool(store_dir: str = registry_store.DEFAULT_STORE_DIR) -> ToolPayload:
+    return registry_store.store_health(store_dir=store_dir)
+
+
 def validate_ir_tool(ir_path: str) -> ToolPayload:
     from documa.core.schema_validation import validate_document_payload
 
@@ -1114,6 +1127,7 @@ def _tool_registry() -> dict[str, Callable[..., ToolPayload]]:
         "documa_validate_ir": validate_ir_tool,
         "documa_ingest": ingest_document_tool,
         "documa_list_documents": list_documents_tool,
+        "documa_inspect_store": inspect_store_tool,
     }
 
 

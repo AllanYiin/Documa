@@ -23,6 +23,7 @@ from documa.interfaces import (
     export_document_tool,
     inspect_block_tool,
     inspect_document_tool,
+    inspect_store_tool,
     ingest_mailbox_tool,
     list_blocks_tool,
     list_documa_tools,
@@ -211,6 +212,10 @@ def build_parser() -> argparse.ArgumentParser:
     doctor_cmd = subparsers.add_parser("doctor", help="Run Documa environment diagnostics.")
     doctor_cmd.add_argument("--project-root", default=".", help="Project root for local readiness checks.")
     doctor_cmd.add_argument("--no-benchmark", action="store_true", help="Skip fixture benchmark readiness checks.")
+    doctor_cmd.add_argument("--store-dir", default=None, help="Also report document store health for this directory.")
+
+    inspect_store_cmd = subparsers.add_parser("inspect-store", help="Report local document store health.")
+    inspect_store_cmd.add_argument("--store-dir", default=".documa", help="Document store directory.")
 
     return parser
 
@@ -417,8 +422,16 @@ def main(argv: list[str] | None = None) -> int:
         return _emit_json(result, exit_code=0 if result["valid"] else 1)
 
     if args.command == "doctor":
-        payload = doctor_tool(project_root=args.project_root, include_benchmark=not args.no_benchmark)
-        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+        payload = doctor_tool(
+            project_root=args.project_root,
+            include_benchmark=not args.no_benchmark,
+            store_dir=args.store_dir,
+        )
+        return _emit_json(payload, exit_code=0 if payload.get("status") in {"ok", "warning"} else 1)
+
+    if args.command == "inspect-store":
+        payload = inspect_store_tool(store_dir=args.store_dir)
+        return _emit_json(payload, exit_code=0 if payload.get("status") in {"ok", "warning"} else 1)
 
     parser.print_help()
     return 0
