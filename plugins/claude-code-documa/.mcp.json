@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "documa": {
+      "command": "documa-mcp",
+      "args": [],
+      "env": {}
+    }
+  }
+}
+

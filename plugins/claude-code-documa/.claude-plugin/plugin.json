@@ -1,0 +1,9 @@
+{
+  "name": "claude-code-documa",
+  "description": "Use Documa document understanding from Claude Code via MCP.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Documa contributors"
+  }
+}
+
