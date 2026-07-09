@@ -54,6 +54,15 @@ _SEARCH_FIELD_WEIGHTS = {
 }
 _DEFAULT_SNIPPET_FIELDS = {"body", "title", "preview"}
 _SEARCH_VERBOSITIES = {"compact", "standard", "debug"}
+_DATE_PATTERN = re.compile(r"\b(?:19|20)\d{2}\b|\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b")
+_NUMBER_PATTERN = re.compile(r"[-+]?\d+(?:\.\d+)?\s*(?:%|percent|percentage|pp|bps|x|times)?", re.IGNORECASE)
+_TREND_PATTERN = re.compile(
+    r"\b(increase|decrease|decline|declined|rise|rose|rising|fall|fell|growth|grew|drop|dropped|higher|lower|trend)\b",
+    re.IGNORECASE,
+)
+_DEFINITION_PATTERN = re.compile(r"\b(is defined as|refers to|means|definition|defined as)\b", re.IGNORECASE)
+_CAUSE_PATTERN = re.compile(r"\b(because|due to|driven by|caused by|reason|therefore|as a result)\b", re.IGNORECASE)
+_COMPARISON_PATTERN = re.compile(r"\b(compared with|compared to|versus|vs\.?|relative to|more than|less than)\b", re.IGNORECASE)
 _LOW_VALUE_HEADINGS = {
     "abstract",
     "acknowledgements",
@@ -450,7 +459,7 @@ def local_tool_definitions() -> list[dict[str, Any]]:
                     "limit": {"type": "integer", "minimum": 1, "maximum": 10, "default": 5},
                     "terms": {"type": "array", "items": {"type": "string"}},
                     "search_body": {"type": "boolean", "default": True},
-                    "max_snippets_per_block": {"type": "integer", "minimum": 0, "maximum": 5, "default": 3},
+                    "max_snippets_per_block": {"type": "integer", "minimum": 0, "maximum": 5, "default": 2},
                     "verbosity": {"type": "string", "enum": ["compact", "standard", "debug"], "default": "compact"},
                 },
                 "required": ["query"],
@@ -699,6 +708,81 @@ def block_path(block: DocumentBlockIR, by_id: dict[str, DocumentBlockIR]) -> lis
     return list(reversed(path))
 
 
+def block_doc_region(block: DocumentBlockIR, by_id: dict[str, DocumentBlockIR]) -> str:
+    title = " ".join(block_path(block, by_id) + [block.title or ""]).casefold()
+    source_type = str(block.metadata.get("source_block_type") or "").casefold()
+    role = str(block.metadata.get("role") or "").casefold()
+    if block.type == DocumentBlockType.TOC or "table of contents" in title or "contents" == title.strip():
+        return "toc"
+    if block.type == DocumentBlockType.METADATA:
+        return "metadata"
+    if "page_header" in {source_type, role} or "page_footer" in {source_type, role}:
+        return "header_footer"
+    if any(term in title for term in ("references", "bibliography", "works cited")):
+        return "references"
+    if "appendix" in title or "annex" in title:
+        return "appendix"
+    return "body"
+
+
+def block_neighbor_metadata(block: DocumentBlockIR, document: DocumentIR) -> dict[str, Any]:
+    ordered = ordered_blocks(document)
+    positions = {item.id: index for index, item in enumerate(ordered)}
+    index = positions.get(block.id)
+    prev_id = ordered[index - 1].id if index is not None and index > 0 else None
+    next_id = ordered[index + 1].id if index is not None and index + 1 < len(ordered) else None
+    text = (block.text_preview or "").strip()
+    needs_next = block.type == DocumentBlockType.TABLE or (bool(text) and text[-1:] not in {".", "!", "?", "。", "！", "？"})
+    return {"prev": prev_id, "next": next_id, "needs_next": needs_next}
+
+
+def block_answer_tags(text: str, block: DocumentBlockIR) -> list[str]:
+    tags: list[str] = []
+    if _DEFINITION_PATTERN.search(text):
+        tags.append("definition")
+    if _TREND_PATTERN.search(text):
+        tags.append("trend")
+    if _COMPARISON_PATTERN.search(text):
+        tags.append("comparison")
+    if _CAUSE_PATTERN.search(text):
+        tags.append("cause")
+    if _NUMBER_PATTERN.search(text):
+        tags.append("numeric")
+    if _DATE_PATTERN.search(text):
+        tags.append("date")
+    if block.type == DocumentBlockType.TABLE:
+        tags.append("table")
+    return list(dict.fromkeys(tags))
+
+
+def compact_block_selection_metadata(block: DocumentBlockIR, by_id: dict[str, DocumentBlockIR], document: DocumentIR) -> dict[str, Any]:
+    content = document_block_text(document, block)
+    selection_text = " ".join(part for part in [block.title or "", block.text_preview or "", content[:1200]] if part)
+    char_count = len(content)
+    token_estimate = max(1, math.ceil(char_count / 4)) if char_count else 0
+    flags = {
+        "has_numeric": bool(_NUMBER_PATTERN.search(selection_text)),
+        "has_date": bool(_DATE_PATTERN.search(selection_text)),
+        "has_table": block.type == DocumentBlockType.TABLE,
+        "is_reference": block_doc_region(block, by_id) == "references",
+        "is_header_footer": block_doc_region(block, by_id) == "header_footer",
+    }
+    recommended_chars = min(3000, max(800, char_count if char_count else len(block.text_preview or "")))
+    return {
+        "block_id": block.id,
+        "block_type": block.type.value,
+        "heading_path": block_path(block, by_id),
+        "doc_region": block_doc_region(block, by_id),
+        "answer_tags": block_answer_tags(selection_text, block),
+        "char_count": char_count,
+        "token_estimate": token_estimate,
+        "recommended_read_chars": recommended_chars,
+        "neighbors": block_neighbor_metadata(block, document),
+        "flags": flags,
+        "dedupe_key": block.content_hash or hashlib.sha1(selection_text.encode("utf-8", errors="ignore")).hexdigest()[:16],
+    }
+
+
 def safe_display_path_segment(value: Any) -> str:
     text = str(value or "").strip()
     if not text:
@@ -923,6 +1007,7 @@ def metadata_row(
     return {
         "id": block.id,
         "type": block.type.value,
+        "selection_metadata": compact_block_selection_metadata(block, by_id, document),
         "title": title,
         "original_title": safe_display_path_segment(block.title) if block.title else None,
         "parent_id": block.parent_id,
@@ -1054,7 +1139,7 @@ class PdfBlockChatExample:
         terms_source: str | None = None,
         search_body: bool = True,
         include_snippets: bool = True,
-        max_snippets_per_block: int = 5,
+        max_snippets_per_block: int = 2,
         snippet_fields: list[str] | None = None,
         verbosity: str = "compact",
     ) -> dict[str, Any]:
@@ -1124,8 +1209,12 @@ class PdfBlockChatExample:
             base_row = metadata_row(block, self.by_id, self.document, keywords=block_keywords)
             row = {
                 "id": base_row["id"],
+                "block_id": base_row["id"],
                 "type": base_row["type"],
+                "block_type": base_row["selection_metadata"]["block_type"],
                 "title": base_row["title"],
+                "heading_path": base_row["selection_metadata"]["heading_path"],
+                "doc_region": base_row["selection_metadata"]["doc_region"],
                 "score": round(score, 4),
                 "page_refs": base_row["page_refs"],
                 "citation_label": base_row.get("citation_label"),
@@ -1133,6 +1222,14 @@ class PdfBlockChatExample:
                 "pdf_page_labels": base_row.get("pdf_page_labels", []),
                 "children_count": base_row["children_count"],
                 "matched": matched,
+                "matched_terms": matched,
+                "matched_terms_count": len(set(matched)),
+                "answer_tags": base_row["selection_metadata"]["answer_tags"],
+                "token_estimate": base_row["selection_metadata"]["token_estimate"],
+                "recommended_read_chars": base_row["selection_metadata"]["recommended_read_chars"],
+                "neighbors": base_row["selection_metadata"]["neighbors"],
+                "flags": base_row["selection_metadata"]["flags"],
+                "dedupe_key": base_row["selection_metadata"]["dedupe_key"],
                 "snippets": snippets,
             }
             if output_verbosity in {"standard", "debug"}:
@@ -1141,6 +1238,7 @@ class PdfBlockChatExample:
                         "parent_id": base_row["parent_id"],
                         "depth": base_row["depth"],
                         "block_path": base_row["block_path"],
+                        "selection_metadata": base_row["selection_metadata"],
                         "text_preview": base_row["text_preview"],
                         "keywords": block_keywords[:5],
                     }
@@ -1699,7 +1797,7 @@ class PdfBlockChatExample:
             "snippet_policy": {
                 "search_body": True,
                 "include_snippets": True,
-                "max_snippets_per_block": 3,
+                "max_snippets_per_block": 2,
                 "snippet_fields": sorted(_DEFAULT_SNIPPET_FIELDS),
                 "verbosity": "compact",
             },
@@ -1716,7 +1814,7 @@ class PdfBlockChatExample:
             terms=terms or None,
             terms_source=query_plan["terms_source"],
             verbosity="compact",
-            max_snippets_per_block=3,
+            max_snippets_per_block=2,
         )
         recorder.add("tool_result", "search_blocks", search_result, started_at=started)
 
