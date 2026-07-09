@@ -1,14 +1,21 @@
 # Documa
 
-Documa 是一個 Python 套件，用來把 PDF、Markdown、Office 文件、HTML、email 與 notebook 轉成適合 LLM / agent 使用的結構化資料。
+Documa 是給 agent 用的 **document evidence runtime**：讓 agent 讀懂文件、只讀需要的部分、回答時指得出出處，而且引用可以被驗證。
 
-如果你只想「把檔案丟給模型讀」，Documa 解決的是中間那段麻煩工作：先讀文件、保留來源、整理成 block / chunk，再提供 CLI、Python API、OpenAI tool schema 與 MCP tool 讓下游系統使用。
+核心流程只有四步：
 
-Documa 目前不是 UI 產品，也不是新的 PDF parser。它是 **LLM-ready document understanding package**。
+1. **Ingest** — `documa ingest report.pdf` 把文件處理進本地儲存庫，拿到一個穩定的 `document_id`（同內容自動去重）。
+2. **Block reading** — `documa search-blocks` 找相關區塊、`documa block --read` 只讀需要的內容，不用整份塞進 prompt。
+3. **Citation** — `documa cite-block` 把任何區塊回溯到「第幾頁、頁面上哪個位置」，附原文摘錄與引用字串。
+4. **Verifiable answer** — `documa_verify_citations` 檢查答案引用的區塊真實存在，`build_evidence_bundle` 把證據整包交給你選擇的驗證器逐條核對。
+
+每一步都是確定性的（無 ML 依賴、可離線、同輸入同輸出），品質由 `documa benchmark --mode quality` 的 gold 標準答案持續量測。支援 PDF、Markdown、Office 文件、HTML、email 與 notebook——但格式支援是地基，不是賣點；賣點是**可稽核的答案**。
+
+Documa 不是 UI 產品，也不是新的 PDF parser。
 
 ## Overview / 概覽
 
-Documa 的最小成功路徑是：安裝套件，對一份文件執行 `documa process`，取得 `documa.ir.json`、`documa.rag.json` 與 `documa.blocks.json`，再用 block search / read 指令讓 agent 只讀需要的內容。
+Documa 的最小成功路徑是：安裝套件，`documa ingest` 一份文件拿到 document_id，用 block search / read 讓 agent 只讀需要的內容，回答時用 citation 工具附出處。
 
 這份 README 先帶你完成一次成功流程，再說明支援格式、email mailbox、Python API、tool-calling、MCP 與開發方式。
 
@@ -307,7 +314,9 @@ documa benchmark --mode quality    # 對 gold 標註計分：table TEDS/TEDS-S�
 documa diff actual.ir.json expected.ir.json   # 結構化差異：block 新增/缺失/易位、表格 cell
 ```
 
-Gold 標註放在 `fixtures/pdf/gold/<case_id>/expected.partial.json`（格式見該目錄 README）。目前的實測分數：表格還原兩案例 TEDS 1.0；雙欄閱讀順序 case 為 failed——benchmark 上線當天就抓到 pipeline 以列優先而非欄優先排序雙欄版面的真實問題（見「已知限制」）。
+Gold 標註放在 `fixtures/pdf/gold/<case_id>/expected.partial.json`（格式見該目錄 README，支援表格 HTML（含 colspan/rowspan）、閱讀順序錨點、關係連結、頁首頁尾角色與 OCR 期望文字，並可逐 case 覆寫門檻）。目前 13 個 gold case 的實測：11 passed（含雙欄/三欄/sidebar 閱讀順序 1.0、五類表格 1.0、中英混排、TOC 連結、頁首頁尾分類），2 個為**蓄意保留的 failed**——footnote 與 caption 連結缺口，已在 gold 註記中標明「不得調低門檻掩蓋」，是下一輪的修復標的。
+
+每個 block 都帶 reading-order trace（`metadata.reading_order`：zone/欄/規則/套用的 Gestalt 原則），benchmark 失敗時可直接定位排錯的區域；CI 的 quality job 會把逐 case 分數表顯示在每次 run 的 summary 頁。
 
 ## 產生 human viewer
 
@@ -571,9 +580,10 @@ Documa core 不內建 OCR pipeline。你需要先用 OCR 工具產出可抽取�
 
 - Documa core 不是 UI product。UI code 應放在 examples 或 downstream applications。
 - Documa 不從零實作底層 parser。PDF、DOCX、PPTX、HTML、MSG 與 IPYNB extraction 透過 adapters 委派給專門 library；EML 使用 Python 標準庫 MIME parser。
-- 目前 pipeline stages 是保守 baseline，不是完美的 document understanding model。`documa benchmark --mode quality` 已量測到一個已知問題：雙欄版面的閱讀順序目前是列優先（左右欄逐列交錯）而非人類的欄優先順序，reading-order-multicolumn-001 case 因此為 failed，待 ReadingOrderStage 修正。
-- OCR 為選配（`documa[ocr]`，RapidOCR/CPU）：無 GPU 加速路徑；第一次執行需下載模型；quality 門檻 0.85 為暫定值，待更多 gold 標註校準。
-- Registry 為單機單寫者設計（JSON index），不處理多程序併發寫入。
+- 目前 pipeline stages 是保守 baseline，不是完美的 document understanding model。`documa benchmark --mode quality`（13 gold cases）持續量測：雙欄/三欄/sidebar 閱讀順序已達 1.0；**兩個已知連結缺口蓄意保留為 failed**——footnote marker 連不到註腳本文、圖片 caption 連不到內嵌圖片，詳見對應 gold 檔的註記。
+- 閱讀順序 v2 對「欄中還有欄」的巢狀版面不遞迴切割，退為保守排序並在 trace 標記 `fallback_row_major`。
+- OCR 為選配（`documa[ocr]`，RapidOCR/CPU）：無 GPU 加速路徑；第一次執行需下載模型；render zoom 2 下引擎會漏掃部分行（ocr-scanned gold case 門檻因此暫定 0.6，附註記）。
+- Registry 以 filelock 保護跨程序寫入（單機語意）；store 目錄請放本機磁碟，網路磁碟（NFS/SMB）上的鎖語意較弱。
 - DOCX 與 HTML 目前使用 logical flow / DOM order；PPTX 使用 slide order；EML / MSG 使用 logical email page；IPYNB 使用 cell order。
 - 選用 LLM usage 只出現在 demos 或 downstream integrations。Core parsing 與 processing 是 deterministic，可離線執行。
 

@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased — v0.3：reading order v2, credible benchmark, evidence runtime（2026-07）
+
+定位收斂為 **document evidence runtime for agents**：ingest → block reading → citation → verifiable answer。
+
+### 新增
+
+- **ReadingOrderStage v2（zone/column，含 trace）**：XY-Cut++ 系確定性演算法——spanner 偵測（含「遮罩最寬塊以顯露被蓋住的 gutter」）、深度限制的垂直分帶、y 共存驗證的欄切割、網格偵測（列對齊的儲存格改列優先閱讀）。每個 block 記錄 `metadata.reading_order`（zone_id / column_index / rule / 套用的 Gestalt 原則），每頁記錄 zone+gutter trace——排序錯誤可直接定位，此能力在現有開源系統中未見。雙欄、三欄、sidebar gold case 全數 1.0。
+- **Benchmark 擴充至 18 案例 / 13 gold**：8 份新生成 fixture（三欄、跨頁表、合併儲存格、財報表格、頁首頁尾、中英混排、sidebar、長 TOC）；新指標——span-aware TEDS（gold HTML colspan/rowspan 展開，與 PyMuPDF 網格慣例實測對齊）、關係連結錨定 P/R/F1、頁首頁尾角色分類、OCR 文字召回；逐 case 門檻覆寫（含驗證）；OCR gold 在無 extra 環境為 skipped。
+- **Registry 併發防護**：filelock（core 第一個 runtime 依賴，理由註記於 pyproject）包住索引 read-modify-write，昂貴的 parse 在鎖外以 reload-recheck-commit 收尾；鎖逾時回明確 `LOCK_TIMEOUT`。新增 `documa inspect-store` 與 `documa doctor --store-dir`（索引完整性、缺檔、孤兒目錄、stale 鎖偵測——只回報不自動刪）。雙程序 100 次競爭 ingest 實測索引無損。
+- **驗證分層定案**：L1 `documa_verify_citations`（id 存在性，既有）→ L2 `build_evidence_bundle()`（確定性證據組裝，新增於 core）→ L3 `AnswerSupportChecker` protocol（claim 級驗證契約；Anthropic API 串流參考實作在 examples，ML/LLM 不進 core 與 CI）。
+- **CI 可見性**：non-blocking quality job，逐 case 分數表寫入 run summary，bench.json 存 30 天 artifact。
+
+### 蓄意保留的 failed cases（下一輪標的）
+
+- footnote-linking-001：FootnoteLinkingStage 未連結上標註腳標記與註腳本文。
+- image-chart-asset-extraction-001：CaptionLinkingStage 未連結 "Image 1:" caption 與內嵌圖片。
+
+### quality 門檻轉硬閘的條件
+
+連續 10 次 CI run 中，各 gold case 分數波動 < 0.02 且無新增 error，即可把 quality job 的 continue-on-error 移除。
+
+### 已知限制
+
+- 巢狀欄不遞迴切割（trace 標 `fallback_row_major`）。
+- RapidOCR 在 render zoom 2 下會漏掃部分行（ocr gold 門檻暫定 0.6，附日期註記）。
+- filelock 於網路磁碟語意較弱；store 目錄應在本機磁碟。
+
 ## Unreleased — IR 0.2：identity, citation, OCR, quality（2026-07）
 
 從「能處理文件」到「能支援可稽核的 agent 回答」的一輪功能擴充。IR 升 0.2（純 additive，0.1 檔案完全相容，契約見 [docs/spec/ir-compatibility.md](docs/spec/ir-compatibility.md)）。

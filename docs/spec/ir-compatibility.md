@@ -35,6 +35,24 @@
 2. 新版程式讀舊版檔案，補預設值後語意正確嗎？→ 不正確就是 MAJOR。
 3. 兩者皆否 → MINOR，並在本文件補上變更清單。
 
+## Reading-order trace 的格式保證（0.2 期間新增，metadata 開放結構）
+
+閱讀順序 v2 在既有 `metadata` dict 內記錄排序依據，keys 為契約的一部分（欄位在開放結構內，
+schema 不變、不觸發版本升級；一旦發佈即不得改名或改語意）：
+
+- BlockIR：`metadata.reading_order = {strategy, zone_id, column_index, rule, gestalt}`
+  - `strategy`: `"zone_column_v2"`
+  - `rule`: `"spanner" | "column_flow" | "single_column" | "grid_row_major" | "fallback_row_major"`
+  - `column_index`: 0-based int；spanner 與 fallback 為 null
+  - `gestalt`: 套用的知覺組織原則標籤（`proximity` / `continuity` / `similarity` / `figure/ground` / `common region`）
+- PageIR：`metadata.reading_order_trace = {zones: [...], gutters: [...]}`
+  - zone: `{zone_id, kind: "content"|"grid"|"banded", y0, y1, column_count?, block_count}`
+  - gutter: `{zone_id, x0, x1}`
+- 由多個 block 合併而成的 paragraph 繼承第一個成員的 `reading_order`。
+
+Consumer 可以據此解釋「為什麼這個 block 排在這裡」；quality benchmark 以 trace 統計
+`fallback_block_ratio` 作為欄偵測健康度信號。
+
 ## OCR 產物的格式保證
 
 OCR 文字不新增 IR 欄位，一律放在既有 `metadata` dict 中，keys 為契約的一部分：
