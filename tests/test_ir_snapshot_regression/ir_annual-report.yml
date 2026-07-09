@@ -1,0 +1,3785 @@
+adapter_version: null
+chunks:
+- asset_refs: []
+  bbox_refs:
+  - - 56.0
+    - 105.0
+    - 535.07
+    - 148.28
+  heading_path:
+  - 1. Overview
+  id: chunk_doc_snapshot_0001
+  metadata:
+    block_path:
+    - 1. Overview
+    block_types:
+    - text
+    chunk_kind: paragraph
+    citation_label: PDF p.2
+    intra_block_view: true
+    page_ref_kind: physical_page_number_1_based
+    parent_block_id: db_doc_snapshot_p2_b2
+    pdf_page_labels: []
+    printed_page_labels: []
+    stage: rag_chunking
+  page_refs:
+  - 2
+  parent_block_id: db_doc_snapshot_p2_b2
+  relation_ids:
+  - rel_chunk_chunk_doc_snapshot_0001_1
+  source_block_ids:
+  - p2_b2
+  text:
+    normalized_text: Aurora Materials develops high-durability composite panels for
+      the construction sector. During the fiscal yearthe company expanded its coating
+      facility and completed certification for two new panel families. Revenuegrew
+      across all regions
+    raw_text: Aurora Materials develops high-durability composite panels for the construction
+      sector. During the fiscal yearthe company expanded its coating facility and
+      completed certification for two new panel families. Revenuegrew across all regions
+    simplified_traditional_converted: false
+    unicode_form: NFC
+    width_normalized: false
+- asset_refs: []
+  bbox_refs:
+  - - 228.0
+    - 145.75
+    - 381.84
+    - 162.99
+  heading_path:
+  - 1. Overview
+  id: chunk_doc_snapshot_0002
+  metadata:
+    block_path:
+    - 1. Overview
+    block_types:
+    - text
+    chunk_kind: paragraph
+    citation_label: PDF p.2
+    intra_block_view: true
+    page_ref_kind: physical_page_number_1_based
+    parent_block_id: db_doc_snapshot_p2_b3
+    pdf_page_labels: []
+    printed_page_labels: []
+    stage: rag_chunking
+  page_refs:
+  - 2
+  parent_block_id: db_doc_snapshot_p2_b3
+  relation_ids:
+  - rel_chunk_chunk_doc_snapshot_0002_1
+  source_block_ids:
+  - p2_b3
+  text:
+    normalized_text: 1 , led by the Asia-Pacific segment.
+    raw_text: 1 , led by the Asia-Pacific segment.
+    simplified_traditional_converted: false
+    unicode_form: NFC
+    width_normalized: false
+- asset_refs: []
+  bbox_refs:
+  - - 56.0
+    - 240.0
+    - 486.0
+    - 328.0
+  heading_path:
+  - 2. Financial Results
+  id: chunk_doc_snapshot_0003
+  metadata:
+    block_path:
+    - 2. Financial Results
+    block_types:
+    - table
+    chunk_kind: table
+    citation_label: PDF p.2
+    intra_block_view: true
+    page_ref_kind: physical_page_number_1_based
+    parent_block_id: db_doc_snapshot_p2_table1
+    pdf_page_labels: []
+    printed_page_labels: []
+    repeated_fields:
+    - section_path
+    - table_title
+    - table_caption
+    - column_headers
+    stage: rag_chunking
+    table_context_included: true
+  page_refs:
+  - 2
+  parent_block_id: db_doc_snapshot_p2_table1
+  relation_ids:
+  - rel_chunk_chunk_doc_snapshot_0003_1
+  source_block_ids:
+  - p2_table1
+  text:
+    normalized_text: 'Section: 2. Financial Results
+
+      | Region | Revenue (M) | Growth | Share |
+
+      | --- | --- | --- | --- |
+
+      | Asia-Pacific | 412.5 | 18% | 41% |
+
+      | Europe | 301.2 | 9% | 30% |
+
+      | Americas | 289.9 | 6% | 29% |'
+    raw_text: 'Section: 2. Financial Results
+
+      | Region | Revenue (M) | Growth | Share |
+
+      | --- | --- | --- | --- |
+
+      | Asia-Pacific | 412.5 | 18% | 41% |
+
+      | Europe | 301.2 | 9% | 30% |
+
+      | Americas | 289.9 | 6% | 29% |'
+    simplified_traditional_converted: false
+    unicode_form: NFC
+    width_normalized: false
+- asset_refs: []
+  bbox_refs:
+  - - 56.0
+    - 340.0
+    - 510.61
+    - 368.51
+  heading_path:
+  - 2. Financial Results
+  id: chunk_doc_snapshot_0004
+  metadata:
+    block_path:
+    - 2. Financial Results
+    block_types:
+    - text
+    chunk_kind: paragraph
+    citation_label: PDF p.2
+    intra_block_view: true
+    page_ref_kind: physical_page_number_1_based
+    parent_block_id: db_doc_snapshot_p2_b9
+    pdf_page_labels: []
+    printed_page_labels: []
+    stage: rag_chunking
+  page_refs:
+  - 2
+  parent_block_id: db_doc_snapshot_p2_b9
+  relation_ids:
+  - rel_chunk_chunk_doc_snapshot_0004_1
+  source_block_ids:
+  - p2_b9
+  text:
+    normalized_text: Gross margin improved by two percentage points as raw-material
+      costs stabilized. Operating expensesremained flat in absolute terms.
+    raw_text: Gross margin improved by two percentage points as raw-material costs
+      stabilized. Operating expensesremained flat in absolute terms.
+    simplified_traditional_converted: false
+    unicode_form: NFC
+    width_normalized: false
+- asset_refs: []
+  bbox_refs:
+  - - 56.0
+    - 762.86
+    - 273.66
+    - 778.54
+  heading_path:
+  - 2. Financial Results
+  id: chunk_doc_snapshot_0005
+  metadata:
+    block_path:
+    - 2. Financial Results
+    block_types:
+    - text
+    chunk_kind: paragraph
+    citation_label: PDF p.2
+    intra_block_view: true
+    page_ref_kind: physical_page_number_1_based
+    parent_block_id: db_doc_snapshot_p2_b10
+    pdf_page_labels: []
+    printed_page_labels: []
+    stage: rag_chunking
+  page_refs:
+  - 2
+  parent_block_id: db_doc_snapshot_p2_b10
+  relation_ids:
+  - rel_chunk_chunk_doc_snapshot_0005_1
+  source_block_ids:
+  - p2_b10
+  text:
+    normalized_text: 1  Revenue figures are unaudited management estimates.
+    raw_text: 1  Revenue figures are unaudited management estimates.
+    simplified_traditional_converted: false
+    unicode_form: NFC
+    width_normalized: false
+- asset_refs: []
+  bbox_refs:
+  - - 56.0
+    - 110.0
+    - 456.0
+    - 176.0
+  heading_path:
+  - 3. Outlook
+  id: chunk_doc_snapshot_0006
+  metadata:
+    block_path:
+    - 3. Outlook
+    block_types:
+    - table
+    chunk_kind: table
+    citation_label: PDF p.3
+    intra_block_view: true
+    page_ref_kind: physical_page_number_1_based
+    parent_block_id: db_doc_snapshot_p3_table1
+    pdf_page_labels: []
+    printed_page_labels: []
+    repeated_fields:
+    - section_path
+    - table_title
+    - table_caption
+    - column_headers
+    stage: rag_chunking
+    table_context_included: true
+  page_refs:
+  - 3
+  parent_block_id: db_doc_snapshot_p3_table1
+  relation_ids:
+  - rel_chunk_chunk_doc_snapshot_0006_1
+  source_block_ids:
+  - p3_table1
+  text:
+    normalized_text: 'Section: 3. Outlook
+
+      | Initiative | Target Year | Status |
+
+      | --- | --- | --- |
+
+      | Coating line 2 | Next year | Approved |
+
+      | Recycled feedstock | Two years | Pilot |'
+    raw_text: 'Section: 3. Outlook
+
+      | Initiative | Target Year | Status |
+
+      | --- | --- | --- |
+
+      | Coating line 2 | Next year | Approved |
+
+      | Recycled feedstock | Two years | Pilot |'
+    simplified_traditional_converted: false
+    unicode_form: NFC
+    width_normalized: false
+- asset_refs: []
+  bbox_refs:
+  - - 56.0
+    - 190.0
+    - 525.09
+    - 218.51
+  heading_path:
+  - 3. Outlook
+  id: chunk_doc_snapshot_0007
+  metadata:
+    block_path:
+    - 3. Outlook
+    block_types:
+    - text
+    chunk_kind: paragraph
+    citation_label: PDF p.3
+    intra_block_view: true
+    page_ref_kind: physical_page_number_1_based
+    parent_block_id: db_doc_snapshot_p3_b5
+    pdf_page_labels: []
+    printed_page_labels: []
+    stage: rag_chunking
+  page_refs:
+  - 3
+  parent_block_id: db_doc_snapshot_p3_b5
+  relation_ids:
+  - rel_chunk_chunk_doc_snapshot_0007_1
+  source_block_ids:
+  - p3_b5
+  text:
+    normalized_text: Management expects demand to remain firm. Capacity utilisation
+      is projected to stay above ninety percentthrough the planning horizon, supported
+      by the order backlog carried into the new fiscal year.
+    raw_text: Management expects demand to remain firm. Capacity utilisation is projected
+      to stay above ninety percentthrough the planning horizon, supported by the order
+      backlog carried into the new fiscal year.
+    simplified_traditional_converted: false
+    unicode_form: NFC
+    width_normalized: false
+document_blocks:
+- bbox_refs:
+  - - 56.0
+    - 96.46
+    - 387.28
+    - 126.75
+  - - 56.0
+    - 136.09
+    - 180.24
+    - 153.69
+  - - 56.0
+    - 205.02
+    - 116.66
+    - 224.3
+  - - 56.0
+    - 72.88
+    - 144.94
+    - 94.91
+  - - 56.0
+    - 202.88
+    - 205.39
+    - 224.91
+  - - 56.0
+    - 72.88
+    - 134.24
+    - 94.91
+  child_ids:
+  - db_doc_snapshot_sec_0002
+  - db_doc_snapshot_sec_0003
+  - db_doc_snapshot_sec_0004
+  - db_doc_snapshot_sec_0005
+  - db_doc_snapshot_sec_0009
+  - db_doc_snapshot_sec_0014
+  confidence: high
+  content_hash: null
+  depth: 0
+  id: db_doc_snapshot_root
+  metadata:
+    build_strategy: document_root
+    citation_label: PDF p.1, PDF p.2, PDF p.3
+    furniture: []
+    keyword_stats:
+      child_support:
+        above: 1
+        absolute: 1
+        across: 1
+        all: 1
+        americas: 1
+        and: 1
+        annual: 1
+        approved: 1
+        are: 1
+        as: 1
+        asia-pacific: 2
+        aurora: 2
+        backlog: 1
+        by: 3
+        capacity: 1
+        carried: 1
+        certification: 1
+        coating: 2
+        company: 1
+        completed: 1
+        composite: 1
+        construction: 1
+        contents: 1
+        costs: 1
+        demand: 1
+        develops: 1
+        during: 1
+        estimates: 1
+        europe: 1
+        expanded: 1
+        expects: 1
+        expensesremained: 1
+        facility: 1
+        families: 1
+        feedstock: 1
+        figures: 1
+        firm: 1
+        fiscal: 3
+        flat: 1
+        for: 1
+        gross: 1
+        growth: 1
+        high-durability: 1
+        horizon: 1
+        improved: 1
+        in: 1
+        initiative: 1
+        into: 1
+        is: 1
+        its: 1
+        led: 1
+        line: 1
+        management: 2
+        margin: 1
+        materials: 2
+        new: 2
+        next: 1
+        ninety: 1
+        operating: 1
+        order: 1
+        panel: 1
+        panels: 1
+        percentage: 1
+        percentthrough: 1
+        pilot: 1
+        planning: 1
+        points: 1
+        projected: 1
+        raw-material: 1
+        recycled: 1
+        region: 1
+        regions: 1
+        remain: 1
+        report: 1
+        revenue: 2
+        revenuegrew: 1
+        sector: 1
+        segment: 1
+        share: 1
+        stabilized: 1
+        status: 1
+        stay: 1
+        summary: 1
+        supported: 1
+        target: 1
+        terms: 1
+        the: 3
+        to: 1
+        two: 3
+        unaudited: 1
+        utilisation: 1
+        year: 3
+        years: 1
+        yearthe: 1
+      term_freq:
+        above: 1
+        absolute: 1
+        across: 1
+        all: 1
+        americas: 1
+        and: 1
+        annual: 1
+        approved: 1
+        are: 1
+        as: 1
+        asia-pacific: 2
+        aurora: 2
+        backlog: 1
+        by: 3
+        capacity: 1
+        carried: 1
+        certification: 1
+        coating: 2
+        company: 1
+        completed: 1
+        composite: 1
+        construction: 1
+        contents: 1
+        costs: 1
+        demand: 1
+        develops: 1
+        during: 1
+        estimates: 1
+        europe: 1
+        expanded: 1
+        expects: 1
+        expensesremained: 1
+        facility: 1
+        families: 1
+        feedstock: 1
+        figures: 1
+        firm: 1
+        fiscal: 3
+        flat: 1
+        for: 2
+        gross: 1
+        growth: 1
+        high-durability: 1
+        horizon: 1
+        improved: 1
+        in: 1
+        initiative: 1
+        into: 1
+        is: 1
+        its: 1
+        led: 1
+        line: 1
+        management: 2
+        margin: 1
+        materials: 2
+        new: 2
+        next: 1
+        ninety: 1
+        operating: 1
+        order: 1
+        panel: 1
+        panels: 1
+        percentage: 1
+        percentthrough: 1
+        pilot: 1
+        planning: 1
+        points: 1
+        projected: 1
+        raw-material: 1
+        recycled: 1
+        region: 1
+        regions: 1
+        remain: 1
+        report: 1
+        revenue: 2
+        revenuegrew: 1
+        sector: 1
+        segment: 1
+        share: 1
+        stabilized: 1
+        status: 1
+        stay: 1
+        summary: 1
+        supported: 1
+        target: 1
+        terms: 1
+        the: 6
+        to: 2
+        two: 3
+        unaudited: 1
+        utilisation: 1
+        year: 4
+        years: 1
+        yearthe: 1
+    keyword_terms:
+    - the
+    - fiscal
+    - year
+    - materials
+    - management
+    - asia-pacific
+    - revenue
+    - coating
+    - two
+    - aurora
+    - by
+    - new
+    keyword_thresholds:
+      leaf_count: 10
+      min_freq: 2
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 948
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - D:\PycharmProjects\Documa\fixtures\pdf\real\annual-report.pdf
+    - the
+    - fiscal
+    - year
+    - materials
+    - management
+    - asia-pacific
+    - revenue
+    - coating
+    - two
+    - aurora
+    - by
+    - new
+    stage: block_tree
+  order_index: 1
+  page_refs:
+  - 1
+  - 2
+  - 3
+  parent_id: null
+  source_block_ids: []
+  source_chunk_ids: []
+  text_preview: null
+  title: D:\PycharmProjects\Documa\fixtures\pdf\real\annual-report.pdf
+  type: document
+- bbox_refs:
+  - - 56.0
+    - 96.46
+    - 387.28
+    - 126.75
+  child_ids: []
+  confidence: high
+  content_hash: d539502edeb632a9c0b5691ecb33c43556a1112ba6ce180230291103bd155a10
+  depth: 1
+  id: db_doc_snapshot_sec_0002
+  metadata:
+    build_strategy: heading_block
+    citation_label: PDF p.1
+    heading_level: 1
+    keyword_stats:
+      child_support:
+        annual: 1
+        aurora: 1
+        materials: 1
+        report: 1
+      term_freq:
+        annual: 1
+        aurora: 1
+        materials: 1
+        report: 1
+    keyword_terms: []
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 2
+      min_support: 2
+      strategy: bottom_up_aggregation
+      text_length: 30
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - Aurora Materials Annual Report
+    source_range: null
+    stage: block_tree
+  order_index: 2
+  page_refs:
+  - 1
+  parent_id: db_doc_snapshot_root
+  source_block_ids:
+  - p1_b1
+  source_chunk_ids: []
+  text_preview: Aurora Materials Annual Report
+  title: Aurora Materials Annual Report
+  type: section
+- bbox_refs:
+  - - 56.0
+    - 136.09
+    - 180.24
+    - 153.69
+  child_ids: []
+  confidence: high
+  content_hash: 08639f68636e4ae1cbb8526e1849c39bc156bc23175bf6ede012d67371d37b92
+  depth: 1
+  id: db_doc_snapshot_sec_0003
+  metadata:
+    build_strategy: heading_block
+    citation_label: PDF p.1
+    heading_level: 1
+    keyword_stats:
+      child_support:
+        fiscal: 1
+        summary: 1
+        year: 1
+      term_freq:
+        fiscal: 1
+        summary: 1
+        year: 1
+    keyword_terms: []
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 2
+      min_support: 2
+      strategy: bottom_up_aggregation
+      text_length: 19
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - Fiscal Year Summary
+    source_range: null
+    stage: block_tree
+  order_index: 3
+  page_refs:
+  - 1
+  parent_id: db_doc_snapshot_root
+  source_block_ids:
+  - p1_b2
+  source_chunk_ids: []
+  text_preview: Fiscal Year Summary
+  title: Fiscal Year Summary
+  type: section
+- bbox_refs:
+  - - 56.0
+    - 205.02
+    - 116.66
+    - 224.3
+  child_ids: []
+  confidence: high
+  content_hash: 437aea62a5bd6ad4762e494c81b88532809a231477c82bdecf6fd6636908b7ab
+  depth: 1
+  id: db_doc_snapshot_sec_0004
+  metadata:
+    build_strategy: heading_block
+    citation_label: PDF p.1
+    heading_level: 1
+    keyword_stats:
+      child_support:
+        contents: 1
+      term_freq:
+        contents: 1
+    keyword_terms: []
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 2
+      min_support: 2
+      strategy: bottom_up_aggregation
+      text_length: 8
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - Contents
+    source_range: null
+    stage: block_tree
+  order_index: 4
+  page_refs:
+  - 1
+  parent_id: db_doc_snapshot_root
+  source_block_ids:
+  - p1_b3
+  source_chunk_ids: []
+  text_preview: Contents
+  title: Contents
+  type: section
+- bbox_refs:
+  - - 56.0
+    - 72.88
+    - 144.94
+    - 94.91
+  child_ids:
+  - db_doc_snapshot_p2_1
+  confidence: high
+  content_hash: 1fcb3bd0656d7cd18cd97fdb3ea4b0a89924a6bbd809f9945d4fc6a038e1654b
+  depth: 1
+  id: db_doc_snapshot_sec_0005
+  metadata:
+    build_strategy: heading_block
+    citation_label: PDF p.2
+    heading_level: 1
+    keyword_stats:
+      child_support:
+        across: 1
+        all: 1
+        and: 1
+        asia-pacific: 1
+        aurora: 1
+        by: 1
+        certification: 1
+        coating: 1
+        company: 1
+        completed: 1
+        composite: 1
+        construction: 1
+        develops: 1
+        during: 1
+        expanded: 1
+        facility: 1
+        families: 1
+        fiscal: 1
+        for: 1
+        high-durability: 1
+        its: 1
+        led: 1
+        materials: 1
+        new: 1
+        panel: 1
+        panels: 1
+        regions: 1
+        revenuegrew: 1
+        sector: 1
+        segment: 1
+        the: 2
+        two: 1
+        yearthe: 1
+      term_freq:
+        across: 1
+        all: 1
+        and: 1
+        asia-pacific: 1
+        aurora: 1
+        by: 1
+        certification: 1
+        coating: 1
+        company: 1
+        completed: 1
+        composite: 1
+        construction: 1
+        develops: 1
+        during: 1
+        expanded: 1
+        facility: 1
+        families: 1
+        fiscal: 1
+        for: 2
+        high-durability: 1
+        its: 1
+        led: 1
+        materials: 1
+        new: 1
+        panel: 1
+        panels: 1
+        regions: 1
+        revenuegrew: 1
+        sector: 1
+        segment: 1
+        the: 3
+        two: 1
+        yearthe: 1
+    keyword_terms:
+    - the
+    keyword_thresholds:
+      leaf_count: 2
+      min_freq: 2
+      min_support: 2
+      strategy: bottom_up_aggregation
+      text_length: 274
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - 1. Overview
+    - the
+    source_range: null
+    stage: block_tree
+  order_index: 5
+  page_refs:
+  - 2
+  parent_id: db_doc_snapshot_root
+  source_block_ids:
+  - p2_b1
+  source_chunk_ids: []
+  text_preview: 1. Overview
+  title: 1. Overview
+  type: section
+- bbox_refs:
+  - - 56.0
+    - 105.0
+    - 535.07
+    - 148.28
+  - - 228.0
+    - 145.75
+    - 381.84
+    - 162.99
+  child_ids:
+  - db_doc_snapshot_p2_b2
+  - db_doc_snapshot_p2_b3
+  confidence: high
+  content_hash: null
+  depth: 2
+  id: db_doc_snapshot_p2_1
+  metadata:
+    build_strategy: page_boundary
+    citation_label: PDF p.2
+    keyword_stats:
+      child_support:
+        across: 1
+        all: 1
+        and: 1
+        asia-pacific: 1
+        aurora: 1
+        by: 1
+        certification: 1
+        coating: 1
+        company: 1
+        completed: 1
+        composite: 1
+        construction: 1
+        develops: 1
+        during: 1
+        expanded: 1
+        facility: 1
+        families: 1
+        fiscal: 1
+        for: 1
+        high-durability: 1
+        its: 1
+        led: 1
+        materials: 1
+        new: 1
+        panel: 1
+        panels: 1
+        regions: 1
+        revenuegrew: 1
+        sector: 1
+        segment: 1
+        the: 2
+        two: 1
+        yearthe: 1
+      term_freq:
+        across: 1
+        all: 1
+        and: 1
+        asia-pacific: 1
+        aurora: 1
+        by: 1
+        certification: 1
+        coating: 1
+        company: 1
+        completed: 1
+        composite: 1
+        construction: 1
+        develops: 1
+        during: 1
+        expanded: 1
+        facility: 1
+        families: 1
+        fiscal: 1
+        for: 2
+        high-durability: 1
+        its: 1
+        led: 1
+        materials: 1
+        new: 1
+        panel: 1
+        panels: 1
+        regions: 1
+        revenuegrew: 1
+        sector: 1
+        segment: 1
+        the: 3
+        two: 1
+        yearthe: 1
+    keyword_terms:
+    - the
+    - for
+    keyword_thresholds:
+      leaf_count: 2
+      min_freq: 2
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 274
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - Page 2
+    - the
+    - for
+    stage: block_tree
+  order_index: 6
+  page_refs:
+  - 2
+  parent_id: db_doc_snapshot_sec_0005
+  source_block_ids: []
+  source_chunk_ids: []
+  text_preview: null
+  title: Page 2
+  type: page
+- bbox_refs:
+  - - 56.0
+    - 105.0
+    - 535.07
+    - 148.28
+  child_ids: []
+  confidence: high
+  content_hash: 2e26bbed7b5ec6c94e991c24ea37560efdebbfe474397ef0bb89057c637b4c00
+  depth: 3
+  id: db_doc_snapshot_p2_b2
+  metadata:
+    build_strategy: page_local_block
+    citation_label: PDF p.2
+    keyword_stats:
+      child_support:
+        across: 1
+        all: 1
+        and: 1
+        aurora: 1
+        certification: 1
+        coating: 1
+        company: 1
+        completed: 1
+        composite: 1
+        construction: 1
+        develops: 1
+        during: 1
+        expanded: 1
+        facility: 1
+        families: 1
+        fiscal: 1
+        for: 1
+        high-durability: 1
+        its: 1
+        materials: 1
+        new: 1
+        panel: 1
+        panels: 1
+        regions: 1
+        revenuegrew: 1
+        sector: 1
+        the: 1
+        two: 1
+        yearthe: 1
+      term_freq:
+        across: 1
+        all: 1
+        and: 1
+        aurora: 1
+        certification: 1
+        coating: 1
+        company: 1
+        completed: 1
+        composite: 1
+        construction: 1
+        develops: 1
+        during: 1
+        expanded: 1
+        facility: 1
+        families: 1
+        fiscal: 1
+        for: 2
+        high-durability: 1
+        its: 1
+        materials: 1
+        new: 1
+        panel: 1
+        panels: 1
+        regions: 1
+        revenuegrew: 1
+        sector: 1
+        the: 2
+        two: 1
+        yearthe: 1
+    keyword_terms:
+    - revenuegrew
+    - materials
+    - high-durability
+    - families
+    - facility
+    - expanded
+    - develops
+    - construction
+    - composite
+    - completed
+    - certification
+    - yearthe
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 1
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 238
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - revenuegrew
+    - materials
+    - high-durability
+    - families
+    - facility
+    - expanded
+    - develops
+    - construction
+    - composite
+    - completed
+    - certification
+    - yearthe
+    source_block_type: text
+    source_range: null
+    stage: block_tree
+  order_index: 7
+  page_refs:
+  - 2
+  parent_id: db_doc_snapshot_p2_1
+  source_block_ids:
+  - p2_b2
+  source_chunk_ids: []
+  text_preview: Aurora Materials develops high-durability composite panels for the
+    construction sector. During the fiscal yearthe company expanded its coating facility
+    and comp
+  title: null
+  type: paragraph
+- bbox_refs:
+  - - 228.0
+    - 145.75
+    - 381.84
+    - 162.99
+  child_ids: []
+  confidence: high
+  content_hash: a4fbb3b50504d27fd7a3ed3dadec7b3b09e155df2d27e78289d2747aae9ac77b
+  depth: 3
+  id: db_doc_snapshot_p2_b3
+  metadata:
+    build_strategy: page_local_block
+    citation_label: PDF p.2
+    keyword_stats:
+      child_support:
+        asia-pacific: 1
+        by: 1
+        led: 1
+        segment: 1
+        the: 1
+      term_freq:
+        asia-pacific: 1
+        by: 1
+        led: 1
+        segment: 1
+        the: 1
+    keyword_terms:
+    - asia-pacific
+    - segment
+    - the
+    - led
+    - by
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 1
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 36
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - asia-pacific
+    - segment
+    - the
+    - led
+    - by
+    source_block_type: text
+    source_range: null
+    stage: block_tree
+  order_index: 8
+  page_refs:
+  - 2
+  parent_id: db_doc_snapshot_p2_1
+  source_block_ids:
+  - p2_b3
+  source_chunk_ids: []
+  text_preview: 1 , led by the Asia-Pacific segment.
+  title: null
+  type: paragraph
+- bbox_refs:
+  - - 56.0
+    - 202.88
+    - 205.39
+    - 224.91
+  child_ids:
+  - db_doc_snapshot_p2_2
+  confidence: high
+  content_hash: b2dcd02770476658168f0ca20f07e8e83e1d3bb7f76f12295393bb663167d964
+  depth: 1
+  id: db_doc_snapshot_sec_0009
+  metadata:
+    build_strategy: heading_block
+    citation_label: PDF p.2
+    heading_level: 1
+    keyword_stats:
+      child_support:
+        absolute: 1
+        americas: 1
+        are: 1
+        as: 1
+        asia-pacific: 1
+        by: 1
+        costs: 1
+        estimates: 1
+        europe: 1
+        expensesremained: 1
+        figures: 1
+        flat: 1
+        gross: 1
+        growth: 1
+        improved: 1
+        in: 1
+        management: 1
+        margin: 1
+        operating: 1
+        percentage: 1
+        points: 1
+        raw-material: 1
+        region: 1
+        revenue: 2
+        share: 1
+        stabilized: 1
+        terms: 1
+        two: 1
+        unaudited: 1
+      term_freq:
+        absolute: 1
+        americas: 1
+        are: 1
+        as: 1
+        asia-pacific: 1
+        by: 1
+        costs: 1
+        estimates: 1
+        europe: 1
+        expensesremained: 1
+        figures: 1
+        flat: 1
+        gross: 1
+        growth: 1
+        improved: 1
+        in: 1
+        management: 1
+        margin: 1
+        operating: 1
+        percentage: 1
+        points: 1
+        raw-material: 1
+        region: 1
+        revenue: 2
+        share: 1
+        stabilized: 1
+        terms: 1
+        two: 1
+        unaudited: 1
+    keyword_terms:
+    - revenue
+    keyword_thresholds:
+      leaf_count: 3
+      min_freq: 2
+      min_support: 2
+      strategy: bottom_up_aggregation
+      text_length: 309
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - 2. Financial Results
+    - revenue
+    source_range: null
+    stage: block_tree
+  order_index: 9
+  page_refs:
+  - 2
+  parent_id: db_doc_snapshot_root
+  source_block_ids:
+  - p2_b4
+  source_chunk_ids: []
+  text_preview: 2. Financial Results
+  title: 2. Financial Results
+  type: section
+- bbox_refs:
+  - - 56.0
+    - 240.0
+    - 486.0
+    - 328.0
+  - - 56.0
+    - 340.0
+    - 510.61
+    - 368.51
+  - - 56.0
+    - 762.86
+    - 273.66
+    - 778.54
+  child_ids:
+  - db_doc_snapshot_p2_table1
+  - db_doc_snapshot_p2_b9
+  - db_doc_snapshot_p2_b10
+  confidence: high
+  content_hash: null
+  depth: 2
+  id: db_doc_snapshot_p2_2
+  metadata:
+    build_strategy: page_boundary
+    citation_label: PDF p.2
+    keyword_stats:
+      child_support:
+        absolute: 1
+        americas: 1
+        are: 1
+        as: 1
+        asia-pacific: 1
+        by: 1
+        costs: 1
+        estimates: 1
+        europe: 1
+        expensesremained: 1
+        figures: 1
+        flat: 1
+        gross: 1
+        growth: 1
+        improved: 1
+        in: 1
+        management: 1
+        margin: 1
+        operating: 1
+        percentage: 1
+        points: 1
+        raw-material: 1
+        region: 1
+        revenue: 2
+        share: 1
+        stabilized: 1
+        terms: 1
+        two: 1
+        unaudited: 1
+      term_freq:
+        absolute: 1
+        americas: 1
+        are: 1
+        as: 1
+        asia-pacific: 1
+        by: 1
+        costs: 1
+        estimates: 1
+        europe: 1
+        expensesremained: 1
+        figures: 1
+        flat: 1
+        gross: 1
+        growth: 1
+        improved: 1
+        in: 1
+        management: 1
+        margin: 1
+        operating: 1
+        percentage: 1
+        points: 1
+        raw-material: 1
+        region: 1
+        revenue: 2
+        share: 1
+        stabilized: 1
+        terms: 1
+        two: 1
+        unaudited: 1
+    keyword_terms:
+    - revenue
+    keyword_thresholds:
+      leaf_count: 3
+      min_freq: 2
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 309
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - Page 2
+    - revenue
+    stage: block_tree
+  order_index: 10
+  page_refs:
+  - 2
+  parent_id: db_doc_snapshot_sec_0009
+  source_block_ids: []
+  source_chunk_ids: []
+  text_preview: null
+  title: Page 2
+  type: page
+- bbox_refs:
+  - - 56.0
+    - 240.0
+    - 486.0
+    - 328.0
+  child_ids: []
+  confidence: medium
+  content_hash: 34c76671d6fbb518edeb1b01f193f8aef4037fae270d81da7aacd7f50f5c8638
+  depth: 3
+  id: db_doc_snapshot_p2_table1
+  metadata:
+    build_strategy: page_local_block
+    citation_label: PDF p.2
+    keyword_stats:
+      child_support:
+        americas: 1
+        asia-pacific: 1
+        europe: 1
+        growth: 1
+        region: 1
+        revenue: 1
+        share: 1
+      term_freq:
+        americas: 1
+        asia-pacific: 1
+        europe: 1
+        growth: 1
+        region: 1
+        revenue: 1
+        share: 1
+    keyword_terms:
+    - asia-pacific
+    - americas
+    - revenue
+    - region
+    - growth
+    - europe
+    - share
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 1
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 124
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - asia-pacific
+    - americas
+    - revenue
+    - region
+    - growth
+    - europe
+    - share
+    source_block_type: table
+    source_range: null
+    stage: block_tree
+  order_index: 11
+  page_refs:
+  - 2
+  parent_id: db_doc_snapshot_p2_2
+  source_block_ids:
+  - p2_table1
+  source_chunk_ids: []
+  text_preview: Region | Revenue (M) | Growth | Share Asia-Pacific | 412.5 | 18% |
+    41% Europe | 301.2 | 9% | 30% Americas | 289.9 | 6% | 29%
+  title: null
+  type: table
+- bbox_refs:
+  - - 56.0
+    - 340.0
+    - 510.61
+    - 368.51
+  child_ids: []
+  confidence: high
+  content_hash: c16b0e9158bc77fa6c16b6b94a99ce8de03aad056fc00b54faa9af59f9c38e5c
+  depth: 3
+  id: db_doc_snapshot_p2_b9
+  metadata:
+    build_strategy: page_local_block
+    citation_label: PDF p.2
+    keyword_stats:
+      child_support:
+        absolute: 1
+        as: 1
+        by: 1
+        costs: 1
+        expensesremained: 1
+        flat: 1
+        gross: 1
+        improved: 1
+        in: 1
+        margin: 1
+        operating: 1
+        percentage: 1
+        points: 1
+        raw-material: 1
+        stabilized: 1
+        terms: 1
+        two: 1
+      term_freq:
+        absolute: 1
+        as: 1
+        by: 1
+        costs: 1
+        expensesremained: 1
+        flat: 1
+        gross: 1
+        improved: 1
+        in: 1
+        margin: 1
+        operating: 1
+        percentage: 1
+        points: 1
+        raw-material: 1
+        stabilized: 1
+        terms: 1
+        two: 1
+    keyword_terms:
+    - stabilized
+    - raw-material
+    - percentage
+    - operating
+    - improved
+    - expensesremained
+    - absolute
+    - points
+    - margin
+    - terms
+    - gross
+    - costs
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 1
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 131
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - stabilized
+    - raw-material
+    - percentage
+    - operating
+    - improved
+    - expensesremained
+    - absolute
+    - points
+    - margin
+    - terms
+    - gross
+    - costs
+    source_block_type: text
+    source_range: null
+    stage: block_tree
+  order_index: 12
+  page_refs:
+  - 2
+  parent_id: db_doc_snapshot_p2_2
+  source_block_ids:
+  - p2_b9
+  source_chunk_ids: []
+  text_preview: Gross margin improved by two percentage points as raw-material costs
+    stabilized. Operating expensesremained flat in absolute terms.
+  title: null
+  type: paragraph
+- bbox_refs:
+  - - 56.0
+    - 762.86
+    - 273.66
+    - 778.54
+  child_ids: []
+  confidence: high
+  content_hash: 3b2d3e2d7950b7e5f24e5b04558053f9aa4e81e02736dc0e78f24ca1a8dc6548
+  depth: 3
+  id: db_doc_snapshot_p2_b10
+  metadata:
+    build_strategy: page_local_block
+    citation_label: PDF p.2
+    keyword_stats:
+      child_support:
+        are: 1
+        estimates: 1
+        figures: 1
+        management: 1
+        revenue: 1
+        unaudited: 1
+      term_freq:
+        are: 1
+        estimates: 1
+        figures: 1
+        management: 1
+        revenue: 1
+        unaudited: 1
+    keyword_terms:
+    - unaudited
+    - management
+    - estimates
+    - revenue
+    - figures
+    - are
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 1
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 54
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - unaudited
+    - management
+    - estimates
+    - revenue
+    - figures
+    - are
+    source_block_type: text
+    source_range: null
+    stage: block_tree
+  order_index: 13
+  page_refs:
+  - 2
+  parent_id: db_doc_snapshot_p2_2
+  source_block_ids:
+  - p2_b10
+  source_chunk_ids: []
+  text_preview: 1 Revenue figures are unaudited management estimates.
+  title: null
+  type: paragraph
+- bbox_refs:
+  - - 56.0
+    - 72.88
+    - 134.24
+    - 94.91
+  child_ids:
+  - db_doc_snapshot_p3_3
+  confidence: high
+  content_hash: cbcb6f35e6d50e6987e597f3d53b9d4327ce6350a383c73a6cfcfba18410d032
+  depth: 1
+  id: db_doc_snapshot_sec_0014
+  metadata:
+    build_strategy: heading_block
+    citation_label: PDF p.3
+    heading_level: 1
+    keyword_stats:
+      child_support:
+        above: 1
+        approved: 1
+        backlog: 1
+        by: 1
+        capacity: 1
+        carried: 1
+        coating: 1
+        demand: 1
+        expects: 1
+        feedstock: 1
+        firm: 1
+        fiscal: 1
+        horizon: 1
+        initiative: 1
+        into: 1
+        is: 1
+        line: 1
+        management: 1
+        new: 1
+        next: 1
+        ninety: 1
+        order: 1
+        percentthrough: 1
+        pilot: 1
+        planning: 1
+        projected: 1
+        recycled: 1
+        remain: 1
+        status: 1
+        stay: 1
+        supported: 1
+        target: 1
+        the: 1
+        to: 1
+        two: 1
+        utilisation: 1
+        year: 2
+        years: 1
+      term_freq:
+        above: 1
+        approved: 1
+        backlog: 1
+        by: 1
+        capacity: 1
+        carried: 1
+        coating: 1
+        demand: 1
+        expects: 1
+        feedstock: 1
+        firm: 1
+        fiscal: 1
+        horizon: 1
+        initiative: 1
+        into: 1
+        is: 1
+        line: 1
+        management: 1
+        new: 1
+        next: 1
+        ninety: 1
+        order: 1
+        percentthrough: 1
+        pilot: 1
+        planning: 1
+        projected: 1
+        recycled: 1
+        remain: 1
+        status: 1
+        stay: 1
+        supported: 1
+        target: 1
+        the: 3
+        to: 2
+        two: 1
+        utilisation: 1
+        year: 3
+        years: 1
+    keyword_terms:
+    - year
+    keyword_thresholds:
+      leaf_count: 2
+      min_freq: 2
+      min_support: 2
+      strategy: bottom_up_aggregation
+      text_length: 308
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - 3. Outlook
+    - year
+    source_range: null
+    stage: block_tree
+  order_index: 14
+  page_refs:
+  - 3
+  parent_id: db_doc_snapshot_root
+  source_block_ids:
+  - p3_b1
+  source_chunk_ids: []
+  text_preview: 3. Outlook
+  title: 3. Outlook
+  type: section
+- bbox_refs:
+  - - 56.0
+    - 110.0
+    - 456.0
+    - 176.0
+  - - 56.0
+    - 190.0
+    - 525.09
+    - 218.51
+  child_ids:
+  - db_doc_snapshot_p3_table1
+  - db_doc_snapshot_p3_b5
+  confidence: high
+  content_hash: null
+  depth: 2
+  id: db_doc_snapshot_p3_3
+  metadata:
+    build_strategy: page_boundary
+    citation_label: PDF p.3
+    keyword_stats:
+      child_support:
+        above: 1
+        approved: 1
+        backlog: 1
+        by: 1
+        capacity: 1
+        carried: 1
+        coating: 1
+        demand: 1
+        expects: 1
+        feedstock: 1
+        firm: 1
+        fiscal: 1
+        horizon: 1
+        initiative: 1
+        into: 1
+        is: 1
+        line: 1
+        management: 1
+        new: 1
+        next: 1
+        ninety: 1
+        order: 1
+        percentthrough: 1
+        pilot: 1
+        planning: 1
+        projected: 1
+        recycled: 1
+        remain: 1
+        status: 1
+        stay: 1
+        supported: 1
+        target: 1
+        the: 1
+        to: 1
+        two: 1
+        utilisation: 1
+        year: 2
+        years: 1
+      term_freq:
+        above: 1
+        approved: 1
+        backlog: 1
+        by: 1
+        capacity: 1
+        carried: 1
+        coating: 1
+        demand: 1
+        expects: 1
+        feedstock: 1
+        firm: 1
+        fiscal: 1
+        horizon: 1
+        initiative: 1
+        into: 1
+        is: 1
+        line: 1
+        management: 1
+        new: 1
+        next: 1
+        ninety: 1
+        order: 1
+        percentthrough: 1
+        pilot: 1
+        planning: 1
+        projected: 1
+        recycled: 1
+        remain: 1
+        status: 1
+        stay: 1
+        supported: 1
+        target: 1
+        the: 3
+        to: 2
+        two: 1
+        utilisation: 1
+        year: 3
+        years: 1
+    keyword_terms:
+    - year
+    - the
+    - to
+    keyword_thresholds:
+      leaf_count: 2
+      min_freq: 2
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 308
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - Page 3
+    - year
+    - the
+    - to
+    stage: block_tree
+  order_index: 15
+  page_refs:
+  - 3
+  parent_id: db_doc_snapshot_sec_0014
+  source_block_ids: []
+  source_chunk_ids: []
+  text_preview: null
+  title: Page 3
+  type: page
+- bbox_refs:
+  - - 56.0
+    - 110.0
+    - 456.0
+    - 176.0
+  child_ids: []
+  confidence: medium
+  content_hash: b268f90e6d1f3588eb591309f975c14e41ed04760469cc25d302f4a016a6c184
+  depth: 3
+  id: db_doc_snapshot_p3_table1
+  metadata:
+    build_strategy: page_local_block
+    citation_label: PDF p.3
+    keyword_stats:
+      child_support:
+        approved: 1
+        coating: 1
+        feedstock: 1
+        initiative: 1
+        line: 1
+        next: 1
+        pilot: 1
+        recycled: 1
+        status: 1
+        target: 1
+        two: 1
+        year: 1
+        years: 1
+      term_freq:
+        approved: 1
+        coating: 1
+        feedstock: 1
+        initiative: 1
+        line: 1
+        next: 1
+        pilot: 1
+        recycled: 1
+        status: 1
+        target: 1
+        two: 1
+        year: 2
+        years: 1
+    keyword_terms:
+    - year
+    - recycled
+    - initiative
+    - feedstock
+    - approved
+    - coating
+    - target
+    - status
+    - years
+    - pilot
+    - next
+    - line
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 1
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 110
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - year
+    - recycled
+    - initiative
+    - feedstock
+    - approved
+    - coating
+    - target
+    - status
+    - years
+    - pilot
+    - next
+    - line
+    source_block_type: table
+    source_range: null
+    stage: block_tree
+  order_index: 16
+  page_refs:
+  - 3
+  parent_id: db_doc_snapshot_p3_3
+  source_block_ids:
+  - p3_table1
+  source_chunk_ids: []
+  text_preview: Initiative | Target Year | Status Coating line 2 | Next year | Approved
+    Recycled feedstock | Two years | Pilot
+  title: null
+  type: table
+- bbox_refs:
+  - - 56.0
+    - 190.0
+    - 525.09
+    - 218.51
+  child_ids: []
+  confidence: high
+  content_hash: 311ec0023855a2d335e5a2a5820047890f166399ff06b3ec10d7d3dd37daf9f1
+  depth: 3
+  id: db_doc_snapshot_p3_b5
+  metadata:
+    build_strategy: page_local_block
+    citation_label: PDF p.3
+    keyword_stats:
+      child_support:
+        above: 1
+        backlog: 1
+        by: 1
+        capacity: 1
+        carried: 1
+        demand: 1
+        expects: 1
+        firm: 1
+        fiscal: 1
+        horizon: 1
+        into: 1
+        is: 1
+        management: 1
+        new: 1
+        ninety: 1
+        order: 1
+        percentthrough: 1
+        planning: 1
+        projected: 1
+        remain: 1
+        stay: 1
+        supported: 1
+        the: 1
+        to: 1
+        utilisation: 1
+        year: 1
+      term_freq:
+        above: 1
+        backlog: 1
+        by: 1
+        capacity: 1
+        carried: 1
+        demand: 1
+        expects: 1
+        firm: 1
+        fiscal: 1
+        horizon: 1
+        into: 1
+        is: 1
+        management: 1
+        new: 1
+        ninety: 1
+        order: 1
+        percentthrough: 1
+        planning: 1
+        projected: 1
+        remain: 1
+        stay: 1
+        supported: 1
+        the: 3
+        to: 2
+        utilisation: 1
+        year: 1
+    keyword_terms:
+    - the
+    - utilisation
+    - supported
+    - projected
+    - planning
+    - percentthrough
+    - management
+    - capacity
+    - horizon
+    - expects
+    - carried
+    - backlog
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 1
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 198
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - the
+    - utilisation
+    - supported
+    - projected
+    - planning
+    - percentthrough
+    - management
+    - capacity
+    - horizon
+    - expects
+    - carried
+    - backlog
+    source_block_type: text
+    source_range: null
+    stage: block_tree
+  order_index: 17
+  page_refs:
+  - 3
+  parent_id: db_doc_snapshot_p3_3
+  source_block_ids:
+  - p3_b5
+  source_chunk_ids: []
+  text_preview: Management expects demand to remain firm. Capacity utilisation is
+    projected to stay above ninety percentthrough the planning horizon, supported
+    by the order bac
+  title: null
+  type: paragraph
+id: doc_snapshot
+ir_version: '0.2'
+metadata:
+  adapter: pymupdf
+  page_citations:
+    '1':
+      citation_label: PDF p.1
+      page_ref: 1
+      page_ref_kind: physical_page_number_1_based
+      pdf_page_label: null
+      printed_page_label: null
+    '2':
+      citation_label: PDF p.2
+      page_ref: 2
+      page_ref_kind: physical_page_number_1_based
+      pdf_page_label: null
+      printed_page_label: null
+    '3':
+      citation_label: PDF p.3
+      page_ref: 3
+      page_ref_kind: physical_page_number_1_based
+      pdf_page_label: null
+      printed_page_label: null
+  page_count: 3
+  page_ref_kind: physical_page_number_1_based
+  toc:
+  - - 1
+    - Overview
+    - 2
+    - kind: 1
+      page: 1
+      to: Point(72.0, 36.0)
+      xref: 56
+      zoom: 0.0
+  - - 1
+    - Financial Results
+    - 2
+    - kind: 1
+      page: 1
+      to: Point(72.0, 36.0)
+      xref: 57
+      zoom: 0.0
+  - - 1
+    - Outlook
+    - 3
+    - kind: 1
+      page: 2
+      to: Point(72.0, 36.0)
+      xref: 58
+      zoom: 0.0
+pages:
+- blocks:
+  - bbox:
+    - 56.0
+    - 96.46
+    - 387.28
+    - 126.75
+    confidence: high
+    id: p1_b1
+    metadata:
+      layout_classification:
+        block_font_size: 22.0
+        median_font_size: 10.0
+        previous_type: text
+        strategy: font_size_and_page_position
+      original_order_index: 1
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 1
+    page_number: 1
+    source_refs:
+    - pymupdf:block:1:1
+    spans:
+    - bbox:
+      - 56.0
+      - 96.46
+      - 387.28
+      - 126.75
+      font_name: Helvetica-Bold
+      font_size: 22.0
+      id: p1_s1_0
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 120.0
+      style:
+      - bold
+      text:
+        normalized_text: Aurora Materials Annual Report
+        raw_text: Aurora Materials Annual Report
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: Aurora Materials Annual Report
+      raw_text: Aurora Materials Annual Report
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: heading
+  - bbox:
+    - 56.0
+    - 136.09
+    - 180.24
+    - 153.69
+    confidence: high
+    id: p1_b2
+    metadata:
+      layout_classification:
+        block_font_size: 13.0
+        median_font_size: 10.0
+        previous_type: text
+        strategy: font_size_and_page_position
+      original_order_index: 2
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 2
+    page_number: 1
+    source_refs:
+    - pymupdf:block:1:2
+    spans:
+    - bbox:
+      - 56.0
+      - 136.09
+      - 180.24
+      - 153.69
+      font_name: Helvetica-Oblique
+      font_size: 13.0
+      id: p1_s1_1
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 150.0
+      style:
+      - italic
+      - italic
+      text:
+        normalized_text: Fiscal Year Summary
+        raw_text: Fiscal Year Summary
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: Fiscal Year Summary
+      raw_text: Fiscal Year Summary
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: heading
+  - bbox:
+    - 56.0
+    - 205.02
+    - 116.66
+    - 224.3
+    confidence: high
+    id: p1_b3
+    metadata:
+      layout_classification:
+        block_font_size: 14.0
+        median_font_size: 10.0
+        previous_type: text
+        strategy: font_size_and_page_position
+      original_order_index: 3
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 3
+    page_number: 1
+    source_refs:
+    - pymupdf:block:1:3
+    spans:
+    - bbox:
+      - 56.0
+      - 205.02
+      - 116.66
+      - 224.3
+      font_name: Helvetica-Bold
+      font_size: 14.0
+      id: p1_s1_2
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 220.0
+      style:
+      - bold
+      text:
+        normalized_text: Contents
+        raw_text: Contents
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: Contents
+      raw_text: Contents
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: heading
+  - bbox:
+    - 56.0
+    - 239.25
+    - 253.35
+    - 252.99
+    confidence: high
+    id: p1_b4
+    metadata:
+      layout_classification:
+        block_font_size: 10.0
+        median_font_size: 10.0
+        previous_type: text
+        strategy: toc_leader_dots
+      original_order_index: 4
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+      toc_items:
+      - page_label: '2'
+        page_number: 2
+        title: 1. Overview
+      toc_title: 1. Overview
+    order_index: 4
+    page_number: 1
+    source_refs:
+    - pymupdf:block:1:4
+    spans:
+    - bbox:
+      - 56.0
+      - 239.25
+      - 253.35
+      - 252.99
+      font_name: Helvetica
+      font_size: 10.0
+      id: p1_s1_3
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 250.0
+      style: []
+      text:
+        normalized_text: 1. Overview ................................................
+          2
+        raw_text: 1. Overview ................................................ 2
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: 1. Overview ................................................
+        2
+      raw_text: 1. Overview ................................................ 2
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: table_of_content
+  - bbox:
+    - 56.0
+    - 259.25
+    - 287.81
+    - 272.99
+    confidence: high
+    id: p1_b5
+    metadata:
+      layout_classification:
+        block_font_size: 10.0
+        median_font_size: 10.0
+        previous_type: text
+        strategy: toc_leader_dots
+      original_order_index: 5
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+      toc_items:
+      - page_label: '2'
+        page_number: 2
+        title: 2. Financial Results
+      toc_title: 2. Financial Results
+    order_index: 5
+    page_number: 1
+    source_refs:
+    - pymupdf:block:1:5
+    spans:
+    - bbox:
+      - 56.0
+      - 259.25
+      - 287.81
+      - 272.99
+      font_name: Helvetica
+      font_size: 10.0
+      id: p1_s1_4
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 270.0
+      style: []
+      text:
+        normalized_text: 2. Financial Results ................................................
+          2
+        raw_text: 2. Financial Results ................................................
+          2
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: 2. Financial Results ................................................
+        2
+      raw_text: 2. Financial Results ................................................
+        2
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: table_of_content
+  - bbox:
+    - 56.0
+    - 279.25
+    - 246.14
+    - 292.99
+    confidence: high
+    id: p1_b6
+    metadata:
+      layout_classification:
+        block_font_size: 10.0
+        median_font_size: 10.0
+        previous_type: text
+        strategy: toc_leader_dots
+      original_order_index: 6
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+      toc_items:
+      - page_label: '3'
+        page_number: 3
+        title: 3. Outlook
+      toc_title: 3. Outlook
+    order_index: 6
+    page_number: 1
+    source_refs:
+    - pymupdf:block:1:6
+    spans:
+    - bbox:
+      - 56.0
+      - 279.25
+      - 246.14
+      - 292.99
+      font_name: Helvetica
+      font_size: 10.0
+      id: p1_s1_5
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 290.0
+      style: []
+      text:
+        normalized_text: 3. Outlook ................................................
+          3
+        raw_text: 3. Outlook ................................................ 3
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: 3. Outlook ................................................
+        3
+      raw_text: 3. Outlook ................................................ 3
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: table_of_content
+  height: 842.0
+  id: page_1
+  images: []
+  metadata:
+    annotations: []
+    label: ''
+    links: []
+    preview_asset_ref: previews/page_0001.png
+  page_number: 1
+  rotation: 0
+  width: 595.0
+- blocks:
+  - bbox:
+    - 56.0
+    - 72.88
+    - 144.94
+    - 94.91
+    confidence: high
+    id: p2_b1
+    metadata:
+      layout_classification:
+        block_font_size: 16.0
+        median_font_size: 10.0
+        previous_type: text
+        strategy: font_size_and_page_position
+      original_order_index: 1
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 1
+    page_number: 2
+    source_refs:
+    - pymupdf:block:2:1
+    spans:
+    - bbox:
+      - 56.0
+      - 72.88
+      - 144.94
+      - 94.91
+      font_name: Helvetica-Bold
+      font_size: 16.0
+      id: p2_s1_0
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 90.0
+      style:
+      - bold
+      text:
+        normalized_text: 1. Overview
+        raw_text: 1. Overview
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: 1. Overview
+      raw_text: 1. Overview
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: heading
+  - bbox:
+    - 56.0
+    - 105.0
+    - 535.07
+    - 148.28
+    confidence: high
+    id: p2_b2
+    metadata:
+      original_order_index: 2
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 2
+    page_number: 2
+    source_refs:
+    - pymupdf:block:2:2
+    spans:
+    - bbox:
+      - 56.0
+      - 105.0
+      - 535.07
+      - 118.74
+      font_name: Helvetica
+      font_size: 10.0
+      id: p2_s1_1
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 115.75
+      style: []
+      text:
+        normalized_text: Aurora Materials develops high-durability composite panels
+          for the construction sector. During the fiscal year
+        raw_text: Aurora Materials develops high-durability composite panels for the
+          construction sector. During the fiscal year
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 56.0
+      - 119.77
+      - 523.43
+      - 133.51
+      font_name: Helvetica
+      font_size: 10.0
+      id: p2_s2_1
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 130.52
+      style: []
+      text:
+        normalized_text: the company expanded its coating facility and completed certification
+          for two new panel families. Revenue
+        raw_text: the company expanded its coating facility and completed certification
+          for two new panel families. Revenue
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 56.0
+      - 134.54
+      - 158.25
+      - 148.28
+      font_name: Helvetica
+      font_size: 10.0
+      id: p2_s3_1
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 145.29
+      style: []
+      text:
+        normalized_text: grew across all regions
+        raw_text: grew across all regions
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: Aurora Materials develops high-durability composite panels
+        for the construction sector. During the fiscal yearthe company expanded its
+        coating facility and completed certification for two new panel families. Revenuegrew
+        across all regions
+      raw_text: Aurora Materials develops high-durability composite panels for the
+        construction sector. During the fiscal yearthe company expanded its coating
+        facility and completed certification for two new panel families. Revenuegrew
+        across all regions
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: text
+  - bbox:
+    - 228.0
+    - 145.75
+    - 381.84
+    - 162.99
+    confidence: high
+    id: p2_b3
+    metadata:
+      original_order_index: 3
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 3
+    page_number: 2
+    source_refs:
+    - pymupdf:block:2:3
+    spans:
+    - bbox:
+      - 228.0
+      - 149.51
+      - 231.61
+      - 158.44
+      font_name: Helvetica
+      font_size: 6.5
+      id: p2_s1_2
+      language:
+        language: auto
+        script: null
+        text_direction: ltr
+      metadata:
+        origin:
+        - 228.0
+        - 156.5
+      style: []
+      text:
+        normalized_text: '1'
+        raw_text: '1'
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 231.61
+      - 145.75
+      - 381.84
+      - 162.99
+      font_name: Helvetica
+      font_size: 10.0
+      id: p2_s2_2
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 231.61
+        - 156.5
+      style: []
+      text:
+        normalized_text: ' , led by the Asia-Pacific segment.'
+        raw_text: ' , led by the Asia-Pacific segment.'
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: 1 , led by the Asia-Pacific segment.
+      raw_text: 1 , led by the Asia-Pacific segment.
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: text
+  - bbox:
+    - 56.0
+    - 202.88
+    - 205.39
+    - 224.91
+    confidence: high
+    id: p2_b4
+    metadata:
+      layout_classification:
+        block_font_size: 16.0
+        median_font_size: 10.0
+        previous_type: text
+        strategy: font_size_and_page_position
+      original_order_index: 4
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 4
+    page_number: 2
+    source_refs:
+    - pymupdf:block:2:4
+    spans:
+    - bbox:
+      - 56.0
+      - 202.88
+      - 205.39
+      - 224.91
+      font_name: Helvetica-Bold
+      font_size: 16.0
+      id: p2_s1_3
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 220.0
+      style:
+      - bold
+      text:
+        normalized_text: 2. Financial Results
+        raw_text: 2. Financial Results
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: 2. Financial Results
+      raw_text: 2. Financial Results
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: heading
+  - bbox:
+    - 56.0
+    - 240.0
+    - 486.0
+    - 328.0
+    confidence: medium
+    id: p2_table1
+    metadata:
+      extraction_strategy: pymupdf_find_tables
+      original_order_index: 5
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_block_ids:
+      - p2_b5
+      - p2_b6
+      - p2_b7
+      - p2_b8
+      source_blocks:
+      - bbox:
+        - 62.0
+        - 245.37
+        - 427.01
+        - 257.76
+        id: p2_b5
+        source_refs:
+        - pymupdf:block:2:5
+        text: RegionRevenue (M)GrowthShare
+      - bbox:
+        - 62.0
+        - 267.33
+        - 420.01
+        - 279.69
+        id: p2_b6
+        source_refs:
+        - pymupdf:block:2:6
+        text: Asia-Pacific412.518%41%
+      - bbox:
+        - 62.0
+        - 289.33
+        - 420.01
+        - 301.69
+        id: p2_b7
+        source_refs:
+        - pymupdf:block:2:7
+        text: Europe301.29%30%
+      - bbox:
+        - 62.0
+        - 311.33
+        - 420.01
+        - 323.69
+        id: p2_b8
+        source_refs:
+        - pymupdf:block:2:8
+        text: Americas289.96%29%
+      source_type: pymupdf_table
+      table_id: table_p2_table1
+      table_rows:
+      - - Region
+        - Revenue (M)
+        - Growth
+        - Share
+      - - Asia-Pacific
+        - '412.5'
+        - 18%
+        - 41%
+      - - Europe
+        - '301.2'
+        - 9%
+        - 30%
+      - - Americas
+        - '289.9'
+        - 6%
+        - 29%
+    order_index: 5
+    page_number: 2
+    source_refs:
+    - pymupdf:block:2:5
+    - pymupdf:block:2:6
+    - pymupdf:block:2:7
+    - pymupdf:block:2:8
+    spans: []
+    text:
+      normalized_text: 'Region | Revenue (M) | Growth | Share
+
+        Asia-Pacific | 412.5 | 18% | 41%
+
+        Europe | 301.2 | 9% | 30%
+
+        Americas | 289.9 | 6% | 29%'
+      raw_text: 'Region | Revenue (M) | Growth | Share
+
+        Asia-Pacific | 412.5 | 18% | 41%
+
+        Europe | 301.2 | 9% | 30%
+
+        Americas | 289.9 | 6% | 29%'
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: table
+  - bbox:
+    - 56.0
+    - 340.0
+    - 510.61
+    - 368.51
+    confidence: high
+    id: p2_b9
+    metadata:
+      original_order_index: 9
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 6
+    page_number: 2
+    source_refs:
+    - pymupdf:block:2:9
+    spans:
+    - bbox:
+      - 56.0
+      - 340.0
+      - 510.61
+      - 353.74
+      font_name: Helvetica
+      font_size: 10.0
+      id: p2_s1_8
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 350.75
+      style: []
+      text:
+        normalized_text: Gross margin improved by two percentage points as raw-material
+          costs stabilized. Operating expenses
+        raw_text: Gross margin improved by two percentage points as raw-material costs
+          stabilized. Operating expenses
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 56.0
+      - 354.77
+      - 195.5
+      - 368.51
+      font_name: Helvetica
+      font_size: 10.0
+      id: p2_s2_8
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 365.52
+      style: []
+      text:
+        normalized_text: remained flat in absolute terms.
+        raw_text: remained flat in absolute terms.
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: Gross margin improved by two percentage points as raw-material
+        costs stabilized. Operating expensesremained flat in absolute terms.
+      raw_text: Gross margin improved by two percentage points as raw-material costs
+        stabilized. Operating expensesremained flat in absolute terms.
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: text
+  - bbox:
+    - 56.0
+    - 762.86
+    - 273.66
+    - 778.54
+    confidence: high
+    id: p2_b10
+    metadata:
+      original_order_index: 10
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 7
+    page_number: 2
+    source_refs:
+    - pymupdf:block:2:10
+    spans:
+    - bbox:
+      - 56.0
+      - 765.01
+      - 59.61
+      - 773.94
+      font_name: Helvetica
+      font_size: 6.5
+      id: p2_s1_9
+      language:
+        language: auto
+        script: null
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 772.0
+      style: []
+      text:
+        normalized_text: '1'
+        raw_text: '1'
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 59.61
+      - 762.86
+      - 273.66
+      - 778.54
+      font_name: Helvetica
+      font_size: 8.5
+      id: p2_s2_9
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 59.61
+        - 772.0
+      style: []
+      text:
+        normalized_text: '  Revenue figures are unaudited management estimates.'
+        raw_text: '  Revenue figures are unaudited management estimates.'
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: 1  Revenue figures are unaudited management estimates.
+      raw_text: 1  Revenue figures are unaudited management estimates.
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: text
+  height: 842.0
+  id: page_2
+  images: []
+  metadata:
+    annotations: []
+    label: ''
+    links: []
+    preview_asset_ref: previews/page_0002.png
+  page_number: 2
+  rotation: 0
+  width: 595.0
+- blocks:
+  - bbox:
+    - 56.0
+    - 72.88
+    - 134.24
+    - 94.91
+    confidence: high
+    id: p3_b1
+    metadata:
+      layout_classification:
+        block_font_size: 16.0
+        median_font_size: 10.0
+        previous_type: text
+        strategy: font_size_and_page_position
+      original_order_index: 1
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 1
+    page_number: 3
+    source_refs:
+    - pymupdf:block:3:1
+    spans:
+    - bbox:
+      - 56.0
+      - 72.88
+      - 134.24
+      - 94.91
+      font_name: Helvetica-Bold
+      font_size: 16.0
+      id: p3_s1_0
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 90.0
+      style:
+      - bold
+      text:
+        normalized_text: 3. Outlook
+        raw_text: 3. Outlook
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: 3. Outlook
+      raw_text: 3. Outlook
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: heading
+  - bbox:
+    - 56.0
+    - 110.0
+    - 456.0
+    - 176.0
+    confidence: medium
+    id: p3_table1
+    metadata:
+      extraction_strategy: pymupdf_find_tables
+      original_order_index: 2
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_block_ids:
+      - p3_b2
+      - p3_b3
+      - p3_b4
+      source_blocks:
+      - bbox:
+        - 62.0
+        - 115.37
+        - 389.5
+        - 127.76
+        id: p3_b2
+        source_refs:
+        - pymupdf:block:3:2
+        text: InitiativeTarget YearStatus
+      - bbox:
+        - 62.0
+        - 137.32
+        - 400.52
+        - 149.69
+        id: p3_b3
+        source_refs:
+        - pymupdf:block:3:3
+        text: Coating line 2Next yearApproved
+      - bbox:
+        - 62.0
+        - 159.32
+        - 379.5
+        - 171.69
+        id: p3_b4
+        source_refs:
+        - pymupdf:block:3:4
+        text: Recycled feedstockTwo yearsPilot
+      source_type: pymupdf_table
+      table_id: table_p3_table1
+      table_rows:
+      - - Initiative
+        - Target Year
+        - Status
+      - - Coating line 2
+        - Next year
+        - Approved
+      - - Recycled feedstock
+        - Two years
+        - Pilot
+    order_index: 2
+    page_number: 3
+    source_refs:
+    - pymupdf:block:3:2
+    - pymupdf:block:3:3
+    - pymupdf:block:3:4
+    spans: []
+    text:
+      normalized_text: 'Initiative | Target Year | Status
+
+        Coating line 2 | Next year | Approved
+
+        Recycled feedstock | Two years | Pilot'
+      raw_text: 'Initiative | Target Year | Status
+
+        Coating line 2 | Next year | Approved
+
+        Recycled feedstock | Two years | Pilot'
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: table
+  - bbox:
+    - 56.0
+    - 190.0
+    - 525.09
+    - 218.51
+    confidence: high
+    id: p3_b5
+    metadata:
+      original_order_index: 5
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 3
+    page_number: 3
+    source_refs:
+    - pymupdf:block:3:5
+    spans:
+    - bbox:
+      - 56.0
+      - 190.0
+      - 525.09
+      - 203.74
+      font_name: Helvetica
+      font_size: 10.0
+      id: p3_s1_4
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 200.75
+      style: []
+      text:
+        normalized_text: Management expects demand to remain firm. Capacity utilisation
+          is projected to stay above ninety percent
+        raw_text: Management expects demand to remain firm. Capacity utilisation is
+          projected to stay above ninety percent
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 56.0
+      - 204.77
+      - 466.76
+      - 218.51
+      font_name: Helvetica
+      font_size: 10.0
+      id: p3_s2_4
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 215.52
+      style: []
+      text:
+        normalized_text: through the planning horizon, supported by the order backlog
+          carried into the new fiscal year.
+        raw_text: through the planning horizon, supported by the order backlog carried
+          into the new fiscal year.
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: Management expects demand to remain firm. Capacity utilisation
+        is projected to stay above ninety percentthrough the planning horizon, supported
+        by the order backlog carried into the new fiscal year.
+      raw_text: Management expects demand to remain firm. Capacity utilisation is
+        projected to stay above ninety percentthrough the planning horizon, supported
+        by the order backlog carried into the new fiscal year.
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: text
+  height: 842.0
+  id: page_3
+  images: []
+  metadata:
+    annotations: []
+    label: ''
+    links: []
+    preview_asset_ref: previews/page_0003.png
+  page_number: 3
+  rotation: 0
+  width: 595.0
+parser: pymupdf
+pipeline_profile: null
+producer_version: null
+relations:
+- confidence: high
+  evidence:
+  - heading_title_exact_match
+  - title=1. Overview
+  from_id: p1_b4
+  id: rel_toc_1
+  metadata:
+    stage: toc_linking
+    target_page: 2
+    toc_title: 1. Overview
+  state: inferred
+  to_id: p2_b1
+  type: toc_item_to_heading
+- confidence: high
+  evidence:
+  - heading_title_exact_match
+  - title=2. Financial Results
+  from_id: p1_b5
+  id: rel_toc_2
+  metadata:
+    stage: toc_linking
+    target_page: 2
+    toc_title: 2. Financial Results
+  state: inferred
+  to_id: p2_b4
+  type: toc_item_to_heading
+- confidence: high
+  evidence:
+  - heading_title_exact_match
+  - title=3. Outlook
+  from_id: p1_b6
+  id: rel_toc_3
+  metadata:
+    stage: toc_linking
+    target_page: 3
+    toc_title: 3. Outlook
+  state: inferred
+  to_id: p3_b1
+  type: toc_item_to_heading
+- confidence: low
+  evidence:
+  - heading_page_match
+  - title=Overview
+  from_id: doc_snapshot#toc:1
+  id: rel_toc_4
+  metadata:
+    stage: toc_linking
+    target_page: 2
+    toc_title: Overview
+  state: inferred
+  to_id: p2_b1
+  type: toc_item_to_heading
+- confidence: low
+  evidence:
+  - heading_page_match
+  - title=Financial Results
+  from_id: doc_snapshot#toc:2
+  id: rel_toc_5
+  metadata:
+    stage: toc_linking
+    target_page: 2
+    toc_title: Financial Results
+  state: inferred
+  to_id: p2_b1
+  type: toc_item_to_heading
+- confidence: low
+  evidence:
+  - heading_page_match
+  - title=Outlook
+  from_id: doc_snapshot#toc:3
+  id: rel_toc_6
+  metadata:
+    stage: toc_linking
+    target_page: 3
+    toc_title: Outlook
+  state: inferred
+  to_id: p3_b1
+  type: toc_item_to_heading
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_root
+  id: rel_block_parent_db_doc_snapshot_sec_0002
+  metadata:
+    child_id: db_doc_snapshot_sec_0002
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_sec_0002
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_sec_0002
+  id: rel_block_source_db_doc_snapshot_sec_0002_p1_b1
+  metadata:
+    source_block_id: p1_b1
+    stage: block_tree
+  state: inferred
+  to_id: p1_b1
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_root
+  id: rel_block_parent_db_doc_snapshot_sec_0003
+  metadata:
+    child_id: db_doc_snapshot_sec_0003
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_sec_0003
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_sec_0003
+  id: rel_block_source_db_doc_snapshot_sec_0003_p1_b2
+  metadata:
+    source_block_id: p1_b2
+    stage: block_tree
+  state: inferred
+  to_id: p1_b2
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_root
+  id: rel_block_parent_db_doc_snapshot_sec_0004
+  metadata:
+    child_id: db_doc_snapshot_sec_0004
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_sec_0004
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_sec_0004
+  id: rel_block_source_db_doc_snapshot_sec_0004_p1_b3
+  metadata:
+    source_block_id: p1_b3
+    stage: block_tree
+  state: inferred
+  to_id: p1_b3
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_root
+  id: rel_block_parent_db_doc_snapshot_sec_0005
+  metadata:
+    child_id: db_doc_snapshot_sec_0005
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_sec_0005
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_sec_0005
+  id: rel_block_source_db_doc_snapshot_sec_0005_p2_b1
+  metadata:
+    source_block_id: p2_b1
+    stage: block_tree
+  state: inferred
+  to_id: p2_b1
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_sec_0005
+  id: rel_block_parent_db_doc_snapshot_p2_1
+  metadata:
+    child_id: db_doc_snapshot_p2_1
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p2_1
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_p2_1
+  id: rel_block_parent_db_doc_snapshot_p2_b2
+  metadata:
+    child_id: db_doc_snapshot_p2_b2
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p2_b2
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_p2_b2
+  id: rel_block_source_db_doc_snapshot_p2_b2_p2_b2
+  metadata:
+    source_block_id: p2_b2
+    stage: block_tree
+  state: inferred
+  to_id: p2_b2
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_p2_1
+  id: rel_block_parent_db_doc_snapshot_p2_b3
+  metadata:
+    child_id: db_doc_snapshot_p2_b3
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p2_b3
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_p2_b3
+  id: rel_block_source_db_doc_snapshot_p2_b3_p2_b3
+  metadata:
+    source_block_id: p2_b3
+    stage: block_tree
+  state: inferred
+  to_id: p2_b3
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_root
+  id: rel_block_parent_db_doc_snapshot_sec_0009
+  metadata:
+    child_id: db_doc_snapshot_sec_0009
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_sec_0009
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_sec_0009
+  id: rel_block_source_db_doc_snapshot_sec_0009_p2_b4
+  metadata:
+    source_block_id: p2_b4
+    stage: block_tree
+  state: inferred
+  to_id: p2_b4
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_sec_0009
+  id: rel_block_parent_db_doc_snapshot_p2_2
+  metadata:
+    child_id: db_doc_snapshot_p2_2
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p2_2
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_p2_2
+  id: rel_block_parent_db_doc_snapshot_p2_table1
+  metadata:
+    child_id: db_doc_snapshot_p2_table1
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p2_table1
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_p2_table1
+  id: rel_block_source_db_doc_snapshot_p2_table1_p2_table1
+  metadata:
+    source_block_id: p2_table1
+    stage: block_tree
+  state: inferred
+  to_id: p2_table1
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_p2_2
+  id: rel_block_parent_db_doc_snapshot_p2_b9
+  metadata:
+    child_id: db_doc_snapshot_p2_b9
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p2_b9
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_p2_b9
+  id: rel_block_source_db_doc_snapshot_p2_b9_p2_b9
+  metadata:
+    source_block_id: p2_b9
+    stage: block_tree
+  state: inferred
+  to_id: p2_b9
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_p2_2
+  id: rel_block_parent_db_doc_snapshot_p2_b10
+  metadata:
+    child_id: db_doc_snapshot_p2_b10
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p2_b10
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_p2_b10
+  id: rel_block_source_db_doc_snapshot_p2_b10_p2_b10
+  metadata:
+    source_block_id: p2_b10
+    stage: block_tree
+  state: inferred
+  to_id: p2_b10
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_root
+  id: rel_block_parent_db_doc_snapshot_sec_0014
+  metadata:
+    child_id: db_doc_snapshot_sec_0014
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_sec_0014
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_sec_0014
+  id: rel_block_source_db_doc_snapshot_sec_0014_p3_b1
+  metadata:
+    source_block_id: p3_b1
+    stage: block_tree
+  state: inferred
+  to_id: p3_b1
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_sec_0014
+  id: rel_block_parent_db_doc_snapshot_p3_3
+  metadata:
+    child_id: db_doc_snapshot_p3_3
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p3_3
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_p3_3
+  id: rel_block_parent_db_doc_snapshot_p3_table1
+  metadata:
+    child_id: db_doc_snapshot_p3_table1
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p3_table1
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_p3_table1
+  id: rel_block_source_db_doc_snapshot_p3_table1_p3_table1
+  metadata:
+    source_block_id: p3_table1
+    stage: block_tree
+  state: inferred
+  to_id: p3_table1
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_p3_3
+  id: rel_block_parent_db_doc_snapshot_p3_b5
+  metadata:
+    child_id: db_doc_snapshot_p3_b5
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p3_b5
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_p3_b5
+  id: rel_block_source_db_doc_snapshot_p3_b5_p3_b5
+  metadata:
+    source_block_id: p3_b5
+    stage: block_tree
+  state: inferred
+  to_id: p3_b5
+  type: block_to_source
+- confidence: high
+  evidence:
+  - chunk_source_block_ids
+  - source_block_id=p2_b2
+  from_id: chunk_doc_snapshot_0001
+  id: rel_chunk_chunk_doc_snapshot_0001_1
+  metadata:
+    source_block_id: p2_b2
+    stage: provenance_linking
+  state: inferred
+  to_id: p2_b2
+  type: chunk_to_source
+- confidence: high
+  evidence:
+  - chunk_source_block_ids
+  - source_block_id=p2_b3
+  from_id: chunk_doc_snapshot_0002
+  id: rel_chunk_chunk_doc_snapshot_0002_1
+  metadata:
+    source_block_id: p2_b3
+    stage: provenance_linking
+  state: inferred
+  to_id: p2_b3
+  type: chunk_to_source
+- confidence: high
+  evidence:
+  - chunk_source_block_ids
+  - source_block_id=p2_table1
+  from_id: chunk_doc_snapshot_0003
+  id: rel_chunk_chunk_doc_snapshot_0003_1
+  metadata:
+    source_block_id: p2_table1
+    stage: provenance_linking
+  state: inferred
+  to_id: p2_table1
+  type: chunk_to_source
+- confidence: high
+  evidence:
+  - chunk_source_block_ids
+  - source_block_id=p2_b9
+  from_id: chunk_doc_snapshot_0004
+  id: rel_chunk_chunk_doc_snapshot_0004_1
+  metadata:
+    source_block_id: p2_b9
+    stage: provenance_linking
+  state: inferred
+  to_id: p2_b9
+  type: chunk_to_source
+- confidence: high
+  evidence:
+  - chunk_source_block_ids
+  - source_block_id=p2_b10
+  from_id: chunk_doc_snapshot_0005
+  id: rel_chunk_chunk_doc_snapshot_0005_1
+  metadata:
+    source_block_id: p2_b10
+    stage: provenance_linking
+  state: inferred
+  to_id: p2_b10
+  type: chunk_to_source
+- confidence: high
+  evidence:
+  - chunk_source_block_ids
+  - source_block_id=p3_table1
+  from_id: chunk_doc_snapshot_0006
+  id: rel_chunk_chunk_doc_snapshot_0006_1
+  metadata:
+    source_block_id: p3_table1
+    stage: provenance_linking
+  state: inferred
+  to_id: p3_table1
+  type: chunk_to_source
+- confidence: high
+  evidence:
+  - chunk_source_block_ids
+  - source_block_id=p3_b5
+  from_id: chunk_doc_snapshot_0007
+  id: rel_chunk_chunk_doc_snapshot_0007_1
+  metadata:
+    source_block_id: p3_b5
+    stage: provenance_linking
+  state: inferred
+  to_id: p3_b5
+  type: chunk_to_source
+source_name: real/annual-report.pdf
+tables:
+- block_id: p2_table1
+  confidence: medium
+  html: null
+  id: table_p2_table1
+  markdown: '| Region | Revenue (M) | Growth | Share |
+
+    | --- | --- | --- | --- |
+
+    | Asia-Pacific | 412.5 | 18% | 41% |
+
+    | Europe | 301.2 | 9% | 30% |
+
+    | Americas | 289.9 | 6% | 29% |'
+  metadata:
+    source: block_metadata_table_rows
+    source_block_id: p2_table1
+    source_page: 2
+  rows:
+  - - Region
+    - Revenue (M)
+    - Growth
+    - Share
+  - - Asia-Pacific
+    - '412.5'
+    - 18%
+    - 41%
+  - - Europe
+    - '301.2'
+    - 9%
+    - 30%
+  - - Americas
+    - '289.9'
+    - 6%
+    - 29%
+- block_id: p3_table1
+  confidence: medium
+  html: null
+  id: table_p3_table1
+  markdown: '| Initiative | Target Year | Status |
+
+    | --- | --- | --- |
+
+    | Coating line 2 | Next year | Approved |
+
+    | Recycled feedstock | Two years | Pilot |'
+  metadata:
+    source: block_metadata_table_rows
+    source_block_id: p3_table1
+    source_page: 3
+  rows:
+  - - Initiative
+    - Target Year
+    - Status
+  - - Coating line 2
+    - Next year
+    - Approved
+  - - Recycled feedstock
+    - Two years
+    - Pilot

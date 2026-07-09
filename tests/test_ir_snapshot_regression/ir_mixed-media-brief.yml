@@ -1,0 +1,3077 @@
+adapter_version: null
+chunks:
+- asset_refs: []
+  bbox_refs:
+  - - 56.0
+    - 121.25
+    - 306.97
+    - 152.99
+  heading_path:
+  - Key Specifications
+  id: chunk_doc_snapshot_0001
+  metadata:
+    block_path:
+    - Key Specifications
+    block_types:
+    - paragraph
+    chunk_kind: paragraph
+    citation_label: PDF p.1
+    intra_block_view: true
+    page_ref_kind: physical_page_number_1_based
+    parent_block_id: db_doc_snapshot_p1_para1
+    pdf_page_labels: []
+    printed_page_labels: []
+    stage: rag_chunking
+  page_refs:
+  - 1
+  parent_block_id: db_doc_snapshot_p1_para1
+  relation_ids:
+  - rel_chunk_chunk_doc_snapshot_0001_1
+  source_block_ids:
+  - p1_para1
+  text:
+    normalized_text: 'Sampling rate: 4 kHz per channel, 32 channels total. Noise floor:
+      0.8 uV2  under shielded conditions.'
+    raw_text: 'Sampling rate: 4 kHz per channel, 32 channels total. Noise floor: 0.8
+      uV2  under shielded conditions.'
+    simplified_traditional_converted: false
+    unicode_form: NFC
+    width_normalized: false
+- asset_refs: []
+  bbox_refs:
+  - - 56.0
+    - 330.9
+    - 250.16
+    - 342.41
+  heading_path:
+  - Key Specifications
+  id: chunk_doc_snapshot_0002
+  metadata:
+    block_path:
+    - Key Specifications
+    block_types:
+    - text
+    chunk_kind: paragraph
+    citation_label: PDF p.1
+    intra_block_view: true
+    page_ref_kind: physical_page_number_1_based
+    parent_block_id: db_doc_snapshot_p1_b5
+    pdf_page_labels: []
+    printed_page_labels: []
+    stage: rag_chunking
+  page_refs:
+  - 1
+  parent_block_id: db_doc_snapshot_p1_b5
+  relation_ids:
+  - rel_chunk_chunk_doc_snapshot_0002_1
+  source_block_ids:
+  - p1_b5
+  text:
+    normalized_text: 'Image 1: Thermal distribution across the array face.'
+    raw_text: 'Image 1: Thermal distribution across the array face.'
+    simplified_traditional_converted: false
+    unicode_form: NFC
+    width_normalized: false
+- asset_refs: []
+  bbox_refs:
+  - - 56.0
+    - 395.0
+    - 531.73
+    - 453.05
+  heading_path:
+  - Deployment Notes
+  id: chunk_doc_snapshot_0003
+  metadata:
+    block_path:
+    - Deployment Notes
+    block_types:
+    - text
+    chunk_kind: paragraph
+    citation_label: PDF p.1
+    intra_block_view: true
+    page_ref_kind: physical_page_number_1_based
+    parent_block_id: db_doc_snapshot_p1_b7
+    pdf_page_labels: []
+    printed_page_labels: []
+    stage: rag_chunking
+  page_refs:
+  - 1
+  parent_block_id: db_doc_snapshot_p1_b7
+  relation_ids:
+  - rel_chunk_chunk_doc_snapshot_0003_1
+  source_block_ids:
+  - p1_b7
+  text:
+    normalized_text: The array ships pre-calibrated. Field recalibration is only required
+      after mechanical shock or when operatingtemperature moves outside the rated
+      band for more than an hour. Mount the unit on the vibration isolatorsprovided;
+      rigid mounting couples structural noise directly into the low-frequency channels
+      and can maskweak signals entirely.
+    raw_text: The array ships pre-calibrated. Field recalibration is only required
+      after mechanical shock or when operatingtemperature moves outside the rated
+      band for more than an hour. Mount the unit on the vibration isolatorsprovided;
+      rigid mounting couples structural noise directly into the low-frequency channels
+      and can maskweak signals entirely.
+    simplified_traditional_converted: false
+    unicode_form: NFC
+    width_normalized: false
+- asset_refs: []
+  bbox_refs:
+  - - 56.0
+    - 95.0
+    - 534.01
+    - 182.59
+  heading_path:
+  - Integration Checklist
+  id: chunk_doc_snapshot_0004
+  metadata:
+    block_path:
+    - Integration Checklist
+    block_types:
+    - paragraph
+    chunk_kind: paragraph
+    citation_label: PDF p.2
+    intra_block_view: true
+    page_ref_kind: physical_page_number_1_based
+    parent_block_id: db_doc_snapshot_p2_para1
+    pdf_page_labels: []
+    printed_page_labels: []
+    stage: rag_chunking
+  page_refs:
+  - 2
+  parent_block_id: db_doc_snapshot_p2_para1
+  relation_ids:
+  - rel_chunk_chunk_doc_snapshot_0004_1
+  source_block_ids:
+  - p2_para1
+  text:
+    normalized_text: Verify supply ripple stays below the published limit before connecting
+      the analog front end. Route the sensorharness away from switching converters.
+      Confirm that the acquisition host applies the vendor timestamprather than re-stamping
+      frames on arrival, since downstream alignment assumes source timestamps. After
+      first power-up, run the built-in self test and archive the report it produces.
+      The report is the baselineused by support when diagnosing drift claims during
+      the warranty period.
+    raw_text: Verify supply ripple stays below the published limit before connecting
+      the analog front end. Route the sensorharness away from switching converters.
+      Confirm that the acquisition host applies the vendor timestamprather than re-stamping
+      frames on arrival, since downstream alignment assumes source timestamps. After
+      first power-up, run the built-in self test and archive the report it produces.
+      The report is the baselineused by support when diagnosing drift claims during
+      the warranty period.
+    simplified_traditional_converted: false
+    unicode_form: NFC
+    width_normalized: false
+- asset_refs: []
+  bbox_refs:
+  - - 56.0
+    - 290.86
+    - 241.06
+    - 306.04
+  heading_path:
+  - Integration Checklist
+  id: chunk_doc_snapshot_0005
+  metadata:
+    block_path:
+    - Integration Checklist
+    block_types:
+    - text
+    chunk_kind: paragraph
+    citation_label: PDF p.2
+    intra_block_view: true
+    page_ref_kind: physical_page_number_1_based
+    parent_block_id: db_doc_snapshot_p2_b4
+    pdf_page_labels: []
+    printed_page_labels: []
+    stage: rag_chunking
+  page_refs:
+  - 2
+  parent_block_id: db_doc_snapshot_p2_b4
+  relation_ids:
+  - rel_chunk_chunk_doc_snapshot_0005_1
+  source_block_ids:
+  - p2_b4
+  text:
+    normalized_text: 2  Measured with inputs shorted at the connector.
+    raw_text: 2  Measured with inputs shorted at the connector.
+    simplified_traditional_converted: false
+    unicode_form: NFC
+    width_normalized: false
+document_blocks:
+- bbox_refs:
+  - - 56.0
+    - 61.81
+    - 336.57
+    - 85.22
+  - - 56.0
+    - 96.09
+    - 171.6
+    - 113.99
+  - - 56.0
+    - 366.09
+    - 170.13
+    - 383.99
+  - - 56.0
+    - 66.09
+    - 184.58
+    - 83.99
+  child_ids:
+  - db_doc_snapshot_sec_0002
+  - db_doc_snapshot_sec_0003
+  - db_doc_snapshot_sec_0007
+  - db_doc_snapshot_sec_0010
+  confidence: high
+  content_hash: null
+  depth: 0
+  id: db_doc_snapshot_root
+  metadata:
+    build_strategy: document_root
+    citation_label: PDF p.1, PDF p.2
+    furniture: []
+    keyword_stats:
+      child_support:
+        acquisition: 1
+        across: 1
+        after: 2
+        alignment: 1
+        an: 1
+        analog: 1
+        and: 2
+        applies: 1
+        archive: 1
+        array: 3
+        arrival: 1
+        assumes: 1
+        at: 1
+        away: 1
+        band: 1
+        baselineused: 1
+        before: 1
+        below: 1
+        brief: 1
+        built-in: 1
+        by: 1
+        can: 1
+        channel: 1
+        channels: 2
+        claims: 1
+        conditions: 1
+        confirm: 1
+        connecting: 1
+        connector: 1
+        converters: 1
+        couples: 1
+        diagnosing: 1
+        directly: 1
+        distribution: 1
+        downstream: 1
+        drift: 1
+        during: 1
+        end: 1
+        entirely: 1
+        face: 1
+        field: 1
+        first: 1
+        floor: 1
+        for: 1
+        frames: 1
+        from: 1
+        front: 1
+        helios: 1
+        host: 1
+        hour: 1
+        image: 1
+        inputs: 1
+        into: 1
+        is: 2
+        isolatorsprovided: 1
+        it: 1
+        khz: 1
+        limit: 1
+        low-frequency: 1
+        maskweak: 1
+        measured: 1
+        mechanical: 1
+        more: 1
+        mount: 1
+        mounting: 1
+        moves: 1
+        noise: 2
+        'on': 2
+        only: 1
+        operatingtemperature: 1
+        or: 1
+        outside: 1
+        per: 1
+        period: 1
+        power-up: 1
+        pre-calibrated: 1
+        produces: 1
+        product: 1
+        published: 1
+        rate: 1
+        rated: 1
+        re-stamping: 1
+        recalibration: 1
+        report: 1
+        required: 1
+        rigid: 1
+        ripple: 1
+        route: 1
+        run: 1
+        sampling: 1
+        self: 1
+        sensor: 1
+        sensorharness: 1
+        shielded: 1
+        ships: 1
+        shock: 1
+        shorted: 1
+        signals: 1
+        since: 1
+        source: 1
+        stays: 1
+        structural: 1
+        supply: 1
+        support: 1
+        switching: 1
+        test: 1
+        than: 2
+        that: 1
+        the: 4
+        thermal: 1
+        timestamprather: 1
+        timestamps: 1
+        total: 1
+        under: 1
+        unit: 1
+        uv2: 1
+        vendor: 1
+        verify: 1
+        vibration: 1
+        warranty: 1
+        when: 2
+        with: 1
+      term_freq:
+        acquisition: 1
+        across: 1
+        after: 2
+        alignment: 1
+        an: 1
+        analog: 1
+        and: 2
+        applies: 1
+        archive: 1
+        array: 3
+        arrival: 1
+        assumes: 1
+        at: 1
+        away: 1
+        band: 1
+        baselineused: 1
+        before: 1
+        below: 1
+        brief: 1
+        built-in: 1
+        by: 1
+        can: 1
+        channel: 1
+        channels: 2
+        claims: 1
+        conditions: 1
+        confirm: 1
+        connecting: 1
+        connector: 1
+        converters: 1
+        couples: 1
+        diagnosing: 1
+        directly: 1
+        distribution: 1
+        downstream: 1
+        drift: 1
+        during: 1
+        end: 1
+        entirely: 1
+        face: 1
+        field: 1
+        first: 1
+        floor: 1
+        for: 1
+        frames: 1
+        from: 1
+        front: 1
+        helios: 1
+        host: 1
+        hour: 1
+        image: 1
+        inputs: 1
+        into: 1
+        is: 2
+        isolatorsprovided: 1
+        it: 1
+        khz: 1
+        limit: 1
+        low-frequency: 1
+        maskweak: 1
+        measured: 1
+        mechanical: 1
+        more: 1
+        mount: 1
+        mounting: 1
+        moves: 1
+        noise: 2
+        'on': 2
+        only: 1
+        operatingtemperature: 1
+        or: 1
+        outside: 1
+        per: 1
+        period: 1
+        power-up: 1
+        pre-calibrated: 1
+        produces: 1
+        product: 1
+        published: 1
+        rate: 1
+        rated: 1
+        re-stamping: 1
+        recalibration: 1
+        report: 2
+        required: 1
+        rigid: 1
+        ripple: 1
+        route: 1
+        run: 1
+        sampling: 1
+        self: 1
+        sensor: 1
+        sensorharness: 1
+        shielded: 1
+        ships: 1
+        shock: 1
+        shorted: 1
+        signals: 1
+        since: 1
+        source: 1
+        stays: 1
+        structural: 1
+        supply: 1
+        support: 1
+        switching: 1
+        test: 1
+        than: 2
+        that: 1
+        the: 17
+        thermal: 1
+        timestamprather: 1
+        timestamps: 1
+        total: 1
+        under: 1
+        unit: 1
+        uv2: 1
+        vendor: 1
+        verify: 1
+        vibration: 1
+        warranty: 1
+        when: 2
+        with: 1
+    keyword_terms:
+    - the
+    keyword_thresholds:
+      leaf_count: 6
+      min_freq: 5
+      min_support: 3
+      strategy: bottom_up_aggregation
+      text_length: 1066
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - D:\PycharmProjects\Documa\fixtures\pdf\real\mixed-media-brief.pdf
+    - the
+    stage: block_tree
+  order_index: 1
+  page_refs:
+  - 1
+  - 2
+  parent_id: null
+  source_block_ids: []
+  source_chunk_ids: []
+  text_preview: null
+  title: D:\PycharmProjects\Documa\fixtures\pdf\real\mixed-media-brief.pdf
+  type: document
+- bbox_refs:
+  - - 56.0
+    - 61.81
+    - 336.57
+    - 85.22
+  child_ids: []
+  confidence: high
+  content_hash: bd7c0b4732705a11c8c6f3eeeb8905f91542b556216ef71b79a82511fe1786fd
+  depth: 1
+  id: db_doc_snapshot_sec_0002
+  metadata:
+    build_strategy: heading_block
+    citation_label: PDF p.1
+    heading_level: 1
+    keyword_stats:
+      child_support:
+        array: 1
+        brief: 1
+        helios: 1
+        product: 1
+        sensor: 1
+      term_freq:
+        array: 1
+        brief: 1
+        helios: 1
+        product: 1
+        sensor: 1
+    keyword_terms: []
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 2
+      min_support: 2
+      strategy: bottom_up_aggregation
+      text_length: 34
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - 'Product Brief: Helios Sensor Array'
+    source_range: null
+    stage: block_tree
+  order_index: 2
+  page_refs:
+  - 1
+  parent_id: db_doc_snapshot_root
+  source_block_ids:
+  - p1_b1
+  source_chunk_ids: []
+  text_preview: 'Product Brief: Helios Sensor Array'
+  title: 'Product Brief: Helios Sensor Array'
+  type: section
+- bbox_refs:
+  - - 56.0
+    - 96.09
+    - 171.6
+    - 113.99
+  child_ids:
+  - db_doc_snapshot_p1_1
+  confidence: high
+  content_hash: 2d8c02d1866d55b958e8a7b7c991cbb31aeb64eed50f435095f86791bbb6356c
+  depth: 1
+  id: db_doc_snapshot_sec_0003
+  metadata:
+    build_strategy: heading_block
+    citation_label: PDF p.1
+    heading_level: 1
+    keyword_stats:
+      child_support:
+        across: 1
+        array: 1
+        channel: 1
+        channels: 1
+        conditions: 1
+        distribution: 1
+        face: 1
+        floor: 1
+        image: 1
+        khz: 1
+        noise: 1
+        per: 1
+        rate: 1
+        sampling: 1
+        shielded: 1
+        the: 1
+        thermal: 1
+        total: 1
+        under: 1
+        uv2: 1
+      term_freq:
+        across: 1
+        array: 1
+        channel: 1
+        channels: 1
+        conditions: 1
+        distribution: 1
+        face: 1
+        floor: 1
+        image: 1
+        khz: 1
+        noise: 1
+        per: 1
+        rate: 1
+        sampling: 1
+        shielded: 1
+        the: 1
+        thermal: 1
+        total: 1
+        under: 1
+        uv2: 1
+    keyword_terms: []
+    keyword_thresholds:
+      leaf_count: 2
+      min_freq: 2
+      min_support: 2
+      strategy: bottom_up_aggregation
+      text_length: 153
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - Key Specifications
+    source_range: null
+    stage: block_tree
+  order_index: 3
+  page_refs:
+  - 1
+  parent_id: db_doc_snapshot_root
+  source_block_ids:
+  - p1_b2
+  source_chunk_ids: []
+  text_preview: Key Specifications
+  title: Key Specifications
+  type: section
+- bbox_refs:
+  - - 56.0
+    - 121.25
+    - 306.97
+    - 152.99
+  - - 56.0
+    - 330.9
+    - 250.16
+    - 342.41
+  child_ids:
+  - db_doc_snapshot_p1_para1
+  - db_doc_snapshot_p1_b5
+  confidence: high
+  content_hash: null
+  depth: 2
+  id: db_doc_snapshot_p1_1
+  metadata:
+    build_strategy: page_boundary
+    citation_label: PDF p.1
+    keyword_stats:
+      child_support:
+        across: 1
+        array: 1
+        channel: 1
+        channels: 1
+        conditions: 1
+        distribution: 1
+        face: 1
+        floor: 1
+        image: 1
+        khz: 1
+        noise: 1
+        per: 1
+        rate: 1
+        sampling: 1
+        shielded: 1
+        the: 1
+        thermal: 1
+        total: 1
+        under: 1
+        uv2: 1
+      term_freq:
+        across: 1
+        array: 1
+        channel: 1
+        channels: 1
+        conditions: 1
+        distribution: 1
+        face: 1
+        floor: 1
+        image: 1
+        khz: 1
+        noise: 1
+        per: 1
+        rate: 1
+        sampling: 1
+        shielded: 1
+        the: 1
+        thermal: 1
+        total: 1
+        under: 1
+        uv2: 1
+    keyword_terms: []
+    keyword_thresholds:
+      leaf_count: 2
+      min_freq: 2
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 153
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - Page 1
+    stage: block_tree
+  order_index: 4
+  page_refs:
+  - 1
+  parent_id: db_doc_snapshot_sec_0003
+  source_block_ids: []
+  source_chunk_ids: []
+  text_preview: null
+  title: Page 1
+  type: page
+- bbox_refs:
+  - - 56.0
+    - 121.25
+    - 306.97
+    - 152.99
+  child_ids: []
+  confidence: medium
+  content_hash: c25ea7601c80c98ca5112aa71e20d7d6ccadad95caaf470972a94739d9195d33
+  depth: 3
+  id: db_doc_snapshot_p1_para1
+  metadata:
+    build_strategy: page_local_block
+    citation_label: PDF p.1
+    keyword_stats:
+      child_support:
+        channel: 1
+        channels: 1
+        conditions: 1
+        floor: 1
+        khz: 1
+        noise: 1
+        per: 1
+        rate: 1
+        sampling: 1
+        shielded: 1
+        total: 1
+        under: 1
+        uv2: 1
+      term_freq:
+        channel: 1
+        channels: 1
+        conditions: 1
+        floor: 1
+        khz: 1
+        noise: 1
+        per: 1
+        rate: 1
+        sampling: 1
+        shielded: 1
+        total: 1
+        under: 1
+        uv2: 1
+    keyword_terms:
+    - shielded
+    - sampling
+    - conditions
+    - channels
+    - channel
+    - under
+    - total
+    - noise
+    - floor
+    - rate
+    - uv2
+    - per
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 1
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 101
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - shielded
+    - sampling
+    - conditions
+    - channels
+    - channel
+    - under
+    - total
+    - noise
+    - floor
+    - rate
+    - uv2
+    - per
+    source_block_type: paragraph
+    source_range: null
+    stage: block_tree
+  order_index: 5
+  page_refs:
+  - 1
+  parent_id: db_doc_snapshot_p1_1
+  source_block_ids:
+  - p1_para1
+  source_chunk_ids: []
+  text_preview: 'Sampling rate: 4 kHz per channel, 32 channels total. Noise floor:
+    0.8 uV2 under shielded conditions.'
+  title: null
+  type: paragraph
+- bbox_refs:
+  - - 56.0
+    - 330.9
+    - 250.16
+    - 342.41
+  child_ids: []
+  confidence: high
+  content_hash: 19660bb299ec7f3aa8eb94d2d3698c64b133c10dd6fb9de8d96674c291183f86
+  depth: 3
+  id: db_doc_snapshot_p1_b5
+  metadata:
+    build_strategy: page_local_block
+    citation_label: PDF p.1
+    keyword_stats:
+      child_support:
+        across: 1
+        array: 1
+        distribution: 1
+        face: 1
+        image: 1
+        the: 1
+        thermal: 1
+      term_freq:
+        across: 1
+        array: 1
+        distribution: 1
+        face: 1
+        image: 1
+        the: 1
+        thermal: 1
+    keyword_terms:
+    - distribution
+    - thermal
+    - across
+    - image
+    - array
+    - face
+    - the
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 1
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 52
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - distribution
+    - thermal
+    - across
+    - image
+    - array
+    - face
+    - the
+    source_block_type: text
+    source_range: null
+    stage: block_tree
+  order_index: 6
+  page_refs:
+  - 1
+  parent_id: db_doc_snapshot_p1_1
+  source_block_ids:
+  - p1_b5
+  source_chunk_ids: []
+  text_preview: 'Image 1: Thermal distribution across the array face.'
+  title: null
+  type: paragraph
+- bbox_refs:
+  - - 56.0
+    - 366.09
+    - 170.13
+    - 383.99
+  child_ids:
+  - db_doc_snapshot_p1_2
+  confidence: high
+  content_hash: cdb851cfeb5aaadf6eac09e8f3032747270133cf81d4fde9a8b7b84ed0752a19
+  depth: 1
+  id: db_doc_snapshot_sec_0007
+  metadata:
+    build_strategy: heading_block
+    citation_label: PDF p.1
+    heading_level: 1
+    keyword_stats:
+      child_support:
+        after: 1
+        an: 1
+        and: 1
+        array: 1
+        band: 1
+        can: 1
+        channels: 1
+        couples: 1
+        directly: 1
+        entirely: 1
+        field: 1
+        for: 1
+        hour: 1
+        into: 1
+        is: 1
+        isolatorsprovided: 1
+        low-frequency: 1
+        maskweak: 1
+        mechanical: 1
+        more: 1
+        mount: 1
+        mounting: 1
+        moves: 1
+        noise: 1
+        'on': 1
+        only: 1
+        operatingtemperature: 1
+        or: 1
+        outside: 1
+        pre-calibrated: 1
+        rated: 1
+        recalibration: 1
+        required: 1
+        rigid: 1
+        ships: 1
+        shock: 1
+        signals: 1
+        structural: 1
+        than: 1
+        the: 1
+        unit: 1
+        vibration: 1
+        when: 1
+      term_freq:
+        after: 1
+        an: 1
+        and: 1
+        array: 1
+        band: 1
+        can: 1
+        channels: 1
+        couples: 1
+        directly: 1
+        entirely: 1
+        field: 1
+        for: 1
+        hour: 1
+        into: 1
+        is: 1
+        isolatorsprovided: 1
+        low-frequency: 1
+        maskweak: 1
+        mechanical: 1
+        more: 1
+        mount: 1
+        mounting: 1
+        moves: 1
+        noise: 1
+        'on': 1
+        only: 1
+        operatingtemperature: 1
+        or: 1
+        outside: 1
+        pre-calibrated: 1
+        rated: 1
+        recalibration: 1
+        required: 1
+        rigid: 1
+        ships: 1
+        shock: 1
+        signals: 1
+        structural: 1
+        than: 1
+        the: 5
+        unit: 1
+        vibration: 1
+        when: 1
+    keyword_terms: []
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 2
+      min_support: 2
+      strategy: bottom_up_aggregation
+      text_length: 339
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - Deployment Notes
+    source_range: null
+    stage: block_tree
+  order_index: 7
+  page_refs:
+  - 1
+  parent_id: db_doc_snapshot_root
+  source_block_ids:
+  - p1_b6
+  source_chunk_ids: []
+  text_preview: Deployment Notes
+  title: Deployment Notes
+  type: section
+- bbox_refs:
+  - - 56.0
+    - 395.0
+    - 531.73
+    - 453.05
+  child_ids:
+  - db_doc_snapshot_p1_b7
+  confidence: high
+  content_hash: null
+  depth: 2
+  id: db_doc_snapshot_p1_2
+  metadata:
+    build_strategy: page_boundary
+    citation_label: PDF p.1
+    keyword_stats:
+      child_support:
+        after: 1
+        an: 1
+        and: 1
+        array: 1
+        band: 1
+        can: 1
+        channels: 1
+        couples: 1
+        directly: 1
+        entirely: 1
+        field: 1
+        for: 1
+        hour: 1
+        into: 1
+        is: 1
+        isolatorsprovided: 1
+        low-frequency: 1
+        maskweak: 1
+        mechanical: 1
+        more: 1
+        mount: 1
+        mounting: 1
+        moves: 1
+        noise: 1
+        'on': 1
+        only: 1
+        operatingtemperature: 1
+        or: 1
+        outside: 1
+        pre-calibrated: 1
+        rated: 1
+        recalibration: 1
+        required: 1
+        rigid: 1
+        ships: 1
+        shock: 1
+        signals: 1
+        structural: 1
+        than: 1
+        the: 1
+        unit: 1
+        vibration: 1
+        when: 1
+      term_freq:
+        after: 1
+        an: 1
+        and: 1
+        array: 1
+        band: 1
+        can: 1
+        channels: 1
+        couples: 1
+        directly: 1
+        entirely: 1
+        field: 1
+        for: 1
+        hour: 1
+        into: 1
+        is: 1
+        isolatorsprovided: 1
+        low-frequency: 1
+        maskweak: 1
+        mechanical: 1
+        more: 1
+        mount: 1
+        mounting: 1
+        moves: 1
+        noise: 1
+        'on': 1
+        only: 1
+        operatingtemperature: 1
+        or: 1
+        outside: 1
+        pre-calibrated: 1
+        rated: 1
+        recalibration: 1
+        required: 1
+        rigid: 1
+        ships: 1
+        shock: 1
+        signals: 1
+        structural: 1
+        than: 1
+        the: 5
+        unit: 1
+        vibration: 1
+        when: 1
+    keyword_terms:
+    - the
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 2
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 339
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - Page 1
+    - the
+    stage: block_tree
+  order_index: 8
+  page_refs:
+  - 1
+  parent_id: db_doc_snapshot_sec_0007
+  source_block_ids: []
+  source_chunk_ids: []
+  text_preview: null
+  title: Page 1
+  type: page
+- bbox_refs:
+  - - 56.0
+    - 395.0
+    - 531.73
+    - 453.05
+  child_ids: []
+  confidence: high
+  content_hash: bde07d6f3c49a60b55748fb008c8d5634f787cd07b2e4065b201db7d6c6ec94f
+  depth: 3
+  id: db_doc_snapshot_p1_b7
+  metadata:
+    build_strategy: page_local_block
+    citation_label: PDF p.1
+    keyword_stats:
+      child_support:
+        after: 1
+        an: 1
+        and: 1
+        array: 1
+        band: 1
+        can: 1
+        channels: 1
+        couples: 1
+        directly: 1
+        entirely: 1
+        field: 1
+        for: 1
+        hour: 1
+        into: 1
+        is: 1
+        isolatorsprovided: 1
+        low-frequency: 1
+        maskweak: 1
+        mechanical: 1
+        more: 1
+        mount: 1
+        mounting: 1
+        moves: 1
+        noise: 1
+        'on': 1
+        only: 1
+        operatingtemperature: 1
+        or: 1
+        outside: 1
+        pre-calibrated: 1
+        rated: 1
+        recalibration: 1
+        required: 1
+        rigid: 1
+        ships: 1
+        shock: 1
+        signals: 1
+        structural: 1
+        than: 1
+        the: 1
+        unit: 1
+        vibration: 1
+        when: 1
+      term_freq:
+        after: 1
+        an: 1
+        and: 1
+        array: 1
+        band: 1
+        can: 1
+        channels: 1
+        couples: 1
+        directly: 1
+        entirely: 1
+        field: 1
+        for: 1
+        hour: 1
+        into: 1
+        is: 1
+        isolatorsprovided: 1
+        low-frequency: 1
+        maskweak: 1
+        mechanical: 1
+        more: 1
+        mount: 1
+        mounting: 1
+        moves: 1
+        noise: 1
+        'on': 1
+        only: 1
+        operatingtemperature: 1
+        or: 1
+        outside: 1
+        pre-calibrated: 1
+        rated: 1
+        recalibration: 1
+        required: 1
+        rigid: 1
+        ships: 1
+        shock: 1
+        signals: 1
+        structural: 1
+        than: 1
+        the: 5
+        unit: 1
+        vibration: 1
+        when: 1
+    keyword_terms:
+    - the
+    - vibration
+    - structural
+    - required
+    - recalibration
+    - pre-calibrated
+    - operatingtemperature
+    - mounting
+    - mechanical
+    - maskweak
+    - low-frequency
+    - isolatorsprovided
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 1
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 339
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - the
+    - vibration
+    - structural
+    - required
+    - recalibration
+    - pre-calibrated
+    - operatingtemperature
+    - mounting
+    - mechanical
+    - maskweak
+    - low-frequency
+    - isolatorsprovided
+    source_block_type: text
+    source_range: null
+    stage: block_tree
+  order_index: 9
+  page_refs:
+  - 1
+  parent_id: db_doc_snapshot_p1_2
+  source_block_ids:
+  - p1_b7
+  source_chunk_ids: []
+  text_preview: The array ships pre-calibrated. Field recalibration is only required
+    after mechanical shock or when operatingtemperature moves outside the rated band
+    for more t
+  title: null
+  type: paragraph
+- bbox_refs:
+  - - 56.0
+    - 66.09
+    - 184.58
+    - 83.99
+  child_ids:
+  - db_doc_snapshot_p2_3
+  confidence: high
+  content_hash: 2e068e9e6b34c8fd3905215efbe86eac5de54e82555a6c5d277f1771796da132
+  depth: 1
+  id: db_doc_snapshot_sec_0010
+  metadata:
+    build_strategy: heading_block
+    citation_label: PDF p.2
+    heading_level: 1
+    keyword_stats:
+      child_support:
+        acquisition: 1
+        after: 1
+        alignment: 1
+        analog: 1
+        and: 1
+        applies: 1
+        archive: 1
+        arrival: 1
+        assumes: 1
+        at: 1
+        away: 1
+        baselineused: 1
+        before: 1
+        below: 1
+        built-in: 1
+        by: 1
+        claims: 1
+        confirm: 1
+        connecting: 1
+        connector: 1
+        converters: 1
+        diagnosing: 1
+        downstream: 1
+        drift: 1
+        during: 1
+        end: 1
+        first: 1
+        frames: 1
+        from: 1
+        front: 1
+        host: 1
+        inputs: 1
+        is: 1
+        it: 1
+        limit: 1
+        measured: 1
+        'on': 1
+        period: 1
+        power-up: 1
+        produces: 1
+        published: 1
+        re-stamping: 1
+        report: 1
+        ripple: 1
+        route: 1
+        run: 1
+        self: 1
+        sensorharness: 1
+        shorted: 1
+        since: 1
+        source: 1
+        stays: 1
+        supply: 1
+        support: 1
+        switching: 1
+        test: 1
+        than: 1
+        that: 1
+        the: 2
+        timestamprather: 1
+        timestamps: 1
+        vendor: 1
+        verify: 1
+        warranty: 1
+        when: 1
+        with: 1
+      term_freq:
+        acquisition: 1
+        after: 1
+        alignment: 1
+        analog: 1
+        and: 1
+        applies: 1
+        archive: 1
+        arrival: 1
+        assumes: 1
+        at: 1
+        away: 1
+        baselineused: 1
+        before: 1
+        below: 1
+        built-in: 1
+        by: 1
+        claims: 1
+        confirm: 1
+        connecting: 1
+        connector: 1
+        converters: 1
+        diagnosing: 1
+        downstream: 1
+        drift: 1
+        during: 1
+        end: 1
+        first: 1
+        frames: 1
+        from: 1
+        front: 1
+        host: 1
+        inputs: 1
+        is: 1
+        it: 1
+        limit: 1
+        measured: 1
+        'on': 1
+        period: 1
+        power-up: 1
+        produces: 1
+        published: 1
+        re-stamping: 1
+        report: 2
+        ripple: 1
+        route: 1
+        run: 1
+        self: 1
+        sensorharness: 1
+        shorted: 1
+        since: 1
+        source: 1
+        stays: 1
+        supply: 1
+        support: 1
+        switching: 1
+        test: 1
+        than: 1
+        that: 1
+        the: 11
+        timestamprather: 1
+        timestamps: 1
+        vendor: 1
+        verify: 1
+        warranty: 1
+        when: 1
+        with: 1
+    keyword_terms:
+    - the
+    keyword_thresholds:
+      leaf_count: 2
+      min_freq: 2
+      min_support: 2
+      strategy: bottom_up_aggregation
+      text_length: 540
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - Integration Checklist
+    - the
+    source_range: null
+    stage: block_tree
+  order_index: 10
+  page_refs:
+  - 2
+  parent_id: db_doc_snapshot_root
+  source_block_ids:
+  - p2_b1
+  source_chunk_ids: []
+  text_preview: Integration Checklist
+  title: Integration Checklist
+  type: section
+- bbox_refs:
+  - - 56.0
+    - 95.0
+    - 534.01
+    - 182.59
+  - - 56.0
+    - 290.86
+    - 241.06
+    - 306.04
+  child_ids:
+  - db_doc_snapshot_p2_para1
+  - db_doc_snapshot_p2_b4
+  confidence: high
+  content_hash: null
+  depth: 2
+  id: db_doc_snapshot_p2_3
+  metadata:
+    build_strategy: page_boundary
+    citation_label: PDF p.2
+    keyword_stats:
+      child_support:
+        acquisition: 1
+        after: 1
+        alignment: 1
+        analog: 1
+        and: 1
+        applies: 1
+        archive: 1
+        arrival: 1
+        assumes: 1
+        at: 1
+        away: 1
+        baselineused: 1
+        before: 1
+        below: 1
+        built-in: 1
+        by: 1
+        claims: 1
+        confirm: 1
+        connecting: 1
+        connector: 1
+        converters: 1
+        diagnosing: 1
+        downstream: 1
+        drift: 1
+        during: 1
+        end: 1
+        first: 1
+        frames: 1
+        from: 1
+        front: 1
+        host: 1
+        inputs: 1
+        is: 1
+        it: 1
+        limit: 1
+        measured: 1
+        'on': 1
+        period: 1
+        power-up: 1
+        produces: 1
+        published: 1
+        re-stamping: 1
+        report: 1
+        ripple: 1
+        route: 1
+        run: 1
+        self: 1
+        sensorharness: 1
+        shorted: 1
+        since: 1
+        source: 1
+        stays: 1
+        supply: 1
+        support: 1
+        switching: 1
+        test: 1
+        than: 1
+        that: 1
+        the: 2
+        timestamprather: 1
+        timestamps: 1
+        vendor: 1
+        verify: 1
+        warranty: 1
+        when: 1
+        with: 1
+      term_freq:
+        acquisition: 1
+        after: 1
+        alignment: 1
+        analog: 1
+        and: 1
+        applies: 1
+        archive: 1
+        arrival: 1
+        assumes: 1
+        at: 1
+        away: 1
+        baselineused: 1
+        before: 1
+        below: 1
+        built-in: 1
+        by: 1
+        claims: 1
+        confirm: 1
+        connecting: 1
+        connector: 1
+        converters: 1
+        diagnosing: 1
+        downstream: 1
+        drift: 1
+        during: 1
+        end: 1
+        first: 1
+        frames: 1
+        from: 1
+        front: 1
+        host: 1
+        inputs: 1
+        is: 1
+        it: 1
+        limit: 1
+        measured: 1
+        'on': 1
+        period: 1
+        power-up: 1
+        produces: 1
+        published: 1
+        re-stamping: 1
+        report: 2
+        ripple: 1
+        route: 1
+        run: 1
+        self: 1
+        sensorharness: 1
+        shorted: 1
+        since: 1
+        source: 1
+        stays: 1
+        supply: 1
+        support: 1
+        switching: 1
+        test: 1
+        than: 1
+        that: 1
+        the: 11
+        timestamprather: 1
+        timestamps: 1
+        vendor: 1
+        verify: 1
+        warranty: 1
+        when: 1
+        with: 1
+    keyword_terms:
+    - the
+    - report
+    keyword_thresholds:
+      leaf_count: 2
+      min_freq: 2
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 540
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - Page 2
+    - the
+    - report
+    stage: block_tree
+  order_index: 11
+  page_refs:
+  - 2
+  parent_id: db_doc_snapshot_sec_0010
+  source_block_ids: []
+  source_chunk_ids: []
+  text_preview: null
+  title: Page 2
+  type: page
+- bbox_refs:
+  - - 56.0
+    - 95.0
+    - 534.01
+    - 182.59
+  child_ids: []
+  confidence: medium
+  content_hash: abe9a711bd490240e9785770c538ff93b878490ec8a8ea5e5bd7ac904f6efab5
+  depth: 3
+  id: db_doc_snapshot_p2_para1
+  metadata:
+    build_strategy: page_local_block
+    citation_label: PDF p.2
+    keyword_stats:
+      child_support:
+        acquisition: 1
+        after: 1
+        alignment: 1
+        analog: 1
+        and: 1
+        applies: 1
+        archive: 1
+        arrival: 1
+        assumes: 1
+        away: 1
+        baselineused: 1
+        before: 1
+        below: 1
+        built-in: 1
+        by: 1
+        claims: 1
+        confirm: 1
+        connecting: 1
+        converters: 1
+        diagnosing: 1
+        downstream: 1
+        drift: 1
+        during: 1
+        end: 1
+        first: 1
+        frames: 1
+        from: 1
+        front: 1
+        host: 1
+        is: 1
+        it: 1
+        limit: 1
+        'on': 1
+        period: 1
+        power-up: 1
+        produces: 1
+        published: 1
+        re-stamping: 1
+        report: 1
+        ripple: 1
+        route: 1
+        run: 1
+        self: 1
+        sensorharness: 1
+        since: 1
+        source: 1
+        stays: 1
+        supply: 1
+        support: 1
+        switching: 1
+        test: 1
+        than: 1
+        that: 1
+        the: 1
+        timestamprather: 1
+        timestamps: 1
+        vendor: 1
+        verify: 1
+        warranty: 1
+        when: 1
+      term_freq:
+        acquisition: 1
+        after: 1
+        alignment: 1
+        analog: 1
+        and: 1
+        applies: 1
+        archive: 1
+        arrival: 1
+        assumes: 1
+        away: 1
+        baselineused: 1
+        before: 1
+        below: 1
+        built-in: 1
+        by: 1
+        claims: 1
+        confirm: 1
+        connecting: 1
+        converters: 1
+        diagnosing: 1
+        downstream: 1
+        drift: 1
+        during: 1
+        end: 1
+        first: 1
+        frames: 1
+        from: 1
+        front: 1
+        host: 1
+        is: 1
+        it: 1
+        limit: 1
+        'on': 1
+        period: 1
+        power-up: 1
+        produces: 1
+        published: 1
+        re-stamping: 1
+        report: 2
+        ripple: 1
+        route: 1
+        run: 1
+        self: 1
+        sensorharness: 1
+        since: 1
+        source: 1
+        stays: 1
+        supply: 1
+        support: 1
+        switching: 1
+        test: 1
+        than: 1
+        that: 1
+        the: 10
+        timestamprather: 1
+        timestamps: 1
+        vendor: 1
+        verify: 1
+        warranty: 1
+        when: 1
+    keyword_terms:
+    - the
+    - report
+    - warranty
+    - timestamps
+    - timestamprather
+    - switching
+    - sensorharness
+    - re-stamping
+    - published
+    - produces
+    - power-up
+    - downstream
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 1
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 491
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - the
+    - report
+    - warranty
+    - timestamps
+    - timestamprather
+    - switching
+    - sensorharness
+    - re-stamping
+    - published
+    - produces
+    - power-up
+    - downstream
+    source_block_type: paragraph
+    source_range: null
+    stage: block_tree
+  order_index: 12
+  page_refs:
+  - 2
+  parent_id: db_doc_snapshot_p2_3
+  source_block_ids:
+  - p2_para1
+  source_chunk_ids: []
+  text_preview: Verify supply ripple stays below the published limit before connecting
+    the analog front end. Route the sensorharness away from switching converters.
+    Confirm tha
+  title: null
+  type: paragraph
+- bbox_refs:
+  - - 56.0
+    - 290.86
+    - 241.06
+    - 306.04
+  child_ids: []
+  confidence: high
+  content_hash: fd285833a00d4459505801a70b18e1f5335567050f0695972f9d9c0c16e8af90
+  depth: 3
+  id: db_doc_snapshot_p2_b4
+  metadata:
+    build_strategy: page_local_block
+    citation_label: PDF p.2
+    keyword_stats:
+      child_support:
+        at: 1
+        connector: 1
+        inputs: 1
+        measured: 1
+        shorted: 1
+        the: 1
+        with: 1
+      term_freq:
+        at: 1
+        connector: 1
+        inputs: 1
+        measured: 1
+        shorted: 1
+        the: 1
+        with: 1
+    keyword_terms:
+    - measured
+    - connector
+    - shorted
+    - inputs
+    - with
+    - the
+    - at
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 1
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 49
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - measured
+    - connector
+    - shorted
+    - inputs
+    - with
+    - the
+    - at
+    source_block_type: text
+    source_range: null
+    stage: block_tree
+  order_index: 13
+  page_refs:
+  - 2
+  parent_id: db_doc_snapshot_p2_3
+  source_block_ids:
+  - p2_b4
+  source_chunk_ids: []
+  text_preview: 2 Measured with inputs shorted at the connector.
+  title: null
+  type: paragraph
+id: doc_snapshot
+ir_version: '0.2'
+metadata:
+  adapter: pymupdf
+  page_citations:
+    '1':
+      citation_label: PDF p.1
+      page_ref: 1
+      page_ref_kind: physical_page_number_1_based
+      pdf_page_label: null
+      printed_page_label: null
+    '2':
+      citation_label: PDF p.2
+      page_ref: 2
+      page_ref_kind: physical_page_number_1_based
+      pdf_page_label: null
+      printed_page_label: null
+  page_count: 2
+  page_ref_kind: physical_page_number_1_based
+  toc: []
+pages:
+- blocks:
+  - bbox:
+    - 56.0
+    - 61.81
+    - 336.57
+    - 85.22
+    confidence: high
+    id: p1_b1
+    metadata:
+      layout_classification:
+        block_font_size: 17.0
+        median_font_size: 10.0
+        previous_type: text
+        strategy: font_size_and_page_position
+      original_order_index: 1
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 1
+    page_number: 1
+    source_refs:
+    - pymupdf:block:1:1
+    spans:
+    - bbox:
+      - 56.0
+      - 61.81
+      - 336.57
+      - 85.22
+      font_name: Helvetica-Bold
+      font_size: 17.0
+      id: p1_s1_0
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 80.0
+      style:
+      - bold
+      text:
+        normalized_text: 'Product Brief: Helios Sensor Array'
+        raw_text: 'Product Brief: Helios Sensor Array'
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: 'Product Brief: Helios Sensor Array'
+      raw_text: 'Product Brief: Helios Sensor Array'
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: heading
+  - bbox:
+    - 56.0
+    - 96.09
+    - 171.6
+    - 113.99
+    confidence: high
+    id: p1_b2
+    metadata:
+      layout_classification:
+        block_font_size: 13.0
+        median_font_size: 10.0
+        previous_type: text
+        strategy: font_size_and_page_position
+      original_order_index: 2
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 2
+    page_number: 1
+    source_refs:
+    - pymupdf:block:1:2
+    spans:
+    - bbox:
+      - 56.0
+      - 96.09
+      - 171.6
+      - 113.99
+      font_name: Helvetica-Bold
+      font_size: 13.0
+      id: p1_s1_1
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 110.0
+      style:
+      - bold
+      text:
+        normalized_text: Key Specifications
+        raw_text: Key Specifications
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: Key Specifications
+      raw_text: Key Specifications
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: heading
+  - bbox:
+    - 56.0
+    - 121.25
+    - 306.97
+    - 152.99
+    confidence: medium
+    id: p1_para1
+    metadata:
+      source_block_ids:
+      - p1_b3
+      - p1_b4
+      strategy: vertical_gap_x_overlap
+    order_index: 3
+    page_number: 1
+    source_refs:
+    - pymupdf:block:1:3
+    - pymupdf:block:1:4
+    spans:
+    - bbox:
+      - 56.0
+      - 121.25
+      - 123.25
+      - 134.99
+      font_name: Helvetica
+      font_size: 10.0
+      id: p1_s1_2
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 132.0
+      style: []
+      text:
+        normalized_text: 'Sampling rate: '
+        raw_text: 'Sampling rate: '
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 132.0
+      - 121.3
+      - 158.12
+      - 135.07
+      font_name: Helvetica-Bold
+      font_size: 10.0
+      id: p1_s2_2
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 132.0
+        - 132.0
+      style:
+      - bold
+      text:
+        normalized_text: 4 kHz
+        raw_text: 4 kHz
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 168.0
+      - 121.25
+      - 306.97
+      - 134.99
+      font_name: Helvetica
+      font_size: 10.0
+      id: p1_s3_2
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 168.0
+        - 132.0
+      style: []
+      text:
+        normalized_text: ' per channel, 32 channels total.'
+        raw_text: ' per channel, 32 channels total.'
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 56.0
+      - 139.25
+      - 138.26
+      - 152.99
+      font_name: Helvetica
+      font_size: 10.0
+      id: p1_s1_3
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 150.0
+      style: []
+      text:
+        normalized_text: 'Noise floor: 0.8 uV'
+        raw_text: 'Noise floor: 0.8 uV'
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 152.0
+      - 139.51
+      - 155.61
+      - 148.44
+      font_name: Helvetica
+      font_size: 6.5
+      id: p1_s2_3
+      language:
+        language: auto
+        script: null
+        text_direction: ltr
+      metadata:
+        origin:
+        - 152.0
+        - 146.5
+      style: []
+      text:
+        normalized_text: '2'
+        raw_text: '2'
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 155.61
+      - 135.75
+      - 276.95
+      - 152.99
+      font_name: Helvetica
+      font_size: 10.0
+      id: p1_s3_3
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 155.61
+        - 146.5
+      style: []
+      text:
+        normalized_text: '  under shielded conditions.'
+        raw_text: '  under shielded conditions.'
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: 'Sampling rate: 4 kHz per channel, 32 channels total. Noise
+        floor: 0.8 uV2  under shielded conditions.'
+      raw_text: 'Sampling rate: 4 kHz per channel, 32 channels total. Noise floor:
+        0.8 uV2  under shielded conditions.'
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: paragraph
+  - bbox:
+    - 56.0
+    - 330.9
+    - 250.16
+    - 342.41
+    confidence: high
+    id: p1_b5
+    metadata:
+      original_order_index: 5
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 4
+    page_number: 1
+    source_refs:
+    - pymupdf:block:1:5
+    spans:
+    - bbox:
+      - 56.0
+      - 330.9
+      - 250.16
+      - 342.41
+      font_name: Helvetica-Oblique
+      font_size: 8.5
+      id: p1_s1_4
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 340.0
+      style:
+      - italic
+      - italic
+      text:
+        normalized_text: 'Image 1: Thermal distribution across the array face.'
+        raw_text: 'Image 1: Thermal distribution across the array face.'
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: 'Image 1: Thermal distribution across the array face.'
+      raw_text: 'Image 1: Thermal distribution across the array face.'
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: text
+  - bbox:
+    - 56.0
+    - 366.09
+    - 170.13
+    - 383.99
+    confidence: high
+    id: p1_b6
+    metadata:
+      layout_classification:
+        block_font_size: 13.0
+        median_font_size: 10.0
+        previous_type: text
+        strategy: font_size_and_page_position
+      original_order_index: 6
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 5
+    page_number: 1
+    source_refs:
+    - pymupdf:block:1:6
+    spans:
+    - bbox:
+      - 56.0
+      - 366.09
+      - 170.13
+      - 383.99
+      font_name: Helvetica-Bold
+      font_size: 13.0
+      id: p1_s1_5
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 380.0
+      style:
+      - bold
+      text:
+        normalized_text: Deployment Notes
+        raw_text: Deployment Notes
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: Deployment Notes
+      raw_text: Deployment Notes
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: heading
+  - bbox:
+    - 56.0
+    - 395.0
+    - 531.73
+    - 453.05
+    confidence: high
+    id: p1_b7
+    metadata:
+      original_order_index: 7
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 6
+    page_number: 1
+    source_refs:
+    - pymupdf:block:1:7
+    spans:
+    - bbox:
+      - 56.0
+      - 395.0
+      - 531.73
+      - 408.74
+      font_name: Helvetica
+      font_size: 10.0
+      id: p1_s1_6
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 405.75
+      style: []
+      text:
+        normalized_text: The array ships pre-calibrated. Field recalibration is only
+          required after mechanical shock or when operating
+        raw_text: The array ships pre-calibrated. Field recalibration is only required
+          after mechanical shock or when operating
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 56.0
+      - 409.77
+      - 523.46
+      - 423.51
+      font_name: Helvetica
+      font_size: 10.0
+      id: p1_s2_6
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 420.52
+      style: []
+      text:
+        normalized_text: temperature moves outside the rated band for more than an
+          hour. Mount the unit on the vibration isolators
+        raw_text: temperature moves outside the rated band for more than an hour.
+          Mount the unit on the vibration isolators
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 56.0
+      - 424.54
+      - 513.41
+      - 438.28
+      font_name: Helvetica
+      font_size: 10.0
+      id: p1_s3_6
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 435.29
+      style: []
+      text:
+        normalized_text: provided; rigid mounting couples structural noise directly
+          into the low-frequency channels and can mask
+        raw_text: provided; rigid mounting couples structural noise directly into
+          the low-frequency channels and can mask
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 56.0
+      - 439.31
+      - 151.03
+      - 453.05
+      font_name: Helvetica
+      font_size: 10.0
+      id: p1_s4_6
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 450.06
+      style: []
+      text:
+        normalized_text: weak signals entirely.
+        raw_text: weak signals entirely.
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: The array ships pre-calibrated. Field recalibration is only
+        required after mechanical shock or when operatingtemperature moves outside
+        the rated band for more than an hour. Mount the unit on the vibration isolatorsprovided;
+        rigid mounting couples structural noise directly into the low-frequency channels
+        and can maskweak signals entirely.
+      raw_text: The array ships pre-calibrated. Field recalibration is only required
+        after mechanical shock or when operatingtemperature moves outside the rated
+        band for more than an hour. Mount the unit on the vibration isolatorsprovided;
+        rigid mounting couples structural noise directly into the low-frequency channels
+        and can maskweak signals entirely.
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: text
+  height: 842.0
+  id: page_1
+  images:
+  - asset_ref: images/page_0001_image_001.png
+    bbox:
+    - 56.0
+    - 180.0
+    - 248.0
+    - 324.0
+    caption: null
+    confidence: medium
+    id: p1_img1_1
+    image_type: image
+    metadata:
+      height: 48
+      normalized: true
+      source: pymupdf_image
+      source_page: 1
+      width: 64
+      xref: 15
+    page_number: 1
+  metadata:
+    annotations: []
+    label: ''
+    links: []
+    preview_asset_ref: previews/page_0001.png
+  page_number: 1
+  rotation: 0
+  width: 595.0
+- blocks:
+  - bbox:
+    - 56.0
+    - 66.09
+    - 184.58
+    - 83.99
+    confidence: high
+    id: p2_b1
+    metadata:
+      layout_classification:
+        block_font_size: 13.0
+        median_font_size: 8.75
+        previous_type: text
+        strategy: font_size_and_page_position
+      original_order_index: 1
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 1
+    page_number: 2
+    source_refs:
+    - pymupdf:block:2:1
+    spans:
+    - bbox:
+      - 56.0
+      - 66.09
+      - 184.58
+      - 83.99
+      font_name: Helvetica-Bold
+      font_size: 13.0
+      id: p2_s1_0
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 80.0
+      style:
+      - bold
+      text:
+        normalized_text: Integration Checklist
+        raw_text: Integration Checklist
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: Integration Checklist
+      raw_text: Integration Checklist
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: heading
+  - bbox:
+    - 56.0
+    - 95.0
+    - 534.01
+    - 182.59
+    confidence: medium
+    id: p2_para1
+    metadata:
+      source_block_ids:
+      - p2_b2
+      - p2_b3
+      strategy: vertical_gap_x_overlap
+    order_index: 2
+    page_number: 2
+    source_refs:
+    - pymupdf:block:2:2
+    - pymupdf:block:2:3
+    spans:
+    - bbox:
+      - 56.0
+      - 95.0
+      - 534.01
+      - 108.74
+      font_name: Helvetica
+      font_size: 10.0
+      id: p2_s1_1
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 105.75
+      style: []
+      text:
+        normalized_text: Verify supply ripple stays below the published limit before
+          connecting the analog front end. Route the sensor
+        raw_text: Verify supply ripple stays below the published limit before connecting
+          the analog front end. Route the sensor
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 56.0
+      - 109.77
+      - 515.62
+      - 123.51
+      font_name: Helvetica
+      font_size: 10.0
+      id: p2_s2_1
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 120.52
+      style: []
+      text:
+        normalized_text: harness away from switching converters. Confirm that the
+          acquisition host applies the vendor timestamp
+        raw_text: harness away from switching converters. Confirm that the acquisition
+          host applies the vendor timestamp
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 56.0
+      - 124.54
+      - 501.7
+      - 138.28
+      font_name: Helvetica
+      font_size: 10.0
+      id: p2_s3_1
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 135.29
+      style: []
+      text:
+        normalized_text: rather than re-stamping frames on arrival, since downstream
+          alignment assumes source timestamps.
+        raw_text: rather than re-stamping frames on arrival, since downstream alignment
+          assumes source timestamps.
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 56.0
+      - 154.08
+      - 516.76
+      - 167.82
+      font_name: Helvetica
+      font_size: 10.0
+      id: p2_s1_2
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 164.83
+      style: []
+      text:
+        normalized_text: After first power-up, run the built-in self test and archive
+          the report it produces. The report is the baseline
+        raw_text: After first power-up, run the built-in self test and archive the
+          report it produces. The report is the baseline
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 56.0
+      - 168.85
+      - 377.25
+      - 182.59
+      font_name: Helvetica
+      font_size: 10.0
+      id: p2_s2_2
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 179.6
+      style: []
+      text:
+        normalized_text: used by support when diagnosing drift claims during the warranty
+          period.
+        raw_text: used by support when diagnosing drift claims during the warranty
+          period.
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: Verify supply ripple stays below the published limit before
+        connecting the analog front end. Route the sensorharness away from switching
+        converters. Confirm that the acquisition host applies the vendor timestamprather
+        than re-stamping frames on arrival, since downstream alignment assumes source
+        timestamps. After first power-up, run the built-in self test and archive the
+        report it produces. The report is the baselineused by support when diagnosing
+        drift claims during the warranty period.
+      raw_text: Verify supply ripple stays below the published limit before connecting
+        the analog front end. Route the sensorharness away from switching converters.
+        Confirm that the acquisition host applies the vendor timestamprather than
+        re-stamping frames on arrival, since downstream alignment assumes source timestamps.
+        After first power-up, run the built-in self test and archive the report it
+        produces. The report is the baselineused by support when diagnosing drift
+        claims during the warranty period.
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: paragraph
+  - bbox:
+    - 56.0
+    - 290.86
+    - 241.06
+    - 306.04
+    confidence: high
+    id: p2_b4
+    metadata:
+      original_order_index: 4
+      reading_order:
+        column_index: 0
+        strategy: simple_column_gap
+      source_type: pymupdf_text_block
+    order_index: 3
+    page_number: 2
+    source_refs:
+    - pymupdf:block:2:4
+    spans:
+    - bbox:
+      - 56.0
+      - 293.01
+      - 59.61
+      - 301.94
+      font_name: Helvetica
+      font_size: 6.5
+      id: p2_s1_3
+      language:
+        language: auto
+        script: null
+        text_direction: ltr
+      metadata:
+        origin:
+        - 56.0
+        - 300.0
+      style: []
+      text:
+        normalized_text: '2'
+        raw_text: '2'
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    - bbox:
+      - 59.61
+      - 290.86
+      - 241.06
+      - 306.04
+      font_name: Helvetica
+      font_size: 8.5
+      id: p2_s2_3
+      language:
+        language: en
+        script: Latin
+        text_direction: ltr
+      metadata:
+        origin:
+        - 59.61
+        - 300.0
+      style: []
+      text:
+        normalized_text: '  Measured with inputs shorted at the connector.'
+        raw_text: '  Measured with inputs shorted at the connector.'
+        simplified_traditional_converted: false
+        unicode_form: NFC
+        width_normalized: false
+    text:
+      normalized_text: 2  Measured with inputs shorted at the connector.
+      raw_text: 2  Measured with inputs shorted at the connector.
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: text
+  height: 842.0
+  id: page_2
+  images: []
+  metadata:
+    annotations: []
+    label: ''
+    links: []
+    preview_asset_ref: previews/page_0002.png
+  page_number: 2
+  rotation: 0
+  width: 595.0
+parser: pymupdf
+pipeline_profile: null
+producer_version: null
+relations:
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_root
+  id: rel_block_parent_db_doc_snapshot_sec_0002
+  metadata:
+    child_id: db_doc_snapshot_sec_0002
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_sec_0002
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_sec_0002
+  id: rel_block_source_db_doc_snapshot_sec_0002_p1_b1
+  metadata:
+    source_block_id: p1_b1
+    stage: block_tree
+  state: inferred
+  to_id: p1_b1
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_root
+  id: rel_block_parent_db_doc_snapshot_sec_0003
+  metadata:
+    child_id: db_doc_snapshot_sec_0003
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_sec_0003
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_sec_0003
+  id: rel_block_source_db_doc_snapshot_sec_0003_p1_b2
+  metadata:
+    source_block_id: p1_b2
+    stage: block_tree
+  state: inferred
+  to_id: p1_b2
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_sec_0003
+  id: rel_block_parent_db_doc_snapshot_p1_1
+  metadata:
+    child_id: db_doc_snapshot_p1_1
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p1_1
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_p1_1
+  id: rel_block_parent_db_doc_snapshot_p1_para1
+  metadata:
+    child_id: db_doc_snapshot_p1_para1
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p1_para1
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_p1_para1
+  id: rel_block_source_db_doc_snapshot_p1_para1_p1_para1
+  metadata:
+    source_block_id: p1_para1
+    stage: block_tree
+  state: inferred
+  to_id: p1_para1
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_p1_1
+  id: rel_block_parent_db_doc_snapshot_p1_b5
+  metadata:
+    child_id: db_doc_snapshot_p1_b5
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p1_b5
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_p1_b5
+  id: rel_block_source_db_doc_snapshot_p1_b5_p1_b5
+  metadata:
+    source_block_id: p1_b5
+    stage: block_tree
+  state: inferred
+  to_id: p1_b5
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_root
+  id: rel_block_parent_db_doc_snapshot_sec_0007
+  metadata:
+    child_id: db_doc_snapshot_sec_0007
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_sec_0007
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_sec_0007
+  id: rel_block_source_db_doc_snapshot_sec_0007_p1_b6
+  metadata:
+    source_block_id: p1_b6
+    stage: block_tree
+  state: inferred
+  to_id: p1_b6
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_sec_0007
+  id: rel_block_parent_db_doc_snapshot_p1_2
+  metadata:
+    child_id: db_doc_snapshot_p1_2
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p1_2
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_p1_2
+  id: rel_block_parent_db_doc_snapshot_p1_b7
+  metadata:
+    child_id: db_doc_snapshot_p1_b7
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p1_b7
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_p1_b7
+  id: rel_block_source_db_doc_snapshot_p1_b7_p1_b7
+  metadata:
+    source_block_id: p1_b7
+    stage: block_tree
+  state: inferred
+  to_id: p1_b7
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_root
+  id: rel_block_parent_db_doc_snapshot_sec_0010
+  metadata:
+    child_id: db_doc_snapshot_sec_0010
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_sec_0010
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_sec_0010
+  id: rel_block_source_db_doc_snapshot_sec_0010_p2_b1
+  metadata:
+    source_block_id: p2_b1
+    stage: block_tree
+  state: inferred
+  to_id: p2_b1
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_sec_0010
+  id: rel_block_parent_db_doc_snapshot_p2_3
+  metadata:
+    child_id: db_doc_snapshot_p2_3
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p2_3
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_p2_3
+  id: rel_block_parent_db_doc_snapshot_p2_para1
+  metadata:
+    child_id: db_doc_snapshot_p2_para1
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p2_para1
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_p2_para1
+  id: rel_block_source_db_doc_snapshot_p2_para1_p2_para1
+  metadata:
+    source_block_id: p2_para1
+    stage: block_tree
+  state: inferred
+  to_id: p2_para1
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_p2_3
+  id: rel_block_parent_db_doc_snapshot_p2_b4
+  metadata:
+    child_id: db_doc_snapshot_p2_b4
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p2_b4
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_p2_b4
+  id: rel_block_source_db_doc_snapshot_p2_b4_p2_b4
+  metadata:
+    source_block_id: p2_b4
+    stage: block_tree
+  state: inferred
+  to_id: p2_b4
+  type: block_to_source
+- confidence: high
+  evidence:
+  - chunk_source_block_ids
+  - source_block_id=p1_para1
+  from_id: chunk_doc_snapshot_0001
+  id: rel_chunk_chunk_doc_snapshot_0001_1
+  metadata:
+    source_block_id: p1_para1
+    stage: provenance_linking
+  state: inferred
+  to_id: p1_para1
+  type: chunk_to_source
+- confidence: high
+  evidence:
+  - chunk_source_block_ids
+  - source_block_id=p1_b5
+  from_id: chunk_doc_snapshot_0002
+  id: rel_chunk_chunk_doc_snapshot_0002_1
+  metadata:
+    source_block_id: p1_b5
+    stage: provenance_linking
+  state: inferred
+  to_id: p1_b5
+  type: chunk_to_source
+- confidence: high
+  evidence:
+  - chunk_source_block_ids
+  - source_block_id=p1_b7
+  from_id: chunk_doc_snapshot_0003
+  id: rel_chunk_chunk_doc_snapshot_0003_1
+  metadata:
+    source_block_id: p1_b7
+    stage: provenance_linking
+  state: inferred
+  to_id: p1_b7
+  type: chunk_to_source
+- confidence: high
+  evidence:
+  - chunk_source_block_ids
+  - source_block_id=p2_para1
+  from_id: chunk_doc_snapshot_0004
+  id: rel_chunk_chunk_doc_snapshot_0004_1
+  metadata:
+    source_block_id: p2_para1
+    stage: provenance_linking
+  state: inferred
+  to_id: p2_para1
+  type: chunk_to_source
+- confidence: high
+  evidence:
+  - chunk_source_block_ids
+  - source_block_id=p2_b4
+  from_id: chunk_doc_snapshot_0005
+  id: rel_chunk_chunk_doc_snapshot_0005_1
+  metadata:
+    source_block_id: p2_b4
+    stage: provenance_linking
+  state: inferred
+  to_id: p2_b4
+  type: chunk_to_source
+source_name: real/mixed-media-brief.pdf
+tables: []

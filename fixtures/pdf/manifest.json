@@ -12,7 +12,7 @@
         "keep_inline_span_order",
         "record_font_metadata"
       ],
-      "file": null
+      "file": "real/mixed-media-brief.pdf"
     },
     {
       "id": "reading-order-multicolumn-001",
@@ -24,7 +24,7 @@
         "emit_order_index",
         "keep_original_parser_order"
       ],
-      "file": null
+      "file": "real/two-column-article.pdf"
     },
     {
       "id": "non-text-objects-001",
@@ -36,7 +36,7 @@
         "classify_image_or_chart_candidate",
         "link_nearby_caption"
       ],
-      "file": null
+      "file": "real/two-column-article.pdf"
     },
     {
       "id": "paragraph-grouping-001",
@@ -48,7 +48,7 @@
         "preserve_line_evidence",
         "handle_cjk_punctuation"
       ],
-      "file": null
+      "file": "real/two-column-article.pdf"
     },
     {
       "id": "table-structure-001",
@@ -60,7 +60,7 @@
         "emit_markdown_table",
         "retain_table_crop_when_low_confidence"
       ],
-      "file": null
+      "file": "real/annual-report.pdf"
     },
     {
       "id": "rag-rlm-chunking-001",
@@ -73,7 +73,7 @@
         "preserve_asset_refs",
         "preserve_relation_refs"
       ],
-      "file": null
+      "file": "real/mixed-media-brief.pdf"
     },
     {
       "id": "footnote-linking-001",
@@ -85,7 +85,7 @@
         "detect_footnote_body",
         "emit_relation_or_unresolved_relation"
       ],
-      "file": null
+      "file": "real/annual-report.pdf"
     },
     {
       "id": "toc-linking-001",
@@ -97,7 +97,7 @@
         "link_toc_to_heading_or_page",
         "preserve_unresolved_toc_items"
       ],
-      "file": null
+      "file": "real/annual-report.pdf"
     },
     {
       "id": "image-chart-asset-extraction-001",
@@ -110,8 +110,7 @@
         "support_pillow_compatible_output",
         "preserve_chart_candidate_label"
       ],
-      "file": null
+      "file": "real/mixed-media-brief.pdf"
     }
   ]
 }
-
