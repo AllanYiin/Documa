@@ -1,0 +1,20 @@
+{
+  "name": "documa-local",
+  "interface": {
+    "displayName": "Documa Local"
+  },
+  "plugins": [
+    {
+      "name": "codex-documa",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex-documa"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

@@ -1,9 +1,24 @@
 {
   "name": "claude-code-documa",
-  "description": "Use Documa document understanding from Claude Code via MCP.",
+  "displayName": "Documa",
+  "description": "Use Documa MCP document understanding for large PDFs, long documents, block evidence search, and citation-ready answers.",
   "version": "0.1.0",
   "author": {
     "name": "Documa contributors"
-  }
+  },
+  "homepage": "https://github.com/AllanYiin/Documa",
+  "repository": "https://github.com/AllanYiin/Documa",
+  "license": "MIT",
+  "keywords": [
+    "document-understanding",
+    "evidence",
+    "large-pdf",
+    "long-document",
+    "mcp",
+    "pdf",
+    "rag",
+    "retrieval"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
 }
-

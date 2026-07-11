@@ -1,10 +1,19 @@
 {
   "name": "codex-documa",
-  "version": "0.1.0",
+  "version": "0.2.1+codex.20260711162106",
   "description": "Use Documa document understanding from Codex via MCP.",
   "author": {
     "name": "Documa contributors"
   },
+  "homepage": "https://github.com/AllanYiin/Documa",
+  "repository": "https://github.com/AllanYiin/Documa",
+  "license": "MIT",
+  "keywords": [
+    "document-understanding",
+    "evidence",
+    "mcp",
+    "rag"
+  ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Documa",
