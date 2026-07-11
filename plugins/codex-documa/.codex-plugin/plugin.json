@@ -1,6 +1,6 @@
 {
   "name": "codex-documa",
-  "version": "0.2.1+codex.20260711162106",
+  "version": "0.2.2+codex.20260712000000",
   "description": "Use Documa document understanding from Codex via MCP.",
   "author": {
     "name": "Documa contributors"

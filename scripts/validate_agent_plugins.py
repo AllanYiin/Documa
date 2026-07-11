@@ -1,12 +1,36 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGINS = ROOT / "plugins"
+
+
+def expected_documa_version() -> str:
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'^version = "([^"]+)"', pyproject, flags=re.MULTILINE)
+    if not match:
+        raise ValidationError("pyproject.toml must define static project.version")
+    return match.group(1)
+
+
+def version_base(value: str) -> str:
+    return value.split("+", 1)[0]
+
+
+def require_documa_version(data: dict[str, Any], key: str, path: Path) -> str:
+    version = require_string(data, key, path)
+    expected = expected_documa_version()
+    if version_base(version) != expected:
+        raise ValidationError(
+            f"{path.relative_to(ROOT)} field {key!r} must match Documa version {expected!r} "
+            f"or use build metadata on that base version; got {version!r}"
+        )
+    return version
 
 
 class ValidationError(Exception):
@@ -72,8 +96,9 @@ def validate_codex_plugin() -> None:
     plugin_root = PLUGINS / "codex-documa"
     manifest_path = plugin_root / ".codex-plugin" / "plugin.json"
     manifest = read_json(manifest_path)
-    for key in ("name", "version", "description"):
+    for key in ("name", "description"):
         require_string(manifest, key, manifest_path)
+    require_documa_version(manifest, "version", manifest_path)
     if manifest["name"] != "codex-documa":
         raise ValidationError("Codex plugin name must be 'codex-documa'")
     require_relative_path(plugin_root, manifest.get("skills"), "skills", manifest_path)
@@ -94,6 +119,7 @@ def validate_claude_plugin() -> None:
     manifest = read_json(manifest_path)
     if require_string(manifest, "name", manifest_path) != "claude-code-documa":
         raise ValidationError("Claude Code plugin name must be 'claude-code-documa'")
+    require_documa_version(manifest, "version", manifest_path)
     require_relative_path(plugin_root, manifest.get("skills"), "skills", manifest_path)
     require_relative_path(plugin_root, manifest.get("mcpServers"), "mcpServers", manifest_path)
 
@@ -112,6 +138,11 @@ def validate_openclaw_plugin() -> None:
     manifest = read_json(manifest_path)
     require_string(manifest, "id", manifest_path)
     require_string(manifest, "name", manifest_path)
+    require_documa_version(manifest, "version", manifest_path)
+
+    package_path = plugin_root / "package.json"
+    package = read_json(package_path)
+    require_documa_version(package, "version", package_path)
     if not (plugin_root / "index.js").exists():
         raise ValidationError("openclaw-documa must include index.js")
     validate_skill(plugin_root, "openclaw-documa")
