@@ -38,6 +38,13 @@ class IRModelTests(unittest.TestCase):
         self.assertIn('"type": "paragraph"', payload)
         self.assertIn('"confidence": "high"', payload)
 
+    def test_plain_data_repairs_surrogate_text_for_utf8_json(self):
+        payload = to_plain_data({"emoji": "earth \ud83c\udf0f", "broken": "bad \udf0f"})
+        encoded = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        decoded = json.loads(encoded.decode("utf-8"))
+
+        self.assertEqual(decoded["emoji"], "earth 🌏")
+        self.assertEqual(decoded["broken"], "bad �")
     def test_chunk_requires_source_blocks_by_convention(self):
         chunk = ChunkIR(
             id="c1",

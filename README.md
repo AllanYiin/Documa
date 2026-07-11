@@ -269,6 +269,17 @@ documa ingest fixtures\pdf\real\annual-report.pdf
 
 之後所有吃 `ir_path` 的指令與工具都同時接受 document_id（規則：路徑存在優先，否則查 `./.documa` registry）。管理指令：`documa list-documents`、`documa delete-document <id> --yes`、`documa ingest --rebuild-index`（registry 損毀時從 `documents/` 重建索引）。
 
+### collection search：跨 active 文件搜尋
+
+多份文件 ingest 進同一個本地 store 後，可以建立 default collection index，再跨 active 文件搜尋 block。第一版使用 Python 標準庫 SQLite FTS5，索引是可重建的衍生資料；IR 與 registry 仍是 source of truth。
+
+```powershell
+documa index-collection --store-dir .\.documa
+documa search-collection --store-dir .\.documa --query "Revenue" --limit 20
+```
+
+`search-collection` 的每筆結果會同時回傳 registry 的 `document_id`、IR 內部 `document_id`、`block_id`、heading path、score、snippet、page refs、bbox refs 與 citation string。`read_ref` 可直接餵給 `documa_read_block` / `documa cite-block` 類工具繼續讀取與引用；預設只索引 registry 中 `active` 文件，`superseded` 版本不會出現在搜尋結果中。
+
 ### citation：把 block / chunk 回溯到頁碼與座標
 
 ```powershell
@@ -418,7 +429,9 @@ documa-mcp
 | `documa_ingest_mailbox` | 批次 ingest `.eml` / `.msg` email 資料夾。 |
 | `documa_view` | 建立 universal viewer payload 或輸出檔。 |
 | `documa_list_blocks` | 列出文件 blocks，不展開全文。 |
-| `documa_search_blocks` | 搜尋 block metadata、preview 與 body snippets。 |
+| `documa_search_blocks` | 搜尋單一文件的 block metadata、preview 與 body snippets。 |
+| `documa_index_collection` | 從本地 registry 的 active documents 重建 collection search index。 |
+| `documa_search_collection` | 跨 active documents 搜尋 citation-ready block results。 |
 | `documa_read_block` | 讀取指定 block body。 |
 | `documa_block_tree` | 回傳完整 block hierarchy。 |
 | `documa_block_xref` | 查 block 的 parent、children、來源與 relation refs。 |
@@ -449,7 +462,7 @@ Documa 的設計原則：
 | --- | --- |
 | `src/documa/core/` | IR models、serialization、encoding、language 與 text normalization。 |
 | `src/documa/adapters/` | 各格式 parser adapter。 |
-| `src/documa/collections/` | 多文件 ingestion，例如 email mailbox。 |
+| `src/documa/collections/` | 多文件 ingestion、registry 與 SQLite collection search index。 |
 | `src/documa/pipeline/` | Parser-neutral understanding stages。 |
 | `src/documa/exporters/` | JSON、Markdown、RAG JSON、block JSON exporters。 |
 | `src/documa/interfaces/` | CLI / MCP / tool-calling 共用工具函式與 schemas。 |

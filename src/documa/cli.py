@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from documa import __version__
+from documa.core.ir import to_plain_data
 from documa.demo import run_block_reading_demo
 from documa.interfaces import (
     benchmark_tool,
@@ -18,6 +19,7 @@ from documa.interfaces import (
     cite_chunk_tool,
     delete_document_tool,
     doctor_tool,
+    index_collection_tool,
     ingest_document_tool,
     list_documents_tool,
     export_document_tool,
@@ -31,13 +33,14 @@ from documa.interfaces import (
     process_document_tool,
     read_block_tool,
     search_blocks_tool,
+    search_collection_tool,
     source_window_tool,
     view_document_tool,
 )
 
 
 def _emit_json(data: dict[str, Any], *, exit_code: int = 0) -> int:
-    sys.stdout.write(json.dumps(data, ensure_ascii=False, indent=2))
+    sys.stdout.write(json.dumps(to_plain_data(data), ensure_ascii=False, indent=2))
     sys.stdout.write("\n")
     return exit_code
 
@@ -139,6 +142,17 @@ def build_parser() -> argparse.ArgumentParser:
     search_blocks_cmd.add_argument("--max-snippets-per-block", type=int, default=5, help="Maximum snippets per result block.")
     search_blocks_cmd.add_argument("--context-chars", type=int, default=24, help="CJK characters around snippet matches.")
     search_blocks_cmd.add_argument("--context-words", type=int, default=8, help="ASCII words around snippet matches.")
+
+    index_collection_cmd = subparsers.add_parser("index-collection", help="Build the local collection search index.")
+    index_collection_cmd.add_argument("--store-dir", default=".documa", help="Document store directory.")
+    index_collection_cmd.add_argument("--collection-id", default="default", help="Collection identifier.")
+
+    search_collection_cmd = subparsers.add_parser("search-collection", help="Search all active documents in the local collection index.")
+    search_collection_cmd.add_argument("--store-dir", default=".documa", help="Document store directory.")
+    search_collection_cmd.add_argument("--collection-id", default="default", help="Collection identifier.")
+    search_collection_cmd.add_argument("--query", required=True, help="Lexical query.")
+    search_collection_cmd.add_argument("--limit", type=int, default=20, help="Maximum result count.")
+    search_collection_cmd.add_argument("--per-document-limit", type=int, default=None, help="Maximum results per document.")
 
     block_tree_cmd = subparsers.add_parser("block-tree", help="Return the full Documa document block tree.")
     block_tree_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
@@ -324,6 +338,20 @@ def main(argv: list[str] | None = None) -> int:
             search_body=not args.no_body,
             context_chars=args.context_chars,
             context_words=args.context_words,
+        )
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "index-collection":
+        payload = index_collection_tool(store_dir=args.store_dir, collection_id=args.collection_id)
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "search-collection":
+        payload = search_collection_tool(
+            store_dir=args.store_dir,
+            collection_id=args.collection_id,
+            query=args.query,
+            limit=args.limit,
+            per_document_limit=args.per_document_limit,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 

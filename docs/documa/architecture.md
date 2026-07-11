@@ -192,3 +192,18 @@ The trace is written as structured JSON and includes:
 The demo is intentionally offline and deterministic. It does not require an LLM
 provider or network access. Token accounting uses `tiktoken` when available and
 falls back to a clearly labeled heuristic otherwise.
+
+## Stage 12 Local Collection Search Baseline
+
+Stage 12 extends the single-document block-reading model to a local multi-document collection search layer. The registry and stored IR files remain the source of truth; the SQLite FTS5 database is a rebuildable derived index under the store directory.
+
+The baseline adds:
+
+- `src/documa/collections/sqlite_index.py` for schema creation, rebuild, health reporting, and FTS search.
+- `documa index-collection` / `documa_index_collection` to rebuild the default collection from active registry documents.
+- `documa search-collection` / `documa_search_collection` to return citation-ready block hits across active documents.
+- Doctor integration through `collection_health` when `store_dir` is supplied.
+
+Search result identity is registry-first: every hit includes `registry_document_id`, `ir_document_id`, `block_id`, `source_name`, `heading_path`, `page_refs`, `bbox_refs`, `citation_string`, and `read_ref`. The stable cross-document block key is `(registry_document_id, block_id)`; `ir_document_id` is returned for compatibility with existing IR consumers.
+
+This stage deliberately does not introduce embeddings, an external vector database, LLM answer synthesis, or UI. Optional hybrid/vector adapters can be added later behind the collection search boundary without changing the parser-neutral IR or the progressive block reading tools.

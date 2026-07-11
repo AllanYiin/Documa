@@ -25,7 +25,7 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
         {
             "name": "documa_parse",
             "title": "Parse document into Documa IR",
-            "description": "Parse a document through Documa adapters and return UTF-8 JSON metadata.",
+            "description": "Parse a PDF or document through Documa adapters and return UTF-8 JSON metadata for structured document understanding.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -58,7 +58,7 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
         {
             "name": "documa_process",
             "title": "Parse and process document",
-            "description": "Parse a document, run the default Documa understanding pipeline, and optionally export agent-ready outputs.",
+            "description": "Ingest a large PDF or long document, run the Documa understanding pipeline, and export agent-ready IR, block, RAG, or Markdown outputs.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -216,7 +216,7 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
         {
             "name": "documa_read_block",
             "title": "Read Documa document block body",
-            "description": "Return body text for a selected document block, optionally including descendants.",
+            "description": "Read exact source text for a selected Documa block after evidence search, optionally including descendants.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -233,7 +233,7 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
         {
             "name": "documa_search_blocks",
             "title": "Search Documa document blocks",
-            "description": "Search block metadata, keywords, previews, and body snippets using deterministic lexical matching.",
+            "description": "Search large PDF or long-document evidence blocks by metadata, keywords, previews, and bounded body snippets before reading full text.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -540,6 +540,59 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
                     "missing_ir": {"type": "array"},
                     "orphan_dirs": {"type": "array"},
                     "lock": {"type": "object"},
+                },
+                "required": ["status"],
+            },
+            "annotations": {"readOnlyHint": True},
+        },
+        {
+            "name": "documa_index_collection",
+            "title": "Build local collection index",
+            "description": "Build or rebuild the local SQLite FTS collection index from active registry documents.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "store_dir": {"type": "string", "default": ".documa"},
+                    "collection_id": {"type": "string", "default": "default"},
+                },
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "collection_id": {"type": "string"},
+                    "index_path": {"type": "string"},
+                    "document_count": {"type": "integer"},
+                    "block_count": {"type": "integer"},
+                    "index_version": {"type": "string"},
+                },
+                "required": ["status"],
+            },
+            "annotations": {"readOnlyHint": False},
+        },
+        {
+            "name": "documa_search_collection",
+            "title": "Search local document collection",
+            "description": "Search active large-document registry entries and return citation-ready Documa block results across the local collection index.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "store_dir": {"type": "string", "default": ".documa"},
+                    "collection_id": {"type": "string", "default": "default"},
+                    "limit": {"type": "integer", "default": 20, "minimum": 1, "maximum": 100},
+                    "per_document_limit": {"type": ["integer", "null"], "default": None},
+                },
+                "required": ["query"],
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "collection_id": {"type": "string"},
+                    "query": {"type": "string"},
+                    "result_count": {"type": "integer"},
+                    "results": {"type": "array"},
                 },
                 "required": ["status"],
             },

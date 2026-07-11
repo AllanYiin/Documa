@@ -12,9 +12,10 @@ from typing import Any, Callable
 from documa.adapters.base import ParseOptions
 from documa.adapters.registry import adapter_for_source
 from documa.collections import registry as registry_store
+from documa.collections import sqlite_index as collection_index
 from documa.collections.email_collection import MailboxIngestionOptions, ingest_mailbox_collection
 from documa.core.errors import DocumaError
-from documa.core.ir import DocumentBlockIR, DocumentBlockType, DocumentIR, to_plain_data
+from documa.core.ir import DocumentBlockIR, DocumentBlockType, DocumentIR, repair_surrogate_text, to_plain_data
 from documa.core.serialization import document_from_plain_data
 from documa.exporters import BlockJsonExporter, ExportOptions, JsonExporter, MarkdownExporter, RagJsonExporter
 from documa.interfaces import citation
@@ -115,7 +116,7 @@ def load_document(path: str | Path) -> DocumentIR:
 def write_payload(path: str | Path, payload: Any) -> None:
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    text = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False, indent=2)
+    text = repair_surrogate_text(payload) if isinstance(payload, str) else json.dumps(to_plain_data(payload), ensure_ascii=False, indent=2)
     temp_path = output_path.with_name(f"{output_path.name}.tmp")
     try:
         with temp_path.open("w", encoding="utf-8", newline="\n") as handle:
@@ -308,7 +309,7 @@ def ingest_mailbox_tool(
         write_payload(payload["manifest_path"], manifest)
         if progress == "jsonl":
             progress_path = Path(out) / "documa.mailbox.progress.jsonl"
-            lines = "\n".join(json.dumps(event, ensure_ascii=False) for event in payload.get("progress_events", []))
+            lines = "\n".join(json.dumps(to_plain_data(event), ensure_ascii=False) for event in payload.get("progress_events", []))
             write_payload(progress_path, f"{lines}\n" if lines else "")
             payload["progress_path"] = str(progress_path)
     return payload
@@ -1010,7 +1011,11 @@ def doctor_tool(
         return {"status": "error", "message": str(exc)}
     if store_dir is not None:
         payload["store_health"] = registry_store.store_health(store_dir=store_dir)
-        if payload["store_health"]["status"] != "ok" and payload.get("status") == "ok":
+        payload["collection_health"] = collection_index.store_collection_health(store_dir=store_dir)
+        if (
+            payload["store_health"]["status"] != "ok"
+            or payload["collection_health"]["status"] != "ok"
+        ) and payload.get("status") == "ok":
             payload["status"] = "warning"
     return payload
 
@@ -1071,6 +1076,29 @@ def ingest_document_tool(
     return registry_store.ingest_document(source, store_dir=store_dir, lang=lang, max_chars=max_chars, ocr=ocr)
 
 
+def index_collection_tool(
+    store_dir: str = registry_store.DEFAULT_STORE_DIR,
+    collection_id: str = collection_index.DEFAULT_COLLECTION_ID,
+) -> ToolPayload:
+    return collection_index.build_collection_index(store_dir=store_dir, collection_id=collection_id)
+
+
+def search_collection_tool(
+    query: str,
+    store_dir: str = registry_store.DEFAULT_STORE_DIR,
+    collection_id: str = collection_index.DEFAULT_COLLECTION_ID,
+    limit: int = 20,
+    per_document_limit: int | None = None,
+) -> ToolPayload:
+    return collection_index.search_collection(
+        store_dir=store_dir,
+        query=query,
+        collection_id=collection_id,
+        limit=limit,
+        per_document_limit=per_document_limit,
+    )
+
+
 def list_documents_tool(store_dir: str = registry_store.DEFAULT_STORE_DIR) -> ToolPayload:
     return registry_store.list_documents(store_dir=store_dir)
 
@@ -1126,6 +1154,8 @@ def _tool_registry() -> dict[str, Callable[..., ToolPayload]]:
         "documa_verify_citations": verify_citations_tool,
         "documa_validate_ir": validate_ir_tool,
         "documa_ingest": ingest_document_tool,
+        "documa_index_collection": index_collection_tool,
+        "documa_search_collection": search_collection_tool,
         "documa_list_documents": list_documents_tool,
         "documa_inspect_store": inspect_store_tool,
     }
@@ -1153,9 +1183,10 @@ def call_documa_tool(name: str, arguments: dict[str, Any] | None = None) -> dict
 
 
 def _tool_result(payload: ToolPayload, *, is_error: bool = False) -> dict[str, Any]:
-    text = json.dumps(payload, ensure_ascii=False, indent=2)
+    safe_payload = to_plain_data(payload)
+    text = json.dumps(safe_payload, ensure_ascii=False, indent=2)
     return {
         "content": [{"type": "text", "text": text}],
-        "structuredContent": payload,
+        "structuredContent": safe_payload,
         "isError": is_error,
     }

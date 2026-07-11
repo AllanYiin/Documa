@@ -1,0 +1,453 @@
+"""SQLite-backed collection index for local multi-document block search."""
+
+from __future__ import annotations
+
+import json
+import re
+import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path, PurePosixPath
+from typing import Any
+
+from documa.collections import registry as registry_store
+from documa.core.serialization import document_from_plain_data
+from documa.pipeline.block_tree import document_block_text
+from documa.pipeline.page_refs import ensure_page_citation_map, page_citation_metadata
+
+INDEX_VERSION = "1"
+DEFAULT_COLLECTION_ID = "default"
+INDEX_FILENAME = "collection_index.sqlite3"
+
+ToolPayload = dict[str, Any]
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def index_path(store_dir: str | Path) -> Path:
+    return Path(store_dir) / INDEX_FILENAME
+
+
+def _connect(store_dir: str | Path) -> sqlite3.Connection:
+    path = index_path(store_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _init_schema(conn: sqlite3.Connection) -> None:
+    conn.executescript(
+        """
+        PRAGMA journal_mode=WAL;
+        CREATE TABLE IF NOT EXISTS collections (
+          collection_id TEXT PRIMARY KEY,
+          index_version TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS documents (
+          collection_id TEXT NOT NULL,
+          registry_document_id TEXT NOT NULL,
+          ir_document_id TEXT,
+          source_name TEXT,
+          source_path TEXT,
+          content_hash TEXT,
+          ir_path TEXT NOT NULL,
+          status TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (collection_id, registry_document_id)
+        );
+        CREATE TABLE IF NOT EXISTS blocks (
+          rowid INTEGER PRIMARY KEY,
+          collection_id TEXT NOT NULL,
+          registry_document_id TEXT NOT NULL,
+          ir_document_id TEXT,
+          source_name TEXT,
+          block_id TEXT NOT NULL,
+          block_type TEXT,
+          title TEXT,
+          heading_path_json TEXT NOT NULL,
+          text_preview TEXT,
+          body TEXT,
+          keywords_json TEXT NOT NULL,
+          page_refs_json TEXT NOT NULL,
+          bbox_refs_json TEXT NOT NULL,
+          citation_string TEXT,
+          dedupe_key TEXT,
+          order_index INTEGER,
+          created_at TEXT NOT NULL,
+          UNIQUE (collection_id, registry_document_id, block_id)
+        );
+        CREATE VIRTUAL TABLE IF NOT EXISTS blocks_fts USING fts5(
+          collection_id UNINDEXED,
+          registry_document_id UNINDEXED,
+          block_id UNINDEXED,
+          title,
+          heading_path,
+          preview,
+          body,
+          keywords
+        );
+        """
+    )
+
+
+def _load_document(store: Path, entry: dict[str, Any]):
+    ir_path = store / Path(PurePosixPath(entry["ir_path"]))
+    payload = json.loads(ir_path.read_text(encoding="utf-8"))
+    return document_from_plain_data(payload), str(ir_path)
+
+
+def _block_path(block_id: str, by_id: dict[str, Any]) -> list[str]:
+    path: list[str] = []
+    current = by_id.get(block_id)
+    while current is not None:
+        if current.title:
+            path.append(current.title)
+        current = by_id.get(current.parent_id) if current.parent_id else None
+    return list(reversed(path))
+
+
+def _json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def _keywords(block: Any) -> list[str]:
+    metadata = block.metadata or {}
+    terms = metadata.get("search_terms") or metadata.get("keyword_terms") or []
+    return [str(term) for term in terms if str(term).strip()]
+
+
+def _citation_string(source_name: str, citation_meta: dict[str, Any]) -> str:
+    label = str(citation_meta.get("citation_label") or "").strip()
+    return f"[{source_name}, {label}]" if label else f"[{source_name}]"
+
+
+def _record_rows(store: Path, collection_id: str, entry: dict[str, Any], now: str) -> list[dict[str, Any]]:
+    document, _ = _load_document(store, entry)
+    page_citations = ensure_page_citation_map(document)
+    by_id = {block.id: block for block in document.document_blocks}
+    rows = []
+    for block in document.document_blocks:
+        body = document_block_text(document, block)
+        heading_path = _block_path(block.id, by_id)
+        citation_meta = page_citation_metadata(block.page_refs, page_citations)
+        keywords = _keywords(block)
+        source_name = entry.get("source_name") or document.source_name
+        rows.append(
+            {
+                "collection_id": collection_id,
+                "registry_document_id": entry["document_id"],
+                "ir_document_id": entry.get("ir_document_id") or document.id,
+                "source_name": source_name,
+                "block_id": block.id,
+                "block_type": block.type.value,
+                "title": block.title or "",
+                "heading_path_json": _json(heading_path),
+                "heading_path_text": " > ".join(heading_path),
+                "text_preview": block.text_preview or "",
+                "body": body,
+                "keywords_json": _json(keywords),
+                "keywords_text": " ".join(keywords),
+                "page_refs_json": _json(block.page_refs),
+                "bbox_refs_json": _json(block.bbox_refs),
+                "citation_string": _citation_string(source_name, citation_meta),
+                "dedupe_key": block.content_hash or "",
+                "order_index": block.order_index,
+                "created_at": now,
+            }
+        )
+    return rows
+
+
+def _active_registry_entries(store_dir: Path) -> list[dict[str, Any]]:
+    registry = registry_store.load_registry(store_dir)
+    if registry.get("code") == "REGISTRY_CORRUPTED":
+        raise ValueError(registry.get("message", "registry is corrupted"))
+    return [entry for entry in registry.get("documents", []) if entry.get("status", "active") == "active"]
+
+
+def _active_registry_entry_map(store_dir: Path) -> dict[str, dict[str, Any]]:
+    return {entry["document_id"]: entry for entry in _active_registry_entries(store_dir)}
+
+
+def build_collection_index(
+    store_dir: str | Path = registry_store.DEFAULT_STORE_DIR,
+    collection_id: str = DEFAULT_COLLECTION_ID,
+) -> ToolPayload:
+    """Rebuild the local collection index from active registry documents."""
+
+    store = Path(store_dir)
+    now = _now_iso()
+    try:
+        entries = _active_registry_entries(store)
+        with _connect(store) as conn:
+            _init_schema(conn)
+            conn.execute("DELETE FROM blocks_fts WHERE collection_id = ?", (collection_id,))
+            conn.execute("DELETE FROM blocks WHERE collection_id = ?", (collection_id,))
+            conn.execute("DELETE FROM documents WHERE collection_id = ?", (collection_id,))
+            conn.execute(
+                """
+                INSERT INTO collections(collection_id, index_version, created_at, updated_at)
+                VALUES(?, ?, ?, ?)
+                ON CONFLICT(collection_id) DO UPDATE SET
+                  index_version = excluded.index_version,
+                  updated_at = excluded.updated_at
+                """,
+                (collection_id, INDEX_VERSION, now, now),
+            )
+
+            block_count = 0
+            for entry in entries:
+                conn.execute(
+                    """
+                    INSERT INTO documents(
+                      collection_id, registry_document_id, ir_document_id, source_name,
+                      source_path, content_hash, ir_path, status, updated_at
+                    )
+                    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        collection_id,
+                        entry["document_id"],
+                        entry.get("ir_document_id"),
+                        entry.get("source_name"),
+                        entry.get("source_path"),
+                        entry.get("content_hash"),
+                        entry["ir_path"],
+                        entry.get("status", "active"),
+                        now,
+                    ),
+                )
+                for row in _record_rows(store, collection_id, entry, now):
+                    cursor = conn.execute(
+                        """
+                        INSERT INTO blocks(
+                          collection_id, registry_document_id, ir_document_id, source_name,
+                          block_id, block_type, title, heading_path_json, text_preview, body,
+                          keywords_json, page_refs_json, bbox_refs_json, citation_string,
+                          dedupe_key, order_index, created_at
+                        )
+                        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            row["collection_id"],
+                            row["registry_document_id"],
+                            row["ir_document_id"],
+                            row["source_name"],
+                            row["block_id"],
+                            row["block_type"],
+                            row["title"],
+                            row["heading_path_json"],
+                            row["text_preview"],
+                            row["body"],
+                            row["keywords_json"],
+                            row["page_refs_json"],
+                            row["bbox_refs_json"],
+                            row["citation_string"],
+                            row["dedupe_key"],
+                            row["order_index"],
+                            row["created_at"],
+                        ),
+                    )
+                    conn.execute(
+                        """
+                        INSERT INTO blocks_fts(
+                          rowid, collection_id, registry_document_id, block_id,
+                          title, heading_path, preview, body, keywords
+                        )
+                        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            cursor.lastrowid,
+                            row["collection_id"],
+                            row["registry_document_id"],
+                            row["block_id"],
+                            row["title"],
+                            row["heading_path_text"],
+                            row["text_preview"],
+                            row["body"],
+                            row["keywords_text"],
+                        ),
+                    )
+                    block_count += 1
+            conn.commit()
+    except (OSError, sqlite3.Error, KeyError, ValueError, json.JSONDecodeError) as exc:
+        return {"status": "error", "code": "COLLECTION_INDEX_BUILD_FAILED", "message": str(exc)}
+
+    return {
+        "status": "ok",
+        "collection_id": collection_id,
+        "index_path": str(index_path(store)),
+        "document_count": len(entries),
+        "block_count": block_count,
+        "index_version": INDEX_VERSION,
+    }
+
+
+def _fts_query(query: str) -> str:
+    terms = [term for term in re.findall(r"[\w\u4e00-\u9fff\u3040-\u30ff]+", query, flags=re.UNICODE) if term]
+    return " OR ".join(f'"{term.replace(chr(34), chr(34) + chr(34))}"' for term in terms)
+
+
+def _snippet(row: sqlite3.Row) -> str:
+    for key in ("text_preview", "body", "title"):
+        text = str(row[key] or "").strip()
+        if text:
+            return text[:240]
+    return ""
+
+
+def _row_to_result(row: sqlite3.Row, score: float) -> dict[str, Any]:
+    return {
+        "registry_document_id": row["registry_document_id"],
+        "ir_document_id": row["ir_document_id"],
+        "source_name": row["source_name"],
+        "block_id": row["block_id"],
+        "block_type": row["block_type"],
+        "heading_path": json.loads(row["heading_path_json"]),
+        "score": score,
+        "snippet": _snippet(row),
+        "page_refs": json.loads(row["page_refs_json"]),
+        "bbox_refs": json.loads(row["bbox_refs_json"]),
+        "citation_string": row["citation_string"],
+        "dedupe_key": row["dedupe_key"],
+        "read_ref": {"ir_path": row["registry_document_id"], "block_id": row["block_id"]},
+    }
+
+
+def search_collection(
+    store_dir: str | Path = registry_store.DEFAULT_STORE_DIR,
+    query: str = "",
+    collection_id: str = DEFAULT_COLLECTION_ID,
+    limit: int = 20,
+    per_document_limit: int | None = None,
+) -> ToolPayload:
+    """Search the local collection index and return citation-ready block hits."""
+
+    store = Path(store_dir)
+    limit = max(1, min(int(limit), 100))
+    fts_query = _fts_query(query)
+    if not fts_query:
+        return {
+            "status": "ok",
+            "collection_id": collection_id,
+            "query": query,
+            "result_count": 0,
+            "results": [],
+        }
+    if not index_path(store).exists():
+        return {
+            "status": "error",
+            "code": "COLLECTION_INDEX_NOT_FOUND",
+            "message": f"Collection index not found: {index_path(store)}",
+        }
+
+    try:
+        active_entries = _active_registry_entry_map(store)
+        with _connect(store) as conn:
+            _init_schema(conn)
+            rows = conn.execute(
+                """
+                SELECT blocks.*, documents.content_hash AS indexed_content_hash, bm25(blocks_fts) AS rank
+                FROM blocks_fts
+                JOIN blocks ON blocks.rowid = blocks_fts.rowid
+                JOIN documents ON documents.collection_id = blocks.collection_id
+                  AND documents.registry_document_id = blocks.registry_document_id
+                WHERE blocks_fts MATCH ? AND blocks.collection_id = ?
+                ORDER BY rank ASC, blocks.registry_document_id ASC, blocks.order_index ASC
+                LIMIT ?
+                """,
+                (fts_query, collection_id, limit * 5 if per_document_limit else limit),
+            ).fetchall()
+    except sqlite3.OperationalError as exc:
+        return {"status": "error", "code": "FTS_QUERY_INVALID", "message": str(exc), "query": query}
+    except (OSError, ValueError) as exc:
+        return {"status": "error", "code": "REGISTRY_LOAD_FAILED", "message": str(exc)}
+    except sqlite3.Error as exc:
+        return {"status": "error", "code": "COLLECTION_SEARCH_FAILED", "message": str(exc)}
+
+    results = []
+    per_doc_counts: dict[str, int] = {}
+    for row in rows:
+        doc_id = row["registry_document_id"]
+        active_entry = active_entries.get(doc_id)
+        if active_entry is None or active_entry.get("content_hash") != row["indexed_content_hash"]:
+            continue
+        if per_document_limit is not None and per_doc_counts.get(doc_id, 0) >= per_document_limit:
+            continue
+        per_doc_counts[doc_id] = per_doc_counts.get(doc_id, 0) + 1
+        results.append(_row_to_result(row, score=round(float(-row["rank"]), 6)))
+        if len(results) >= limit:
+            break
+
+    return {
+        "status": "ok",
+        "collection_id": collection_id,
+        "query": query,
+        "result_count": len(results),
+        "results": results,
+    }
+
+
+def store_collection_health(
+    store_dir: str | Path = registry_store.DEFAULT_STORE_DIR,
+    collection_id: str = DEFAULT_COLLECTION_ID,
+) -> ToolPayload:
+    path = index_path(store_dir)
+    if not path.exists():
+        return {
+            "status": "warning",
+            "code": "COLLECTION_INDEX_NOT_FOUND",
+            "collection_id": collection_id,
+            "index_path": str(path),
+        }
+    try:
+        with _connect(store_dir) as conn:
+            _init_schema(conn)
+            collection = conn.execute(
+                "SELECT * FROM collections WHERE collection_id = ?", (collection_id,)
+            ).fetchone()
+            if collection is None:
+                return {
+                    "status": "warning",
+                    "code": "COLLECTION_INDEX_NOT_FOUND",
+                    "collection_id": collection_id,
+                    "index_path": str(path),
+                }
+            indexed_documents = conn.execute(
+                "SELECT registry_document_id, content_hash FROM documents WHERE collection_id = ?", (collection_id,)
+            ).fetchall()
+            document_count = len(indexed_documents)
+            block_count = conn.execute(
+                "SELECT COUNT(*) FROM blocks WHERE collection_id = ?", (collection_id,)
+            ).fetchone()[0]
+        active_entries = _active_registry_entry_map(Path(store_dir))
+    except sqlite3.Error as exc:
+        return {"status": "error", "code": "COLLECTION_INDEX_CORRUPTED", "message": str(exc), "index_path": str(path)}
+    except (OSError, ValueError) as exc:
+        return {"status": "error", "code": "REGISTRY_LOAD_FAILED", "message": str(exc), "index_path": str(path)}
+
+    indexed_hashes = {row["registry_document_id"]: row["content_hash"] for row in indexed_documents}
+    active_hashes = {doc_id: entry.get("content_hash") for doc_id, entry in active_entries.items()}
+    missing_from_index = sorted(set(active_hashes) - set(indexed_hashes))
+    stale_documents = sorted(
+        doc_id for doc_id, content_hash in indexed_hashes.items() if active_hashes.get(doc_id) != content_hash
+    )
+    stale = bool(missing_from_index or stale_documents)
+
+    return {
+        "status": "warning" if stale else "ok",
+        "code": "COLLECTION_INDEX_STALE" if stale else None,
+        "collection_id": collection_id,
+        "index_path": str(path),
+        "index_version": collection["index_version"],
+        "updated_at": collection["updated_at"],
+        "document_count": document_count,
+        "active_document_count": len(active_entries),
+        "block_count": block_count,
+        "missing_from_index": missing_from_index,
+        "stale_documents": stale_documents,
+    }

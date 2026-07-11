@@ -1,7 +1,5 @@
 """Optional MCP server wrapper for Documa tools."""
 
-from __future__ import annotations
-
 from typing import Any
 
 from documa.interfaces.tools import (
@@ -10,6 +8,7 @@ from documa.interfaces.tools import (
     block_xref_tool,
     doctor_tool,
     export_document_tool,
+    index_collection_tool,
     inspect_block_tool,
     inspect_document_tool,
     ingest_mailbox_tool,
@@ -18,6 +17,7 @@ from documa.interfaces.tools import (
     process_document_tool,
     read_block_tool,
     search_blocks_tool,
+    search_collection_tool,
     view_document_tool,
 )
 
@@ -31,8 +31,10 @@ def create_mcp_server() -> Any:
     mcp = FastMCP(
         "Documa",
         instructions=(
-            "Parse documents into Documa IR, build progressive document blocks, "
-            "and expose agent-ready structured reading tools."
+            "Use Documa for large PDFs, long documents, document QA, evidence search, "
+            "citations, and source-grounded summaries. Parse files into Documa IR, "
+            "search progressive document blocks first, then read selected blocks instead of "
+            "loading whole documents into context."
         ),
     )
 
@@ -202,6 +204,30 @@ def create_mcp_server() -> Any:
         )
 
     @mcp.tool()
+    def documa_index_collection(store_dir: str = ".documa", collection_id: str = "default") -> dict[str, Any]:
+        """Build the local collection search index from active registry documents."""
+
+        return index_collection_tool(store_dir=store_dir, collection_id=collection_id)
+
+    @mcp.tool()
+    def documa_search_collection(
+        query: str,
+        store_dir: str = ".documa",
+        collection_id: str = "default",
+        limit: int = 20,
+        per_document_limit: int | None = None,
+    ) -> dict[str, Any]:
+        """Search active registry documents through the local collection index."""
+
+        return search_collection_tool(
+            query=query,
+            store_dir=store_dir,
+            collection_id=collection_id,
+            limit=limit,
+            per_document_limit=per_document_limit,
+        )
+
+    @mcp.tool()
     def documa_block_tree(ir_path: str) -> dict[str, Any]:
         """Return the progressive document block hierarchy."""
 
@@ -230,10 +256,14 @@ def create_mcp_server() -> Any:
         )
 
     @mcp.tool()
-    def documa_doctor(project_root: str = ".", include_benchmark: bool = True) -> dict[str, Any]:
+    def documa_doctor(
+        project_root: str = ".",
+        include_benchmark: bool = True,
+        store_dir: str | None = None,
+    ) -> dict[str, Any]:
         """Run Documa environment diagnostics."""
 
-        return doctor_tool(project_root=project_root, include_benchmark=include_benchmark)
+        return doctor_tool(project_root=project_root, include_benchmark=include_benchmark, store_dir=store_dir)
 
     return mcp
 

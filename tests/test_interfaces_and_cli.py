@@ -1,8 +1,10 @@
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
 
+from documa import __version__
 from documa.adapters.base import ParseOptions, ParserAdapter
 from documa.cli import main
 from documa.core.ir import DocumentIR
@@ -37,6 +39,14 @@ class InterfaceTests(unittest.TestCase):
 
         self.assertEqual(result.stage_name, "dummy_stage")
         self.assertIs(result.document, doc)
+
+    def test_runtime_version_matches_pyproject(self):
+        root = Path(__file__).resolve().parents[1]
+        pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+        match = re.search(r"^version = \"([^\"]+)\"", pyproject, flags=re.MULTILINE)
+
+        self.assertIsNotNone(match)
+        self.assertEqual(__version__, match.group(1))
 
     def test_cli_version_outputs_json(self):
         from io import StringIO
@@ -100,6 +110,15 @@ class InterfaceTests(unittest.TestCase):
             self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["message"], "金融研究發展基金")
             self.assertFalse(path.with_name("payload.json.tmp").exists())
 
+    def test_write_payload_repairs_lone_surrogates_before_utf8_write(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "payload.json"
+
+            write_payload(path, {"message": "bad \udf0f", "emoji": "ok \ud83c\udf0f"})
+            payload = json.loads(path.read_text(encoding="utf-8"))
+
+        self.assertEqual(payload["message"], "bad �")
+        self.assertEqual(payload["emoji"], "ok 🌏")
 
 if __name__ == "__main__":
     unittest.main()

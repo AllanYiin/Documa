@@ -236,15 +236,25 @@ class DocumentIR:
         return len(self.pages)
 
 
+def repair_surrogate_text(value: str) -> str:
+    """Return text that can be safely emitted as UTF-8 JSON."""
+
+    if not any(0xD800 <= ord(char) <= 0xDFFF for char in value):
+        return value
+    return value.encode("utf-16", errors="surrogatepass").decode("utf-16", errors="replace")
+
+
 def to_plain_data(value: Any) -> Any:
     """Convert IR dataclasses and enums into JSON-serializable data."""
 
     if isinstance(value, Enum):
         return value.value
+    if isinstance(value, str):
+        return repair_surrogate_text(value)
     if is_dataclass(value):
         return {key: to_plain_data(item) for key, item in asdict(value).items()}
     if isinstance(value, dict):
-        return {key: to_plain_data(item) for key, item in value.items()}
+        return {to_plain_data(key): to_plain_data(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [to_plain_data(item) for item in value]
     return value
