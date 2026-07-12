@@ -207,6 +207,7 @@ def build_parser() -> argparse.ArgumentParser:
     ingest_cmd.add_argument("--max-chars", type=int, default=1200, help="Target max characters per generated chunk.")
     ingest_cmd.add_argument("--ocr", action="store_true", help="Run OCR on image-only pages and embedded images (requires documa[ocr]).")
     ingest_cmd.add_argument("--rebuild-index", action="store_true", help="Rebuild registry.json from stored documents.")
+    ingest_cmd.add_argument("--no-update-index", action="store_true", help="Skip the incremental collection index update after ingest.")
 
     list_documents_cmd = subparsers.add_parser("list-documents", help="List documents in the local store.")
     list_documents_cmd.add_argument("--store-dir", default=".documa", help="Document store directory.")
@@ -215,6 +216,7 @@ def build_parser() -> argparse.ArgumentParser:
     delete_document_cmd.add_argument("document_id", help="Registry document id (doc-...).")
     delete_document_cmd.add_argument("--store-dir", default=".documa", help="Document store directory.")
     delete_document_cmd.add_argument("--yes", action="store_true", help="Confirm deletion.")
+    delete_document_cmd.add_argument("--no-update-index", action="store_true", help="Skip the incremental collection index update after delete.")
 
     cite_block_cmd = subparsers.add_parser("cite-block", help="Return page/bbox citation for a block id.")
     cite_block_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
@@ -429,7 +431,12 @@ def main(argv: list[str] | None = None) -> int:
         if not args.source:
             return _emit_json({"status": "error", "message": "ingest requires a source path (or --rebuild-index)."}, exit_code=1)
         payload = ingest_document_tool(
-            source=args.source, store_dir=args.store_dir, lang=args.lang, max_chars=args.max_chars, ocr=args.ocr
+            source=args.source,
+            store_dir=args.store_dir,
+            lang=args.lang,
+            max_chars=args.max_chars,
+            ocr=args.ocr,
+            update_index=not args.no_update_index,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
@@ -438,7 +445,12 @@ def main(argv: list[str] | None = None) -> int:
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
     if args.command == "delete-document":
-        payload = delete_document_tool(document_id=args.document_id, store_dir=args.store_dir, yes=args.yes)
+        payload = delete_document_tool(
+            document_id=args.document_id,
+            store_dir=args.store_dir,
+            yes=args.yes,
+            update_index=not args.no_update_index,
+        )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
     if args.command == "cite-block":

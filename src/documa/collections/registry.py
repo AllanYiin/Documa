@@ -221,10 +221,12 @@ def ingest_document(
                     "ir_path": str(store / Path(PurePosixPath(winner["ir_path"]))),
                 }
             # Same source path re-ingested with new content supersedes the old entry.
+            superseded_ids = []
             for old in registry["documents"]:
                 if old.get("source_path") == entry["source_path"] and old.get("status") == "active":
                     old["status"] = "superseded"
                     old["superseded_by"] = document_id
+                    superseded_ids.append(old["document_id"])
             registry["documents"].append(entry)
             # Per-document copy makes documents/ the source of truth for rebuilds.
             write_payload(document_dir / "ingest.json", entry)
@@ -236,6 +238,7 @@ def ingest_document(
         "status": "ok",
         "document_id": document_id,
         "deduplicated": False,
+        "superseded_document_ids": superseded_ids,
         "ir_path": str(store / Path(ir_rel)),
         "page_count": result.get("page_count"),
         "chunk_count": result.get("chunk_count"),

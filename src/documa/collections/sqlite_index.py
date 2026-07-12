@@ -54,6 +54,8 @@ def _connect(store_dir: str | Path) -> sqlite3.Connection:
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
+    # Concurrent ingests serialize on the write lock instead of erroring.
+    conn.execute("PRAGMA busy_timeout=5000")
     return conn
 
 
@@ -422,6 +424,90 @@ def _row_to_result(row: sqlite3.Row, score: float, units: list[str]) -> dict[str
         "dedupe_key": row["dedupe_key"],
         "read_ref": {"ir_path": row["registry_document_id"], "block_id": row["block_id"]},
     }
+
+
+def _delete_document_rows(conn: sqlite3.Connection, collection_id: str, registry_document_id: str) -> None:
+    predicate = "collection_id = ? AND registry_document_id = ?"
+    params = (collection_id, registry_document_id)
+    conn.execute(f"DELETE FROM blocks_fts WHERE {predicate}", params)
+    conn.execute(f"DELETE FROM blocks WHERE {predicate}", params)
+    conn.execute(f"DELETE FROM documents WHERE {predicate}", params)
+
+
+def _collection_row(conn: sqlite3.Connection, collection_id: str) -> sqlite3.Row | None:
+    return conn.execute("SELECT * FROM collections WHERE collection_id = ?", (collection_id,)).fetchone()
+
+
+def upsert_document_index(
+    store_dir: str | Path = registry_store.DEFAULT_STORE_DIR,
+    entry: dict[str, Any] | None = None,
+    collection_id: str = DEFAULT_COLLECTION_ID,
+    *,
+    force: bool = False,
+) -> ToolPayload:
+    """Incrementally (re)index one registry document.
+
+    Keeps the derived index coherent after every ingest without a full
+    rebuild. Skips cheaply when no index exists yet, when the index schema
+    version is outdated (repair path: build_collection_index), or when the
+    indexed content hash already matches the entry.
+    """
+    store = Path(store_dir)
+    if not entry or not entry.get("document_id"):
+        return {"status": "error", "code": "REGISTRY_ENTRY_INVALID", "message": "A registry entry with document_id is required."}
+    if not index_path(store).exists():
+        return {"status": "skipped", "code": "COLLECTION_INDEX_NOT_FOUND", "collection_id": collection_id}
+    document_id = entry["document_id"]
+    now = _now_iso()
+    try:
+        with _connect(store) as conn:
+            _init_schema(conn)
+            collection = _collection_row(conn, collection_id)
+            if collection is None:
+                return {"status": "skipped", "code": "COLLECTION_INDEX_NOT_FOUND", "collection_id": collection_id}
+            if str(collection["index_version"]) != INDEX_VERSION:
+                return {
+                    "status": "skipped",
+                    "code": "COLLECTION_INDEX_VERSION_OUTDATED",
+                    "collection_id": collection_id,
+                    "index_version": collection["index_version"],
+                }
+            indexed = conn.execute(
+                "SELECT content_hash FROM documents WHERE collection_id = ? AND registry_document_id = ?",
+                (collection_id, document_id),
+            ).fetchone()
+            if indexed is not None and indexed["content_hash"] == entry.get("content_hash") and not force:
+                return {"status": "ok", "collection_id": collection_id, "document_id": document_id, "updated": False, "reason": "content_hash_unchanged"}
+            _delete_document_rows(conn, collection_id, document_id)
+            block_count = _insert_document_rows(conn, store, collection_id, entry, now)
+            conn.execute("UPDATE collections SET updated_at = ? WHERE collection_id = ?", (now, collection_id))
+            conn.commit()
+    except (OSError, sqlite3.Error, KeyError, ValueError, json.JSONDecodeError) as exc:
+        return {"status": "error", "code": "COLLECTION_INDEX_UPSERT_FAILED", "message": str(exc), "document_id": document_id}
+    return {"status": "ok", "collection_id": collection_id, "document_id": document_id, "updated": True, "block_count": block_count}
+
+
+def remove_document_index(
+    store_dir: str | Path = registry_store.DEFAULT_STORE_DIR,
+    registry_document_id: str = "",
+    collection_id: str = DEFAULT_COLLECTION_ID,
+) -> ToolPayload:
+    """Drop one document's rows from the collection index (delete/supersede)."""
+    store = Path(store_dir)
+    if not registry_document_id:
+        return {"status": "error", "code": "REGISTRY_ENTRY_INVALID", "message": "registry_document_id is required."}
+    if not index_path(store).exists():
+        return {"status": "skipped", "code": "COLLECTION_INDEX_NOT_FOUND", "collection_id": collection_id}
+    now = _now_iso()
+    try:
+        with _connect(store) as conn:
+            _init_schema(conn)
+            _delete_document_rows(conn, collection_id, registry_document_id)
+            conn.execute("UPDATE collections SET updated_at = ? WHERE collection_id = ?", (now, collection_id))
+            conn.commit()
+    except (OSError, sqlite3.Error) as exc:
+        return {"status": "error", "code": "COLLECTION_INDEX_REMOVE_FAILED", "message": str(exc), "document_id": registry_document_id}
+    return {"status": "ok", "collection_id": collection_id, "document_id": registry_document_id, "removed": True}
 
 
 # bm25() weights are positional in blocks_fts column-declaration order:

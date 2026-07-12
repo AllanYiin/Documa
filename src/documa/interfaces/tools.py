@@ -1257,8 +1257,24 @@ def ingest_document_tool(
     lang: str = "auto",
     max_chars: int = 1200,
     ocr: bool = False,
+    update_index: bool = True,
 ) -> ToolPayload:
-    return registry_store.ingest_document(source, store_dir=store_dir, lang=lang, max_chars=max_chars, ocr=ocr)
+    result = registry_store.ingest_document(source, store_dir=store_dir, lang=lang, max_chars=max_chars, ocr=ocr)
+    # Keep the derived collection index coherent with the registry: upsert the
+    # ingested document (a content-hash no-op for dedup hits) and drop rows of
+    # entries this ingest superseded. With no index built yet this is one
+    # cheap existence check; full rebuild stays the repair path.
+    if result.get("status") == "ok" and update_index:
+        entry = registry_store.get_entry(store_dir, result["document_id"])
+        outcome = collection_index.upsert_document_index(store_dir, entry)
+        for old_id in result.get("superseded_document_ids", []):
+            collection_index.remove_document_index(store_dir, old_id)
+        result["index_update"] = {
+            "status": outcome.get("status"),
+            "updated": outcome.get("updated"),
+            "code": outcome.get("code"),
+        }
+    return result
 
 
 def index_collection_tool(
@@ -1294,8 +1310,15 @@ def delete_document_tool(
     document_id: str,
     store_dir: str = registry_store.DEFAULT_STORE_DIR,
     yes: bool = False,
+    update_index: bool = True,
 ) -> ToolPayload:
-    return registry_store.delete_document(document_id, store_dir=store_dir, yes=yes)
+    result = registry_store.delete_document(document_id, store_dir=store_dir, yes=yes)
+    # Only after a confirmed delete: drop the document's index rows so search
+    # stays coherent without a full rebuild.
+    if result.get("status") == "ok" and yes and update_index:
+        outcome = collection_index.remove_document_index(store_dir, document_id)
+        result["index_update"] = {"status": outcome.get("status"), "code": outcome.get("code")}
+    return result
 
 
 def inspect_store_tool(store_dir: str = registry_store.DEFAULT_STORE_DIR) -> ToolPayload:
