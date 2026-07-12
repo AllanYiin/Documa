@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from collections import OrderedDict
 from pathlib import Path
@@ -92,12 +93,20 @@ def _stamp_provenance(document: DocumentIR, pipeline_profile: str | None = None)
     document.pipeline_profile = pipeline_profile
 
 
+def _env_cache_size(name: str, default: int) -> int:
+    try:
+        return max(1, int(os.environ.get(name, "")))
+    except ValueError:
+        return default
+
+
 # Parsed-document cache keyed by (resolved path, mtime_ns, size): the key
 # self-invalidates whenever the IR file is rewritten. Cached DocumentIR objects
 # are shared across tool calls, so tools may only apply idempotent in-place
 # enrichment (block tree build, page-citation map) — never destructive mutation.
+# Sized for cross-document read_ref chains; override via DOCUMA_DOCUMENT_CACHE_SIZE.
 _DOCUMENT_CACHE: OrderedDict[tuple[str, int, int], DocumentIR] = OrderedDict()
-_DOCUMENT_CACHE_MAX_ENTRIES = 8
+_DOCUMENT_CACHE_MAX_ENTRIES = _env_cache_size("DOCUMA_DOCUMENT_CACHE_SIZE", default=16)
 
 
 def clear_document_cache() -> None:

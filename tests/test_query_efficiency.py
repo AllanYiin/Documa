@@ -367,6 +367,57 @@ class TokenBudgetTests(unittest.TestCase):
             self.assertLessEqual(len(serialized), 6000)
 
 
+class RegistryMapCacheTests(unittest.TestCase):
+    def setUp(self):
+        from documa.collections import sqlite_index
+
+        sqlite_index.clear_registry_entry_cache()
+
+    def tearDown(self):
+        from documa.collections import sqlite_index
+
+        sqlite_index.clear_registry_entry_cache()
+
+    def test_registry_map_is_cached_until_registry_file_changes(self):
+        from documa.collections import registry as registry_store
+        from documa.collections import sqlite_index
+        from documa.collections.sqlite_index import build_collection_index, search_collection
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Path(tmp) / ".documa"
+            source = Path(tmp) / "a.md"
+            source.write_text("# A\n\ncached registry needle.\n", encoding="utf-8")
+            result = registry_store.ingest_document(str(source), store_dir=store)
+            build_collection_index(store)
+
+            with mock.patch.object(
+                sqlite_index.registry_store, "load_registry", wraps=registry_store.load_registry
+            ) as load_spy:
+                search_collection(store, query="needle")
+                search_collection(store, query="needle")
+                self.assertEqual(load_spy.call_count, 1)
+
+                # Rewriting registry.json invalidates the mtime/size cache key.
+                registry_path = store / "registry.json"
+                registry = json.loads(registry_path.read_text(encoding="utf-8"))
+                registry["documents"][0]["status"] = "superseded"
+                registry_path.write_text(json.dumps(registry, ensure_ascii=False), encoding="utf-8")
+
+                stale = search_collection(store, query="needle")
+                self.assertEqual(load_spy.call_count, 2)
+                self.assertEqual(stale["result_count"], 0)
+            self.assertEqual(result["status"], "ok")
+
+    def test_document_cache_size_env_parsing(self):
+        self.assertEqual(tools_module._env_cache_size("DOCUMA_TEST_ABSENT_VAR", default=16), 16)
+        with mock.patch.dict("os.environ", {"DOCUMA_TEST_CACHE_VAR": "4"}):
+            self.assertEqual(tools_module._env_cache_size("DOCUMA_TEST_CACHE_VAR", default=16), 4)
+        with mock.patch.dict("os.environ", {"DOCUMA_TEST_CACHE_VAR": "0"}):
+            self.assertEqual(tools_module._env_cache_size("DOCUMA_TEST_CACHE_VAR", default=16), 1)
+        with mock.patch.dict("os.environ", {"DOCUMA_TEST_CACHE_VAR": "not-a-number"}):
+            self.assertEqual(tools_module._env_cache_size("DOCUMA_TEST_CACHE_VAR", default=16), 16)
+
+
 class CollectionSearchGuidanceTests(unittest.TestCase):
     """Budget, hints, and recommended_next for cross-document search."""
 

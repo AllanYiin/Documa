@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+from collections import OrderedDict
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -208,8 +209,35 @@ def _active_registry_entries(store_dir: Path) -> list[dict[str, Any]]:
     return [entry for entry in registry.get("documents", []) if entry.get("status", "active") == "active"]
 
 
+# Active-entry maps cached by (registry.json path, mtime_ns, size): the key
+# self-invalidates on every registry write. Cached maps are shared read-only
+# state — callers must never mutate them.
+_REGISTRY_MAP_CACHE: OrderedDict[tuple[str, int, int], dict[str, dict[str, Any]]] = OrderedDict()
+_REGISTRY_MAP_CACHE_MAX_ENTRIES = 4
+
+
+def clear_registry_entry_cache() -> None:
+    """Drop cached active-entry maps (used by tests)."""
+    _REGISTRY_MAP_CACHE.clear()
+
+
 def _active_registry_entry_map(store_dir: Path) -> dict[str, dict[str, Any]]:
-    return {entry["document_id"]: entry for entry in _active_registry_entries(store_dir)}
+    registry_path = Path(store_dir) / "registry.json"
+    try:
+        stat = registry_path.stat()
+    except OSError:
+        # Missing registry: load_registry returns an empty default cheaply.
+        return {entry["document_id"]: entry for entry in _active_registry_entries(store_dir)}
+    cache_key = (str(registry_path.resolve()), stat.st_mtime_ns, stat.st_size)
+    cached = _REGISTRY_MAP_CACHE.get(cache_key)
+    if cached is not None:
+        _REGISTRY_MAP_CACHE.move_to_end(cache_key)
+        return cached
+    entry_map = {entry["document_id"]: entry for entry in _active_registry_entries(store_dir)}
+    _REGISTRY_MAP_CACHE[cache_key] = entry_map
+    while len(_REGISTRY_MAP_CACHE) > _REGISTRY_MAP_CACHE_MAX_ENTRIES:
+        _REGISTRY_MAP_CACHE.popitem(last=False)
+    return entry_map
 
 
 def _insert_document_rows(
