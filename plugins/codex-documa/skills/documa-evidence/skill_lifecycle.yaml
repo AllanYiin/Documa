@@ -1,0 +1,49 @@
+name: documa-evidence
+status: draft
+owner: Documa contributors
+archetype: workflow
+primary_structure_pattern: evidence-first-mcp-workflow
+lifecycle:
+  created_at: "2026-07-12"
+  updated_at: "2026-07-13"
+  next_review_due: "2026-10-12"
+  review_cadence: quarterly
+  review_interval_days: 92
+support:
+  hosts:
+    - codex
+  integration:
+    - mcp
+  package_boundary: plugins/codex-documa
+risk:
+  level: medium
+  notes:
+    - Depends on plugin-provided Documa MCP tools being visible in Codex.
+    - Document claims must stay grounded in read Documa blocks.
+dependencies:
+  runtime:
+    - documa-mcp
+  tools:
+    - documa_process
+    - documa_search_blocks
+    - documa_list_blocks
+    - documa_read_block
+    - documa_block_tree
+    - documa_block_xref
+    - documa_inspect_block
+    - documa_source_window
+    - documa_cite_block
+    - documa_render_citation
+    - documa_verify_citations
+    - documa_index_collection
+    - documa_search_collection
+    - documa_list_documents
+    - documa_doctor
+  skills:
+    - pdf
+governance:
+  compatibility_policy: Keep host wrapper thin and consume Documa through MCP.
+  release_claims:
+    - Draft-ready only after local release gate passes.
+    - No ROI, live integration, or cross-host quality claim without benchmark evidence.
+

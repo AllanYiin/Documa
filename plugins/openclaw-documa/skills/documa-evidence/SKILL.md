@@ -18,9 +18,9 @@ Trigger and fallback rules:
 Preferred sequence:
 
 1. If the source is not already a `documa.ir.json`, call `documa_process` with bounded export formats such as `block-json`, `rag-json`, or `markdown`.
-2. Start with `documa_search_blocks`. Treat search snippets as navigation only.
-3. Call `documa_read_block` for the smallest set of block ids that can support the answer.
-4. If evidence is incomplete, refine the search query or read nearby parent/child blocks before expanding scope.
+2. Start with `documa_search_blocks` using 2-4 precise terms, `verbosity=compact`, and `limit<=5`. Treat search snippets as navigation only. Set `max_response_tokens` as a hard response ceiling when context is tight; page further matches with `offset` (the response reports `total_matches`).
+3. Follow the search response's `recommended_next` (block ids plus a `max_chars` budget) into `documa_read_block`; otherwise read the smallest set of block ids that can support the answer, bounding output with `max_chars` or `max_tokens` (start from each hit's `recommended_read_chars`).
+4. If evidence is incomplete, refine the query once guided by the response `hints`, or read nearby parent/child blocks (`include_children=true` only when `neighbors.needs_next` is true), before expanding scope.
 5. In the final answer, distinguish observed evidence from inference and cite block ids or source/page metadata when available.
 
 Do not silently replace original text with normalized text. Do not depend on parser-native objects.

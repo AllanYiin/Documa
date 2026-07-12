@@ -121,6 +121,8 @@ def build_parser() -> argparse.ArgumentParser:
     blocks_cmd.add_argument("--depth", type=int, help="Maximum block depth to return.")
     blocks_cmd.add_argument("--parent-id", help="Only return direct children of this block id.")
     blocks_cmd.add_argument("--no-metadata-summary", action="store_true", help="Omit keyword metadata summaries.")
+    blocks_cmd.add_argument("--limit", type=int, default=None, help="Maximum blocks to return (paging).")
+    blocks_cmd.add_argument("--offset", type=int, default=0, help="Skip this many blocks (paging).")
 
     block_cmd = subparsers.add_parser("block", help="Inspect or read a Documa document block.")
     block_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
@@ -128,11 +130,13 @@ def build_parser() -> argparse.ArgumentParser:
     block_cmd.add_argument("--read", action="store_true", help="Read block body instead of metadata.")
     block_cmd.add_argument("--include-children", action="store_true", help="Include descendant block bodies when reading.")
     block_cmd.add_argument("--max-chars", type=int, help="Limit returned body text.")
+    block_cmd.add_argument("--max-tokens", type=int, help="Limit returned body to an estimated token budget (CJK-aware).")
 
     search_blocks_cmd = subparsers.add_parser("search-blocks", help="Search Documa document blocks.")
     search_blocks_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
     search_blocks_cmd.add_argument("--query", required=True, help="Lexical query.")
     search_blocks_cmd.add_argument("--limit", type=int, default=10, help="Maximum result count.")
+    search_blocks_cmd.add_argument("--offset", type=int, default=0, help="Skip this many ranked results (paging).")
     search_blocks_cmd.add_argument("--term", action="append", dest="any_of", help="Additional OR search term.")
     search_blocks_cmd.add_argument("--field", action="append", dest="fields", help="Restrict searched fields. Repeatable.")
     search_blocks_cmd.add_argument("--snippet-field", action="append", dest="snippet_fields", help="Field allowed to produce snippets. Repeatable.")
@@ -142,6 +146,7 @@ def build_parser() -> argparse.ArgumentParser:
     search_blocks_cmd.add_argument("--max-snippets-per-block", type=int, default=5, help="Maximum snippets per result block.")
     search_blocks_cmd.add_argument("--context-chars", type=int, default=24, help="CJK characters around snippet matches.")
     search_blocks_cmd.add_argument("--context-words", type=int, default=8, help="ASCII words around snippet matches.")
+    search_blocks_cmd.add_argument("--max-response-tokens", type=int, default=None, help="Hard ceiling on estimated response tokens; lowest-ranked rows drop first.")
 
     index_collection_cmd = subparsers.add_parser("index-collection", help="Build the local collection search index.")
     index_collection_cmd.add_argument("--store-dir", default=".documa", help="Document store directory.")
@@ -152,10 +157,14 @@ def build_parser() -> argparse.ArgumentParser:
     search_collection_cmd.add_argument("--collection-id", default="default", help="Collection identifier.")
     search_collection_cmd.add_argument("--query", required=True, help="Lexical query.")
     search_collection_cmd.add_argument("--limit", type=int, default=20, help="Maximum result count.")
+    search_collection_cmd.add_argument("--offset", type=int, default=0, help="Skip this many results (paging).")
     search_collection_cmd.add_argument("--per-document-limit", type=int, default=None, help="Maximum results per document.")
 
-    block_tree_cmd = subparsers.add_parser("block-tree", help="Return the full Documa document block tree.")
+    block_tree_cmd = subparsers.add_parser("block-tree", help="Return the Documa document block tree (outline).")
     block_tree_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
+    block_tree_cmd.add_argument("--max-depth", type=int, default=None, help="Collapse subtrees below this depth to children_count.")
+    block_tree_cmd.add_argument("--max-nodes", type=int, default=500, help="Maximum nodes emitted before truncation.")
+    block_tree_cmd.add_argument("--no-citations", action="store_true", help="Omit per-node page citation metadata.")
 
     block_xref_cmd = subparsers.add_parser("block-xref", help="Return parent, children, source, and relation refs.")
     block_xref_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
@@ -309,6 +318,8 @@ def main(argv: list[str] | None = None) -> int:
             depth=args.depth,
             parent_id=args.parent_id,
             include_metadata_summary=not args.no_metadata_summary,
+            limit=args.limit,
+            offset=args.offset,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
@@ -319,6 +330,7 @@ def main(argv: list[str] | None = None) -> int:
                 block_id=args.block_id,
                 include_children=args.include_children,
                 max_chars=args.max_chars,
+                max_tokens=args.max_tokens,
             )
         else:
             payload = inspect_block_tool(ir_path=args.ir_path, block_id=args.block_id)
@@ -329,6 +341,7 @@ def main(argv: list[str] | None = None) -> int:
             ir_path=args.ir_path,
             query=args.query,
             limit=args.limit,
+            offset=args.offset,
             any_of=args.any_of,
             fields=args.fields,
             snippet_fields=args.snippet_fields,
@@ -338,6 +351,7 @@ def main(argv: list[str] | None = None) -> int:
             search_body=not args.no_body,
             context_chars=args.context_chars,
             context_words=args.context_words,
+            max_response_tokens=args.max_response_tokens,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
@@ -351,12 +365,18 @@ def main(argv: list[str] | None = None) -> int:
             collection_id=args.collection_id,
             query=args.query,
             limit=args.limit,
+            offset=args.offset,
             per_document_limit=args.per_document_limit,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
     if args.command == "block-tree":
-        payload = block_tree_tool(ir_path=args.ir_path)
+        payload = block_tree_tool(
+            ir_path=args.ir_path,
+            max_depth=args.max_depth,
+            max_nodes=args.max_nodes,
+            include_citations=not args.no_citations,
+        )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
     if args.command == "block-xref":

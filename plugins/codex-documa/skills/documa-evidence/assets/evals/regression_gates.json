@@ -1,0 +1,10 @@
+{
+  "min_with_skill_pass_rate": 0.85,
+  "max_with_skill_error_rate": 0.05,
+  "min_trigger_precision": 0.8,
+  "min_trigger_recall": 0.8,
+  "notes": [
+    "Draft static gates only. No benchmark artifact is currently claimed.",
+    "Strict benchmark enforcement requires --require-benchmark or --require-live-benchmark."
+  ]
+}

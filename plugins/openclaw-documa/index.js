@@ -109,8 +109,10 @@ export default definePluginEntry({
           ir_path: { type: "string" },
           query: { type: "string" },
           limit: { type: "number", default: 10 },
+          offset: { type: "number", default: 0 },
           verbosity: { type: "string", enum: ["compact", "standard", "debug"], default: "compact" },
           no_body: { type: "boolean", default: false },
+          max_response_tokens: { type: "number" },
         },
         required: ["ir_path", "query"],
       },
@@ -125,6 +127,10 @@ export default definePluginEntry({
           "--verbosity",
           params.verbosity || "compact",
         ];
+        const offset = optionalNumber(params.offset);
+        const maxResponseTokens = optionalNumber(params.max_response_tokens);
+        if (offset && params.offset > 0) args.push("--offset", offset);
+        if (maxResponseTokens) args.push("--max-response-tokens", maxResponseTokens);
         if (params.no_body) args.push("--no-body");
         return asToolResult(await runDocuma(context?.config, args, context?.signal));
       },
@@ -141,14 +147,17 @@ export default definePluginEntry({
           block_id: { type: "string" },
           include_children: { type: "boolean", default: false },
           max_chars: { type: "number" },
+          max_tokens: { type: "number" },
         },
         required: ["ir_path", "block_id"],
       },
       async execute(_id, params, context) {
         const args = ["block", params.ir_path, "--id", params.block_id, "--read"];
         const maxChars = optionalNumber(params.max_chars);
+        const maxTokens = optionalNumber(params.max_tokens);
         if (params.include_children) args.push("--include-children");
         if (maxChars) args.push("--max-chars", maxChars);
+        if (maxTokens) args.push("--max-tokens", maxTokens);
         return asToolResult(await runDocuma(context?.config, args, context?.signal));
       },
     });

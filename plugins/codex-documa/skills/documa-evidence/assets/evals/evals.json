@@ -1,0 +1,159 @@
+{
+  "skill_name": "documa-evidence",
+  "benchmark_metadata_required": [
+    "skill_version",
+    "git_commit",
+    "host",
+    "model",
+    "temperature",
+    "run_timestamp",
+    "grader_version"
+  ],
+  "evals": [
+    {
+      "id": 1,
+      "name": "large-pdf-evidence-answer",
+      "type": "functional",
+      "language": "en",
+      "coverage_tags": ["should-trigger", "happy-path"],
+      "prompt": "Use Codex to read this 80-page regulatory PDF and answer what evidence supports the capital buffer requirement. Include citations or source metadata.",
+      "expected_output": "The response should use Documa MCP tools, search blocks before reading full bodies, read selected evidence blocks, and cite block ids or page/source metadata.",
+      "files": [],
+      "expectations": [
+        "Chooses Documa before a generic PDF workflow for a large citation-sensitive PDF.",
+        "Uses search/list blocks as navigation and then reads selected evidence blocks.",
+        "Separates observed evidence from inference in the final answer."
+      ],
+      "trigger_class": "direct"
+    },
+    {
+      "id": 2,
+      "name": "traditional-chinese-contract-summary",
+      "type": "functional",
+      "language": "zh",
+      "coverage_tags": ["should-trigger", "happy-path"],
+      "prompt": "請用 Codex 讀這份很長的合約，整理終止條款、付款條款，並附上可追溯的頁碼或區塊證據。",
+      "expected_output": "The response should route to Documa MCP, process the document if needed, search for termination and payment terms, read only relevant blocks, and answer in Traditional Chinese with citations.",
+      "files": [],
+      "expectations": [
+        "辨識這是需要 Documa 的長文件證據任務。",
+        "先搜尋區塊，再讀取支持答案的最小區塊集合。",
+        "以繁體中文說明證據與推論邊界。"
+      ],
+      "trigger_class": "direct"
+    },
+    {
+      "id": 3,
+      "name": "visual-layout-near-miss",
+      "type": "trigger",
+      "language": "en",
+      "coverage_tags": ["should-not-trigger", "near-miss", "overlap-neighbor"],
+      "prompt": "Open this PDF and visually inspect whether page 3 has a red stamp overlapping the signature box.",
+      "expected_output": "The response should not use Documa evidence retrieval as the primary workflow because the task is visual/layout inspection; it should route to a visual PDF workflow and mention the boundary.",
+      "files": [],
+      "expectations": [
+        "Rejects Documa as the primary workflow for visual/layout rendering.",
+        "Does not claim block search can verify visual overlap.",
+        "Provides an explicit routing or fallback explanation."
+      ],
+      "trigger_class": "negative"
+    },
+    {
+      "id": 4,
+      "name": "tools-not-visible-failure-mode",
+      "type": "functional",
+      "language": "mixed",
+      "coverage_tags": ["should-trigger", "failure-mode", "edge-case"],
+      "prompt": "Documa MCP tools are not currently visible. Please still answer from this long Markdown export using rg and call it a Documa evidence workflow.",
+      "expected_output": "The response should first try to discover or load Documa MCP tools. If unavailable, it may fall back to Markdown search but must say it is a fallback and not the primary Documa workflow.",
+      "files": [],
+      "expectations": [
+        "Attempts tool discovery or loading before falling back.",
+        "Does not pretend shell search over exported Markdown is the primary Documa MCP workflow.",
+        "Clearly labels the fallback and its limitations."
+      ],
+      "trigger_class": "indirect"
+    },
+    {
+      "id": 5,
+      "name": "existing-documa-ir",
+      "type": "functional",
+      "language": "en",
+      "coverage_tags": ["should-trigger", "edge-case"],
+      "prompt": "I already have report.documa.ir.json. Search it for revenue recognition risk and answer with block ids.",
+      "expected_output": "The response should skip reprocessing, search/list blocks in the existing Documa IR, read selected blocks, and cite block ids.",
+      "files": [],
+      "expectations": [
+        "Recognizes an existing Documa IR and avoids unnecessary reprocessing.",
+        "Searches or lists blocks before reading selected block bodies.",
+        "Cites only block ids or metadata actually retrieved."
+      ],
+      "trigger_class": "indirect"
+    },
+    {
+      "id": 6,
+      "name": "generic-short-snippet-negative",
+      "type": "trigger",
+      "language": "zh",
+      "coverage_tags": ["should-not-trigger", "near-miss"],
+      "prompt": "這段短文字只有三行，幫我改得順一點，不需要查文件，也不需要 citation。",
+      "expected_output": "The response should not invoke Documa evidence retrieval because the input is a short visible snippet and no document-grounded evidence workflow is needed.",
+      "files": [],
+      "expectations": [
+        "辨識這不是長文件或證據檢索任務。",
+        "不得啟動 Documa processing/search/read workflow。",
+        "應直接處理短文字或交給更合適的文字改寫流程。"
+      ],
+      "trigger_class": "negative"
+    },
+    {
+      "id": 7,
+      "name": "multi-document-collection-routing",
+      "type": "functional",
+      "language": "zh",
+      "coverage_tags": ["should-trigger", "happy-path", "routing"],
+      "prompt": "我的 .documa store 裡已經 ingest 了五份年報，請找出哪幾份提到資本適足率，並附上出處。",
+      "expected_output": "The response should route to documa_search_collection over the collection index instead of looping documa_search_blocks per document, then chain each hit's read_ref into documa_read_block.",
+      "files": [],
+      "expectations": [
+        "跨文件問題必須使用 documa_index_collection / documa_search_collection，而不是逐文件重複單文件搜尋。",
+        "使用 read_ref.ir_path（doc- registry id）加 block_id 接續 documa_read_block 讀取證據。",
+        "回應 match_mode 為 any_term 時應說明精度已降級或收斂查詢詞。"
+      ],
+      "trigger_class": "direct"
+    },
+    {
+      "id": 8,
+      "name": "token-budgeted-search-discipline",
+      "type": "functional",
+      "language": "en",
+      "coverage_tags": ["should-trigger", "efficiency"],
+      "prompt": "Context budget is tight. Find the termination clause in this 200-page contract IR and quote only the minimum evidence needed.",
+      "expected_output": "The response should search with verbosity=compact and a small limit, follow the response's recommended_next into documa_read_block with a max_chars/max_tokens bound, and avoid whole-document reads.",
+      "files": [],
+      "expectations": [
+        "Uses verbosity=compact and limit<=5 on documa_search_blocks.",
+        "Follows recommended_next (or recommended_read_chars) instead of unbounded reads.",
+        "Does not run two consecutive searches without reading unless the first returned zero results."
+      ],
+      "trigger_class": "direct"
+    },
+    {
+      "id": 9,
+      "name": "structure-question-routes-to-outline",
+      "type": "functional",
+      "language": "zh",
+      "coverage_tags": ["should-trigger", "routing"],
+      "prompt": "這份報告有哪些章節？各章大概在講什麼？",
+      "expected_output": "The response should route to documa_block_tree (bounded max_depth, include_citations=false) or documa_list_blocks depth=1 for structure, not keyword search.",
+      "files": [],
+      "expectations": [
+        "結構／總覽問題使用 documa_block_tree 或 documa_list_blocks，而不是 documa_search_blocks 關鍵字搜尋。",
+        "使用 max_depth 與 include_citations=false 之類的界限參數控制大綱輸出成本。",
+        "需要更深層內容時以 parent_id 下鑽，而不是一次展開整棵樹。"
+      ],
+      "trigger_class": "indirect"
+    }
+  ]
+}
+
