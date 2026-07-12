@@ -1070,7 +1070,12 @@ def search_blocks_tool(
     return payload
 
 
-def block_tree_tool(ir_path: str) -> ToolPayload:
+def block_tree_tool(
+    ir_path: str,
+    max_depth: int | None = None,
+    max_nodes: int = 500,
+    include_citations: bool = True,
+) -> ToolPayload:
     try:
         document = load_document(ir_path)
     except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
@@ -1079,20 +1084,48 @@ def block_tree_tool(ir_path: str) -> ToolPayload:
     page_citations = ensure_page_citation_map(document)
     by_parent = _children_by_parent(document)
 
-    def node(block: Any) -> dict[str, Any]:
-        return {
+    emitted = 0
+    truncated = False
+
+    def node(block: Any, depth: int) -> dict[str, Any]:
+        nonlocal emitted, truncated
+        emitted += 1
+        item = {
             "id": block.id,
             "type": block.type.value,
             "title": block.title,
             "depth": block.depth,
             "page_refs": block.page_refs,
-            **page_citation_metadata(block.page_refs, page_citations),
             "source_range": block.metadata.get("source_range"),
-            "children": [node(child) for child in by_parent.get(block.id, [])],
         }
+        if include_citations:
+            item.update(page_citation_metadata(block.page_refs, page_citations))
+        children = by_parent.get(block.id, [])
+        if max_depth is not None and depth >= max_depth:
+            # Collapse the subtree to a count so the outline stays cheap;
+            # callers descend via parent_id in documa_list_blocks when needed.
+            item["children_count"] = len(children)
+            if children:
+                truncated = True
+            return item
+        rendered_children = []
+        for child in children:
+            if emitted >= max_nodes:
+                truncated = True
+                break
+            rendered_children.append(node(child, depth + 1))
+        item["children"] = rendered_children
+        if len(rendered_children) < len(children):
+            item["children_count"] = len(children)
+        return item
 
-    roots = [node(block) for block in by_parent.get(None, [])]
-    return {"status": "ok", "document_id": document.id, "tree": roots}
+    roots = []
+    for block in by_parent.get(None, []):
+        if emitted >= max_nodes:
+            truncated = True
+            break
+        roots.append(node(block, 0))
+    return {"status": "ok", "document_id": document.id, "truncated": truncated, "tree": roots}
 
 
 def block_xref_tool(ir_path: str, block_id: str) -> ToolPayload:

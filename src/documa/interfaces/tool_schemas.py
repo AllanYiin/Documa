@@ -263,10 +263,15 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
         {
             "name": "documa_block_tree",
             "title": "Return Documa document block tree",
-            "description": "Return the full block hierarchy without expanding block bodies.",
+            "description": "Return the block hierarchy (the document outline) without expanding block bodies. Use max_depth=2-3 with include_citations=false for a cheap structural overview.",
             "inputSchema": {
                 "type": "object",
-                "properties": {"ir_path": {"type": "string"}},
+                "properties": {
+                    "ir_path": {"type": "string"},
+                    "max_depth": {"type": ["integer", "null"], "minimum": 0, "description": "Collapse subtrees below this depth to children_count."},
+                    "max_nodes": {"type": "integer", "minimum": 1, "default": 500},
+                    "include_citations": {"type": "boolean", "default": True, "description": "Set false to omit per-node page citation metadata for a smaller outline."},
+                },
                 "required": ["ir_path"],
             },
             "outputSchema": {"type": "object", "properties": {"status": {"type": "string"}}},

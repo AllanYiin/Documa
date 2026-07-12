@@ -234,6 +234,39 @@ class TokenBudgetTests(unittest.TestCase):
             self.assertNotIn("recommended_next", payload)
             self.assertTrue(any("any_of" in hint for hint in payload["hints"]))
 
+    def test_block_tree_supports_depth_and_node_bounds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ir_path = _write_ir(tmp, self._multi_block_document())
+
+            full = call_documa_tool("documa_block_tree", {"ir_path": str(ir_path)})["structuredContent"]
+            bounded = call_documa_tool(
+                "documa_block_tree",
+                {"ir_path": str(ir_path), "max_depth": 1, "include_citations": False},
+            )["structuredContent"]
+            capped = call_documa_tool(
+                "documa_block_tree",
+                {"ir_path": str(ir_path), "max_nodes": 2},
+            )["structuredContent"]
+
+            self.assertFalse(full["truncated"])
+            root = full["tree"][0]
+            self.assertIn("citation_label", root)
+            self.assertTrue(root["children"])
+
+            bounded_root = bounded["tree"][0]
+            self.assertNotIn("citation_label", bounded_root)
+            # Depth-1 children collapse their own subtrees into counts.
+            page_node = bounded_root["children"][0]
+            self.assertNotIn("children", page_node)
+            self.assertGreater(page_node["children_count"], 0)
+            self.assertTrue(bounded["truncated"])
+            self.assertLess(
+                len(json.dumps(bounded, ensure_ascii=False)),
+                len(json.dumps(full, ensure_ascii=False)),
+            )
+
+            self.assertTrue(capped["truncated"])
+
     def test_compact_search_response_size_stays_bounded(self):
         # Regression guardrail: the serialized compact response must stay small
         # enough that a default search costs well under ~1k estimated tokens.

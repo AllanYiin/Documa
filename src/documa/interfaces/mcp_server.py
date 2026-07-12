@@ -240,10 +240,20 @@ def create_mcp_server() -> Any:
         )
 
     @mcp.tool()
-    def documa_block_tree(ir_path: str) -> dict[str, Any]:
-        """Return the progressive document block hierarchy."""
+    def documa_block_tree(
+        ir_path: str,
+        max_depth: int | None = None,
+        max_nodes: int = 500,
+        include_citations: bool = True,
+    ) -> dict[str, Any]:
+        """Return the progressive document block hierarchy (the document outline)."""
 
-        return block_tree_tool(ir_path=ir_path)
+        return block_tree_tool(
+            ir_path=ir_path,
+            max_depth=max_depth,
+            max_nodes=max_nodes,
+            include_citations=include_citations,
+        )
 
     @mcp.tool()
     def documa_block_xref(ir_path: str, block_id: str) -> dict[str, Any]:
