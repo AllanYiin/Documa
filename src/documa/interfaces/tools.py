@@ -17,6 +17,7 @@ from documa.collections.email_collection import MailboxIngestionOptions, ingest_
 from documa.core.errors import DocumaError
 from documa.core.ir import DocumentBlockIR, DocumentBlockType, DocumentIR, repair_surrogate_text, to_plain_data
 from documa.core.serialization import document_from_plain_data
+from documa.core import snippet_windows
 from documa.exporters import BlockJsonExporter, ExportOptions, JsonExporter, MarkdownExporter, RagJsonExporter
 from documa.interfaces import citation, search_ranking, token_counting
 from documa.interfaces.tool_schemas import documa_tool_schemas
@@ -35,8 +36,6 @@ from documa.quality import BenchmarkOptions, DoctorOptions, run_doctor, run_fixt
 
 
 ToolPayload = dict[str, Any]
-_CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
-_WORD_RE = re.compile(r"\S+")
 _DEFAULT_SEARCH_FIELDS = ["title", "preview", "search_terms", "keywords", "new_words"]
 _DEFAULT_SNIPPET_FIELDS = {"body", "title", "preview"}
 _SEARCH_VERBOSITIES = {"compact", "standard", "debug"}
@@ -517,10 +516,6 @@ def _children_by_parent(document: DocumentIR) -> dict[str | None, list[Any]]:
     return children
 
 
-def _keyword_is_cjk(keyword: str) -> bool:
-    return bool(_CJK_RE.search(keyword))
-
-
 def _count_tokens(text: str) -> int | None:
     """Real token count via the configured counter, or None when unavailable.
 
@@ -537,32 +532,10 @@ def _token_counter_unavailable_payload() -> ToolPayload:
     return {"status": "error", "code": "TOKEN_COUNTER_UNAVAILABLE", "message": token_counting.UNAVAILABLE_MESSAGE}
 
 
-def _find_hits(text: str, keyword: str) -> list[tuple[int, int]]:
-    if not text or not keyword:
-        return []
-    haystack = text.casefold()
-    needle = keyword.casefold()
-    output: list[tuple[int, int]] = []
-    position = 0
-    while True:
-        index = haystack.find(needle, position)
-        if index < 0:
-            return output
-        output.append((index, index + len(needle)))
-        position = index + max(1, len(needle))
-
-
-def _make_snippet(text: str, start: int, end: int, keyword: str, *, chars: int = 24, words: int = 8) -> str:
-    if _keyword_is_cjk(keyword):
-        left = max(0, start - chars)
-        right = min(len(text), end + chars)
-    else:
-        prefix_matches = list(_WORD_RE.finditer(text[:start]))
-        suffix_matches = list(_WORD_RE.finditer(text[end:]))
-        left = prefix_matches[-words].start() if len(prefix_matches) > words else 0
-        right = end + suffix_matches[words - 1].end() if len(suffix_matches) > words else len(text)
-    snippet = re.sub(r"\s+", " ", text[left:right]).strip()
-    return ("…" if left > 0 else "") + snippet + ("…" if right < len(text) else "")
+# Hit-centered snippet windows are shared with collection search via the core
+# leaf module; these aliases keep existing call sites unchanged.
+_find_hits = snippet_windows.find_hits
+_make_snippet = snippet_windows.make_snippet
 
 
 def _search_terms(query: str | None, any_of: list[str] | None = None) -> list[str]:

@@ -10,6 +10,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from documa.collections import registry as registry_store
+from documa.core import snippet_windows
 from documa.core.serialization import document_from_plain_data
 from documa.pipeline.block_tree import document_block_text
 from documa.pipeline.page_refs import ensure_page_citation_map, page_citation_metadata
@@ -355,6 +356,21 @@ def _fts_phrase(unit: str) -> str | None:
     return f'"{joined}"'
 
 
+def _query_units(query: str) -> list[str]:
+    """Raw query units — double-quoted phrases first, then bare terms.
+
+    Shared by the FTS MATCH builder and snippet centering so snippets follow
+    exactly what was searched.
+    """
+    phrases = re.findall(r'"([^"]+)"', query)
+    remainder = re.sub(r'"[^"]*"?', " ", query)
+    units = [phrase.strip() for phrase in phrases if phrase.strip()]
+    for term in _FTS_TERM_RE.findall(remainder):
+        if term not in units:
+            units.append(term)
+    return units
+
+
 def _fts_query_variants(query: str) -> tuple[str, str]:
     """Build (all_units, any_unit) FTS5 MATCH expressions from a raw query.
 
@@ -362,29 +378,35 @@ def _fts_query_variants(query: str) -> tuple[str, str]:
     text contributes one unit per term. The all-units (AND) form is the primary
     query; the any-unit (OR) form is the precision fallback.
     """
-    phrases = re.findall(r'"([^"]+)"', query)
-    remainder = re.sub(r'"[^"]*"?', " ", query)
-    units: list[str] = []
-    for phrase in phrases:
-        unit = _fts_phrase(phrase)
-        if unit:
-            units.append(unit)
-    for term in _FTS_TERM_RE.findall(remainder):
-        unit = _fts_phrase(term)
-        if unit and unit not in units:
-            units.append(unit)
-    return " AND ".join(units), " OR ".join(units)
+    fts_units: list[str] = []
+    for unit in _query_units(query):
+        fts_unit = _fts_phrase(unit)
+        if fts_unit and fts_unit not in fts_units:
+            fts_units.append(fts_unit)
+    return " AND ".join(fts_units), " OR ".join(fts_units)
 
 
-def _snippet(row: sqlite3.Row) -> str:
-    for key in ("text_preview", "body", "title"):
-        text = str(row[key] or "").strip()
-        if text:
-            return text[:240]
-    return ""
+def _snippet(row: sqlite3.Row, units: list[str]) -> str:
+    """Query-centered snippet: the first field containing a query unit wins.
+
+    A fixed-prefix snippet frequently misses the match entirely, so the window
+    centers on the hit (CJK ±chars / ASCII ±words); the preview prefix is only
+    a fallback when no unit appears in any field.
+    """
+    fields = [str(row[key] or "").strip() for key in ("text_preview", "body", "title")]
+    fields = [field for field in fields if field]
+    if not fields:
+        return ""
+    for text in fields:
+        for unit in units:
+            hits = snippet_windows.find_hits(text, unit)
+            if hits:
+                start, end = hits[0]
+                return snippet_windows.make_snippet(text, start, end, unit, chars=40)
+    return fields[0][:240]
 
 
-def _row_to_result(row: sqlite3.Row, score: float) -> dict[str, Any]:
+def _row_to_result(row: sqlite3.Row, score: float, units: list[str]) -> dict[str, Any]:
     return {
         "registry_document_id": row["registry_document_id"],
         "ir_document_id": row["ir_document_id"],
@@ -393,7 +415,7 @@ def _row_to_result(row: sqlite3.Row, score: float) -> dict[str, Any]:
         "block_type": row["block_type"],
         "heading_path": json.loads(row["heading_path_json"]),
         "score": score,
-        "snippet": _snippet(row),
+        "snippet": _snippet(row, units),
         "page_refs": json.loads(row["page_refs_json"]),
         "bbox_refs": json.loads(row["bbox_refs_json"]),
         "citation_string": row["citation_string"],
@@ -476,6 +498,7 @@ def search_collection(
                 "code": "DOCUMENT_IDS_INVALID",
                 "message": f"document_ids must contain 1-{_MAX_DOCUMENT_IDS} non-empty document ids.",
             }
+    units = _query_units(query)
     and_query, or_query = _fts_query_variants(query)
     if not and_query:
         return {
@@ -538,7 +561,7 @@ def search_collection(
             if active_entry is None or active_entry.get("content_hash") != row["indexed_content_hash"]:
                 continue
             rollup = by_doc.get(doc_id)
-            block_result = _row_to_result(row, score=round(float(-row["rank"]), 6))
+            block_result = _row_to_result(row, score=round(float(-row["rank"]), 6), units=units)
             if rollup is None:
                 if len(rollups) >= fetch_budget:
                     continue
@@ -577,7 +600,7 @@ def search_collection(
         active_entry = active_entries.get(doc_id)
         if active_entry is None or active_entry.get("content_hash") != row["indexed_content_hash"]:
             continue
-        filtered.append(_row_to_result(row, score=round(float(-row["rank"]), 6)))
+        filtered.append(_row_to_result(row, score=round(float(-row["rank"]), 6), units=units))
         if len(filtered) >= fetch_budget:
             break
 

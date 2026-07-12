@@ -306,6 +306,50 @@ class CollectionIndexTests(unittest.TestCase):
             self.assertIn("block_count", columns)
             self.assertIn("page_count", columns)
 
+    def test_snippets_center_on_the_query_hit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Path(tmp) / ".documa"
+            filler = "background sentence with ordinary words. " * 12  # >400 chars of no-hit prefix
+            _write_document(
+                store,
+                "doc-deep",
+                "ir-deep",
+                "deep.md",
+                "",
+                blocks=[{"id": "b1", "body": filler + "the buried-needle appears only here at the end."}],
+            )
+            registry_store.rebuild_index(store)
+            build_collection_index(store)
+
+            result = search_collection(store, query="buried-needle", limit=5)
+
+            snippet = result["results"][0]["snippet"]
+            # A 240-char prefix would miss the hit entirely; the window must
+            # center on it and mark the elided prefix.
+            self.assertIn("buried-needle", snippet)
+            self.assertTrue(snippet.startswith("…"))
+
+    def test_cjk_snippets_center_on_the_hit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Path(tmp) / ".documa"
+            filler = "這是一段與查詢完全無關的背景敘述文字。" * 20
+            _write_document(
+                store,
+                "doc-zh-deep",
+                "ir-zh-deep",
+                "zh-deep.md",
+                "",
+                blocks=[{"id": "b1", "body": filler + "資本緩衝要求出現在文件很後面的位置。"}],
+            )
+            registry_store.rebuild_index(store)
+            build_collection_index(store)
+
+            result = search_collection(store, query="資本緩衝", limit=5)
+
+            snippet = result["results"][0]["snippet"]
+            self.assertIn("資本緩衝", snippet)
+            self.assertTrue(snippet.startswith("…"))
+
     def test_multi_term_queries_require_all_terms_before_falling_back(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = Path(tmp) / ".documa"
