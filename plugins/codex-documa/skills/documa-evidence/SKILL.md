@@ -56,7 +56,7 @@ Step 2: Route the query before reading bodies
 Step 3: Read and converge on evidence
 - Input: Candidate block ids, search response metadata, and the narrow evidence need.
 - Action: Follow the search response's `recommended_next` first — it names the block ids to read and a `max_chars` budget derived from `recommended_read_chars`. When evidence is incomplete, escalate in order: `documa_source_window` for neighbor context around a hit; `documa_block_xref` for parent/children/relations; refine the query once, guided by the response `hints`; browse `documa_list_blocks` under the nearest section; whole-section reads (`include_children=true`) are the last resort, justified only when `neighbors.needs_next` is true or the hit is a section heading.
-- Token controls: set `max_chars` or `max_tokens` on `documa_read_block` (the tighter wins); set `max_response_tokens` on `documa_search_blocks` as a hard response ceiling; set `include_snippets=false` when only block ids are needed.
+- Token controls: set `max_chars` or `max_tokens` on `documa_read_block` (the tighter wins); set `max_response_tokens` on `documa_search_blocks` as a hard response ceiling; set `include_snippets=false` when only block ids are needed. Token budgets need a configured counter (tiktoken auto-detected, or `DOCUMA_TOKEN_COUNTER=anthropic:<model>` for Claude counting); on `TOKEN_COUNTER_UNAVAILABLE`, fall back to `max_chars`.
 - Output: Quoted or paraphrased evidence, block ids, page/source metadata, and any neighbor context needed for interpretation.
 - Validation: Only cite blocks that were actually read or otherwise provided in the tool result. Never run two consecutive searches without reading in between unless the first search returned zero results.
 

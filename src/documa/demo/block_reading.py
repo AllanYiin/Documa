@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import math
 import re
 import time
 from dataclasses import dataclass, field
@@ -15,6 +14,7 @@ from documa.adapters.pymupdf_adapter import PyMuPDFAdapter
 from documa.core.errors import DocumaError
 from documa.core.ir import DocumentBlockIR, DocumentBlockType, DocumentIR, to_plain_data
 from documa.exporters import BlockJsonExporter, ExportOptions, JsonExporter
+from documa.interfaces import token_counting
 from documa.interfaces.tools import write_payload
 from documa.pipeline import PipelineContext, run_default_pipeline
 from documa.pipeline.block_tree import document_block_text
@@ -44,25 +44,23 @@ _LOW_VALUE_HEADINGS = {
 @dataclass(slots=True)
 class TokenCounter:
     backend: str
-    _encoding: Any = None
+    _counter: Any = None
 
     @classmethod
     def create(cls) -> "TokenCounter":
-        try:
-            import tiktoken  # type: ignore
-
-            return cls(backend="tiktoken:cl100k_base", _encoding=tiktoken.get_encoding("cl100k_base"))
-        except Exception:
-            return cls(backend="heuristic:chars_div_4_cjk_adjusted")
+        # Character-ratio guesses are banned: without a real counter the demo
+        # reports zero usage and labels the backend as unavailable.
+        counter = token_counting.get_token_counter()
+        if counter is not None:
+            return cls(backend=counter.name, _counter=counter)
+        return cls(backend="unavailable (install documa[tokens] or set DOCUMA_TOKEN_COUNTER)")
 
     def count(self, value: Any) -> int:
+        if self._counter is None:
+            return 0
         if not isinstance(value, str):
             value = json.dumps(value, ensure_ascii=False, sort_keys=True)
-        if self._encoding is not None:
-            return len(self._encoding.encode(value))
-        cjk_count = sum(1 for char in value if "\u4e00" <= char <= "\u9fff")
-        non_cjk = max(len(value) - cjk_count, 0)
-        return max(1, math.ceil(cjk_count * 0.8 + non_cjk / 4))
+        return self._counter.count(value)
 
 
 @dataclass(slots=True)
@@ -353,7 +351,7 @@ def _synthesize_answer(question: str, block_bodies: list[dict[str, Any]], max_se
         "evidence": evidence,
         "limitations": [
             "此 demo 不呼叫外部 LLM；答案由已載入 block 內容抽取生成。",
-            "token_usage 為 demo 估算或 tiktoken 本地計算，不代表外部 API billing。",
+            "token_usage 由設定的 token counter（tiktoken 或 Anthropic count-tokens API）計算；無 counter 時記為 0，不代表外部 API billing。",
         ],
     }
 

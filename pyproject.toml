@@ -44,6 +44,10 @@ documents = [
   "nbformat>=5.10",
 ]
 mcp = ["mcp>=1.0"]
+# Real token counting for query budgets: chars/4-style heuristics are banned,
+# so token fields stay null unless one of these counters is available.
+tokens = ["tiktoken>=0.7"]
+anthropic-tokens = ["anthropic>=0.30"]
 demo = ["tiktoken>=0.7", "openai>=1.0"]
 
 [project.scripts]

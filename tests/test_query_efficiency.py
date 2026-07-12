@@ -8,7 +8,22 @@ from unittest import mock
 
 from documa.core.ir import BlockIR, BlockType, DocumentIR, PageIR, TextContent, to_plain_data
 from documa.interfaces import call_documa_tool
+from documa.interfaces import token_counting
 from documa.interfaces import tools as tools_module
+
+
+class _CharCounter:
+    """Deterministic test counter: one token per character."""
+
+    name = "test:chars"
+
+    def count(self, text):
+        return len(text)
+
+    def truncate(self, text, max_tokens):
+        if len(text) <= max_tokens:
+            return text, False
+        return text[:max_tokens], True
 
 
 def _paragraph(block_id: str, text: str, order_index: int = 1) -> BlockIR:
@@ -109,18 +124,85 @@ class DocumentCacheTests(unittest.TestCase):
 class TokenBudgetTests(unittest.TestCase):
     def setUp(self):
         tools_module.clear_document_cache()
+        token_counting.set_token_counter(_CharCounter())
 
     def tearDown(self):
         tools_module.clear_document_cache()
+        token_counting.reset_token_counter()
 
-    def test_token_estimate_is_cjk_aware(self):
-        cjk = "資本緩衝要求說明文件內容" * 10  # 120 CJK chars
-        ascii_text = "capital buffer requirement " * 10  # ~270 ASCII chars
-        cjk_estimate = tools_module._estimate_tokens(cjk)
-        ascii_estimate = tools_module._estimate_tokens(ascii_text)
-        # CJK: ~0.8 token/char, far above the chars/4 heuristic.
-        self.assertEqual(cjk_estimate, 96)
-        self.assertEqual(ascii_estimate, 68)
+    def test_tiktoken_counter_counts_real_tokens(self):
+        try:
+            counter = token_counting.TiktokenCounter()
+        except Exception as exc:  # pragma: no cover - env without tiktoken
+            self.skipTest(f"tiktoken unavailable: {exc}")
+        cjk = "資本緩衝要求說明文件內容" * 10
+        count = counter.count(cjk)
+        # Real BPE counts; a chars/4 guess would report 30 for 120 CJK chars.
+        self.assertGreater(count, len(cjk) // 4)
+        truncated_text, was_truncated = counter.truncate(cjk, count // 2)
+        self.assertTrue(was_truncated)
+        self.assertLessEqual(counter.count(truncated_text), count // 2)
+
+    def test_anthropic_counter_caches_and_truncates_without_extra_calls(self):
+        from types import SimpleNamespace
+
+        class _FakeMessages:
+            def __init__(self):
+                self.calls = 0
+
+            def count_tokens(self, model, messages):
+                self.calls += 1
+                return SimpleNamespace(input_tokens=len(messages[0]["content"]))
+
+        fake_client = SimpleNamespace(messages=_FakeMessages())
+        counter = token_counting.AnthropicTokenCounter(model="claude-sonnet-5", client=fake_client)
+
+        first = counter.count("資本緩衝要求")
+        second = counter.count("資本緩衝要求")
+
+        self.assertEqual(first, 6)
+        self.assertEqual(second, 6)
+        # The second count must come from the content-hash cache, not the API.
+        self.assertEqual(fake_client.messages.calls, 1)
+
+        truncated_text, was_truncated = counter.truncate("資本緩衝要求的完整說明", 5)
+        self.assertTrue(was_truncated)
+        self.assertEqual(truncated_text, "資本緩衝要")
+
+    def test_token_fields_are_null_without_a_counter(self):
+        token_counting.set_token_counter(None)
+        with tempfile.TemporaryDirectory() as tmp:
+            ir_path = _write_ir(tmp, _fixture_document())
+            listed = call_documa_tool("documa_list_blocks", {"ir_path": str(ir_path)})
+            block_id = listed["structuredContent"]["blocks"][-1]["id"]
+
+            read = call_documa_tool("documa_read_block", {"ir_path": str(ir_path), "block_id": block_id})
+            searched = call_documa_tool(
+                "documa_search_blocks", {"ir_path": str(ir_path), "query": "cache-probe"}
+            )
+
+            self.assertIsNone(read["structuredContent"]["token_estimate"])
+            self.assertIsNone(read["structuredContent"]["token_counter"])
+            self.assertIsNone(searched["structuredContent"]["results"][0]["token_estimate"])
+
+    def test_token_budget_params_error_without_a_counter(self):
+        token_counting.set_token_counter(None)
+        with tempfile.TemporaryDirectory() as tmp:
+            ir_path = _write_ir(tmp, _fixture_document())
+            listed = call_documa_tool("documa_list_blocks", {"ir_path": str(ir_path)})
+            block_id = listed["structuredContent"]["blocks"][-1]["id"]
+
+            read = call_documa_tool(
+                "documa_read_block",
+                {"ir_path": str(ir_path), "block_id": block_id, "max_tokens": 40},
+            )
+            searched = call_documa_tool(
+                "documa_search_blocks",
+                {"ir_path": str(ir_path), "query": "cache-probe", "max_response_tokens": 300},
+            )
+
+            self.assertEqual(read["structuredContent"]["code"], "TOKEN_COUNTER_UNAVAILABLE")
+            self.assertEqual(searched["structuredContent"]["code"], "TOKEN_COUNTER_UNAVAILABLE")
 
     def test_read_block_max_tokens_truncates_content(self):
         text = "資本緩衝要求的完整說明。" * 50
@@ -282,7 +364,7 @@ class TokenBudgetTests(unittest.TestCase):
             # Calibrated against the current compact row (~950 chars incl. legacy
             # aliases); a breach means response fat regressed, not a tuning goal.
             self.assertLessEqual(per_result, 1000, f"compact search row grew too large: {per_result:.0f} chars/result")
-            self.assertLessEqual(tools_module._estimate_tokens(serialized), 1500)
+            self.assertLessEqual(len(serialized), 6000)
 
 
 if __name__ == "__main__":

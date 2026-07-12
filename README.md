@@ -193,7 +193,7 @@ agent（或你）查一份文件時，依問題形狀選路徑，再逐級收斂
 
 1. **結構／總覽問題**（「有哪些章節」）：`documa block-tree --max-depth 2 --no-citations` 取得便宜的大綱，需要更深再用 `documa blocks --parent-id <id>` 下鑽。
 2. **特定事實**：`documa search-blocks --query "..." --limit 5`，預設 compact 輸出。搜尋回應內建兩個確定性引導：`recommended_next`（直接可用的下一步 `read_block` 呼叫，含建議的 `max_chars`）與 `hints`（零結果補救、`offset=N` 分頁、拆題建議）。
-3. **讀取證據**：`documa block --id <id> --read --max-chars 1500`（或 `--max-tokens`，兩者取較嚴者；token 估算對 CJK 已校正）。證據不足時先用 `documa source-window --id <id>` 取相鄰 block、`documa block-xref --id <id>` 看父子關係，最後才整節讀取。
+3. **讀取證據**：`documa block --id <id> --read --max-chars 1500`（或 `--max-tokens`，兩者取較嚴者）。token 一律由真實 counter 計算，不用 chars/4 之類的估算：裝了 `documa[tokens]`（tiktoken）會自動啟用；針對 Claude 可設 `DOCUMA_TOKEN_COUNTER=anthropic:<model>` 走 Anthropic count-tokens API（需 `anthropic` 套件與 `ANTHROPIC_API_KEY`）。沒有 counter 時 token 欄位為 null、`--max-tokens` 會回報 `TOKEN_COUNTER_UNAVAILABLE`。證據不足時先用 `documa source-window --id <id>` 取相鄰 block、`documa block-xref --id <id>` 看父子關係，最後才整節讀取。
 4. **跨文件問題**：`documa index-collection` 建一次索引後 `documa search-collection --query '"資本適足率"'`——查詢詞預設全部必須命中（AND），引號片語比對相鄰字序；全無命中時自動降級為任一詞命中並在 `match_mode` 標示。命中的 `read_ref` 直接餵給 `documa block` 讀取。
 5. **收尾**：`documa cite-block` 產生穩定引用；agent 端另有 `documa_verify_citations` 工具（MCP／tool-calling 層）可在宣稱已驗證前做核對。
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 import re
 from collections import OrderedDict
 from pathlib import Path
@@ -19,7 +18,7 @@ from documa.core.errors import DocumaError
 from documa.core.ir import DocumentBlockIR, DocumentBlockType, DocumentIR, repair_surrogate_text, to_plain_data
 from documa.core.serialization import document_from_plain_data
 from documa.exporters import BlockJsonExporter, ExportOptions, JsonExporter, MarkdownExporter, RagJsonExporter
-from documa.interfaces import citation, search_ranking
+from documa.interfaces import citation, search_ranking, token_counting
 from documa.interfaces.tool_schemas import documa_tool_schemas
 from documa.pipeline import (
     BlockKeywordExtractionStage,
@@ -522,27 +521,20 @@ def _keyword_is_cjk(keyword: str) -> bool:
     return bool(_CJK_RE.search(keyword))
 
 
-def _estimate_tokens(text: str) -> int:
-    """CJK-aware token estimate: ~0.8 token per CJK char, ~4 chars per token otherwise.
+def _count_tokens(text: str) -> int | None:
+    """Real token count via the configured counter, or None when unavailable.
 
-    The naive chars/4 heuristic under-reports CJK text roughly threefold,
-    which silently blows agent context budgets on Chinese documents.
+    Token numbers are never approximated from character ratios; without a
+    configured counter the fields stay null and budget parameters error.
     """
-    if not text:
-        return 0
-    cjk_count = len(_CJK_RE.findall(text))
-    return max(1, math.ceil(cjk_count * 0.8 + (len(text) - cjk_count) / 4))
+    counter = token_counting.get_token_counter()
+    if counter is None:
+        return None
+    return counter.count(text)
 
 
-def _truncate_to_token_budget(text: str, max_tokens: int) -> tuple[str, bool]:
-    """Cut text at the character where the running token estimate exceeds the budget."""
-    budget = float(max_tokens)
-    cost = 0.0
-    for index, char in enumerate(text):
-        cost += 0.8 if _CJK_RE.match(char) else 0.25
-        if cost > budget:
-            return text[:index], True
-    return text, False
+def _token_counter_unavailable_payload() -> ToolPayload:
+    return {"status": "error", "code": "TOKEN_COUNTER_UNAVAILABLE", "message": token_counting.UNAVAILABLE_MESSAGE}
 
 
 def _find_hits(text: str, keyword: str) -> list[tuple[int, int]]:
@@ -663,7 +655,7 @@ def _selection_metadata(
     content = document_block_text(document, block)
     selection_text = " ".join(part for part in [block.title or "", block.text_preview or "", content[:1200]] if part)
     char_count = len(content)
-    token_estimate = _estimate_tokens(content)
+    token_estimate = _count_tokens(content)
     doc_region = doc_region if doc_region is not None else _block_doc_region(block, by_id)
     return {
         "block_id": block.id,
@@ -793,13 +785,16 @@ def read_block_tool(
                 continue
             selected.append(child)
             pending.extend(child.child_ids)
+    counter = token_counting.get_token_counter()
+    if max_tokens is not None and counter is None:
+        return _token_counter_unavailable_payload()
     text = "\n\n".join(document_block_text(document, item) for item in selected if document_block_text(document, item)).strip()
     truncated = False
     if max_chars is not None and len(text) > max_chars:
         text = text[:max_chars]
         truncated = True
     if max_tokens is not None:
-        text, token_truncated = _truncate_to_token_budget(text, max_tokens)
+        text, token_truncated = counter.truncate(text, max_tokens)
         truncated = truncated or token_truncated
     page_refs = sorted({page for item in selected for page in item.page_refs})
     return {
@@ -809,7 +804,8 @@ def read_block_tool(
         "block_path": _block_path(block.id, by_id),
         "content": text,
         "truncated": truncated,
-        "token_estimate": _estimate_tokens(text),
+        "token_estimate": counter.count(text) if counter else None,
+        "token_counter": counter.name if counter else None,
         "source_block_ids": [source_id for item in selected for source_id in item.source_block_ids],
         "page_refs": page_refs,
         **page_citation_metadata(page_refs, page_citations),
@@ -1038,13 +1034,16 @@ def search_blocks_tool(
     }
     page = results[offset : offset + limit]
     if max_response_tokens is not None:
-        # Greedily keep ranked rows while the serialized-response estimate fits
-        # the caller's hard ceiling; report what was dropped so the caller can
+        counter = token_counting.get_token_counter()
+        if counter is None:
+            return _token_counter_unavailable_payload()
+        # Greedily keep ranked rows while the counted response size fits the
+        # caller's hard ceiling; report what was dropped so the caller can
         # page instead of re-querying blindly.
         kept: list[dict[str, Any]] = []
-        spent = _estimate_tokens(json.dumps(payload, ensure_ascii=False))
+        spent = counter.count(json.dumps(payload, ensure_ascii=False))
         for row in page:
-            row_cost = _estimate_tokens(json.dumps(row, ensure_ascii=False))
+            row_cost = counter.count(json.dumps(row, ensure_ascii=False))
             if kept and spent + row_cost > max_response_tokens:
                 break
             kept.append(row)
@@ -1053,6 +1052,7 @@ def search_blocks_tool(
             "max_response_tokens": max_response_tokens,
             "spent_estimate": spent,
             "dropped_results": len(page) - len(kept),
+            "token_counter": counter.name,
         }
         page = kept
     payload["results"] = page
