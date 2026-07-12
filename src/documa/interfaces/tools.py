@@ -522,6 +522,29 @@ def _keyword_is_cjk(keyword: str) -> bool:
     return bool(_CJK_RE.search(keyword))
 
 
+def _estimate_tokens(text: str) -> int:
+    """CJK-aware token estimate: ~0.8 token per CJK char, ~4 chars per token otherwise.
+
+    The naive chars/4 heuristic under-reports CJK text roughly threefold,
+    which silently blows agent context budgets on Chinese documents.
+    """
+    if not text:
+        return 0
+    cjk_count = len(_CJK_RE.findall(text))
+    return max(1, math.ceil(cjk_count * 0.8 + (len(text) - cjk_count) / 4))
+
+
+def _truncate_to_token_budget(text: str, max_tokens: int) -> tuple[str, bool]:
+    """Cut text at the character where the running token estimate exceeds the budget."""
+    budget = float(max_tokens)
+    cost = 0.0
+    for index, char in enumerate(text):
+        cost += 0.8 if _CJK_RE.match(char) else 0.25
+        if cost > budget:
+            return text[:index], True
+    return text, False
+
+
 def _find_hits(text: str, keyword: str) -> list[tuple[int, int]]:
     if not text or not keyword:
         return []
@@ -640,7 +663,7 @@ def _selection_metadata(
     content = document_block_text(document, block)
     selection_text = " ".join(part for part in [block.title or "", block.text_preview or "", content[:1200]] if part)
     char_count = len(content)
-    token_estimate = max(1, math.ceil(char_count / 4)) if char_count else 0
+    token_estimate = _estimate_tokens(content)
     doc_region = doc_region if doc_region is not None else _block_doc_region(block, by_id)
     return {
         "block_id": block.id,
@@ -659,7 +682,7 @@ def _selection_metadata(
             "is_reference": doc_region == "references",
             "is_header_footer": doc_region == "header_footer",
         },
-        "dedupe_key": block.content_hash or hashlib.sha1(selection_text.encode("utf-8", errors="ignore")).hexdigest()[:16],
+        "dedupe_key": (block.content_hash or hashlib.sha1(selection_text.encode("utf-8", errors="ignore")).hexdigest())[:16],
     }
 
 
@@ -668,6 +691,8 @@ def list_blocks_tool(
     depth: int | None = None,
     parent_id: str | None = None,
     include_metadata_summary: bool = True,
+    limit: int | None = None,
+    offset: int = 0,
 ) -> ToolPayload:
     try:
         document = load_document(ir_path)
@@ -703,7 +728,19 @@ def list_blocks_tool(
             }
         blocks.append(item)
 
-    return {"status": "ok", "document_id": document.id, "block_count": len(blocks), "blocks": blocks}
+    total_blocks = len(blocks)
+    offset = max(0, int(offset))
+    if offset or limit is not None:
+        blocks = blocks[offset : offset + limit] if limit is not None else blocks[offset:]
+    return {
+        "status": "ok",
+        "document_id": document.id,
+        "block_count": len(blocks),
+        "total_blocks": total_blocks,
+        "offset": offset,
+        "has_more": offset + len(blocks) < total_blocks,
+        "blocks": blocks,
+    }
 
 
 def inspect_block_tool(ir_path: str, block_id: str) -> ToolPayload:
@@ -733,6 +770,7 @@ def read_block_tool(
     block_id: str,
     include_children: bool = False,
     max_chars: int | None = None,
+    max_tokens: int | None = None,
 ) -> ToolPayload:
     try:
         document = load_document(ir_path)
@@ -760,6 +798,9 @@ def read_block_tool(
     if max_chars is not None and len(text) > max_chars:
         text = text[:max_chars]
         truncated = True
+    if max_tokens is not None:
+        text, token_truncated = _truncate_to_token_budget(text, max_tokens)
+        truncated = truncated or token_truncated
     page_refs = sorted({page for item in selected for page in item.page_refs})
     return {
         "status": "ok",
@@ -768,6 +809,7 @@ def read_block_tool(
         "block_path": _block_path(block.id, by_id),
         "content": text,
         "truncated": truncated,
+        "token_estimate": _estimate_tokens(text),
         "source_block_ids": [source_id for item in selected for source_id in item.source_block_ids],
         "page_refs": page_refs,
         **page_citation_metadata(page_refs, page_citations),
@@ -778,6 +820,7 @@ def search_blocks_tool(
     ir_path: str,
     query: str = "",
     limit: int = 10,
+    offset: int = 0,
     any_of: list[str] | None = None,
     fields: list[str] | None = None,
     snippet_fields: list[str] | None = None,
@@ -787,6 +830,7 @@ def search_blocks_tool(
     search_body: bool = True,
     context_chars: int = 24,
     context_words: int = 8,
+    max_response_tokens: int | None = None,
 ) -> ToolPayload:
     try:
         document = load_document(ir_path)
@@ -822,6 +866,7 @@ def search_blocks_tool(
             },
             "verbosity": output_verbosity,
             "total_matches": 0,
+            "offset": 0,
             "results": [],
         }
 
@@ -863,6 +908,7 @@ def search_blocks_tool(
         matched: list[str] = []
         matches: dict[str, list[str]] = {}
         snippets: list[dict[str, str]] = []
+        seen_snippet_texts: set[str] = set()
         term_field_hits: list[list[tuple[str, int]]] = []
         for term_index, (raw_term, term) in enumerate(zip(raw_terms, query_terms)):
             field_hits: list[tuple[str, int]] = []
@@ -875,20 +921,20 @@ def search_blocks_tool(
                 for start, end in hits:
                     if not include_snippets or field_name not in snippet_field_set or len(snippets) >= max_snippets:
                         break
-                    snippets.append(
-                        {
-                            "field": field_name,
-                            "keyword": raw_term,
-                            "snippet": _make_snippet(
-                                field_text,
-                                start,
-                                end,
-                                raw_term,
-                                chars=context_chars,
-                                words=context_words,
-                            ),
-                        }
+                    snippet_text = _make_snippet(
+                        field_text,
+                        start,
+                        end,
+                        raw_term,
+                        chars=context_chars,
+                        words=context_words,
                     )
+                    # Preview is usually a prefix of body, so different fields
+                    # often yield the same snippet — sending it twice is waste.
+                    if snippet_text in seen_snippet_texts:
+                        continue
+                    seen_snippet_texts.add(snippet_text)
+                    snippets.append({"field": field_name, "keyword": raw_term, "snippet": snippet_text})
             if field_hits:
                 term_block_frequency[term_index] += 1
                 if raw_term not in matched:
@@ -970,7 +1016,8 @@ def search_blocks_tool(
             )
         results.append(row)
     results.sort(key=lambda item: item["score"], reverse=True)
-    return {
+    offset = max(0, int(offset))
+    payload: ToolPayload = {
         "status": "ok",
         "document_id": document.id,
         "query": query,
@@ -986,8 +1033,29 @@ def search_blocks_tool(
         },
         "verbosity": output_verbosity,
         "total_matches": len(results),
-        "results": results[:limit],
+        "offset": offset,
     }
+    page = results[offset : offset + limit]
+    if max_response_tokens is not None:
+        # Greedily keep ranked rows while the serialized-response estimate fits
+        # the caller's hard ceiling; report what was dropped so the caller can
+        # page instead of re-querying blindly.
+        kept: list[dict[str, Any]] = []
+        spent = _estimate_tokens(json.dumps(payload, ensure_ascii=False))
+        for row in page:
+            row_cost = _estimate_tokens(json.dumps(row, ensure_ascii=False))
+            if kept and spent + row_cost > max_response_tokens:
+                break
+            kept.append(row)
+            spent += row_cost
+        payload["budget"] = {
+            "max_response_tokens": max_response_tokens,
+            "spent_estimate": spent,
+            "dropped_results": len(page) - len(kept),
+        }
+        page = kept
+    payload["results"] = page
+    return payload
 
 
 def block_tree_tool(ir_path: str) -> ToolPayload:
@@ -1187,6 +1255,7 @@ def search_collection_tool(
     store_dir: str = registry_store.DEFAULT_STORE_DIR,
     collection_id: str = collection_index.DEFAULT_COLLECTION_ID,
     limit: int = 20,
+    offset: int = 0,
     per_document_limit: int | None = None,
 ) -> ToolPayload:
     return collection_index.search_collection(
@@ -1194,6 +1263,7 @@ def search_collection_tool(
         query=query,
         collection_id=collection_id,
         limit=limit,
+        offset=offset,
         per_document_limit=per_document_limit,
     )
 

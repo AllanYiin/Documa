@@ -139,6 +139,8 @@ def create_mcp_server() -> Any:
         depth: int | None = None,
         parent_id: str | None = None,
         include_metadata_summary: bool = True,
+        limit: int | None = None,
+        offset: int = 0,
     ) -> dict[str, Any]:
         """List progressive document blocks without full block bodies."""
 
@@ -147,6 +149,8 @@ def create_mcp_server() -> Any:
             depth=depth,
             parent_id=parent_id,
             include_metadata_summary=include_metadata_summary,
+            limit=limit,
+            offset=offset,
         )
 
     @mcp.tool()
@@ -161,6 +165,7 @@ def create_mcp_server() -> Any:
         block_id: str,
         include_children: bool = False,
         max_chars: int | None = None,
+        max_tokens: int | None = None,
     ) -> dict[str, Any]:
         """Read one selected document block body."""
 
@@ -169,6 +174,7 @@ def create_mcp_server() -> Any:
             block_id=block_id,
             include_children=include_children,
             max_chars=max_chars,
+            max_tokens=max_tokens,
         )
 
     @mcp.tool()
@@ -176,6 +182,7 @@ def create_mcp_server() -> Any:
         ir_path: str,
         query: str = "",
         limit: int = 10,
+        offset: int = 0,
         any_of: list[str] | None = None,
         fields: list[str] | None = None,
         snippet_fields: list[str] | None = None,
@@ -185,6 +192,7 @@ def create_mcp_server() -> Any:
         search_body: bool = True,
         context_chars: int = 24,
         context_words: int = 8,
+        max_response_tokens: int | None = None,
     ) -> dict[str, Any]:
         """Search progressive document blocks with bounded snippets."""
 
@@ -192,6 +200,7 @@ def create_mcp_server() -> Any:
             ir_path=ir_path,
             query=query,
             limit=limit,
+            offset=offset,
             any_of=any_of,
             fields=fields,
             snippet_fields=snippet_fields,
@@ -201,6 +210,7 @@ def create_mcp_server() -> Any:
             search_body=search_body,
             context_chars=context_chars,
             context_words=context_words,
+            max_response_tokens=max_response_tokens,
         )
 
     @mcp.tool()
@@ -215,6 +225,7 @@ def create_mcp_server() -> Any:
         store_dir: str = ".documa",
         collection_id: str = "default",
         limit: int = 20,
+        offset: int = 0,
         per_document_limit: int | None = None,
     ) -> dict[str, Any]:
         """Search active registry documents through the local collection index."""
@@ -224,6 +235,7 @@ def create_mcp_server() -> Any:
             store_dir=store_dir,
             collection_id=collection_id,
             limit=limit,
+            offset=offset,
             per_document_limit=per_document_limit,
         )
 

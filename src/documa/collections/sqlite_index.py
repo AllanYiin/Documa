@@ -369,12 +369,14 @@ def search_collection(
     query: str = "",
     collection_id: str = DEFAULT_COLLECTION_ID,
     limit: int = 20,
+    offset: int = 0,
     per_document_limit: int | None = None,
 ) -> ToolPayload:
     """Search the local collection index and return citation-ready block hits."""
 
     store = Path(store_dir)
     limit = max(1, min(int(limit), 100))
+    offset = max(0, int(offset))
     and_query, or_query = _fts_query_variants(query)
     if not and_query:
         return {
@@ -383,6 +385,8 @@ def search_collection(
             "query": query,
             "match_mode": None,
             "result_count": 0,
+            "offset": offset,
+            "has_more": False,
             "results": [],
         }
     if not index_path(store).exists():
@@ -392,7 +396,10 @@ def search_collection(
             "message": f"Collection index not found: {index_path(store)}",
         }
 
-    fetch_limit = limit * 5 if per_document_limit else limit
+    # Fetch one row past the requested page (after the registry/per-document
+    # post-filters) so has_more is exact without a second query.
+    fetch_budget = offset + limit + 1
+    fetch_limit = fetch_budget * 5 if per_document_limit else fetch_budget
     match_sql = """
         SELECT blocks.*, documents.content_hash AS indexed_content_hash, bm25(blocks_fts) AS rank
         FROM blocks_fts
@@ -422,7 +429,7 @@ def search_collection(
     except sqlite3.Error as exc:
         return {"status": "error", "code": "COLLECTION_SEARCH_FAILED", "message": str(exc)}
 
-    results = []
+    filtered = []
     per_doc_counts: dict[str, int] = {}
     for row in rows:
         doc_id = row["registry_document_id"]
@@ -432,16 +439,19 @@ def search_collection(
         if per_document_limit is not None and per_doc_counts.get(doc_id, 0) >= per_document_limit:
             continue
         per_doc_counts[doc_id] = per_doc_counts.get(doc_id, 0) + 1
-        results.append(_row_to_result(row, score=round(float(-row["rank"]), 6)))
-        if len(results) >= limit:
+        filtered.append(_row_to_result(row, score=round(float(-row["rank"]), 6)))
+        if len(filtered) >= fetch_budget:
             break
 
+    results = filtered[offset : offset + limit]
     return {
         "status": "ok",
         "collection_id": collection_id,
         "query": query,
         "match_mode": match_mode,
         "result_count": len(results),
+        "offset": offset,
+        "has_more": len(filtered) > offset + limit,
         "results": results,
     }
 
