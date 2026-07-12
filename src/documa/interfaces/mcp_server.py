@@ -232,6 +232,9 @@ def create_mcp_server() -> Any:
         limit: int = 20,
         offset: int = 0,
         per_document_limit: int | None = None,
+        document_ids: list[str] | None = None,
+        group_by_document: bool = False,
+        max_response_tokens: int | None = None,
     ) -> dict[str, Any]:
         """Search active registry documents through the local collection index."""
 
@@ -242,6 +245,9 @@ def create_mcp_server() -> Any:
             limit=limit,
             offset=offset,
             per_document_limit=per_document_limit,
+            document_ids=document_ids,
+            group_by_document=group_by_document,
+            max_response_tokens=max_response_tokens,
         )
 
     @mcp.tool()

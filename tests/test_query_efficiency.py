@@ -367,5 +367,79 @@ class TokenBudgetTests(unittest.TestCase):
             self.assertLessEqual(len(serialized), 6000)
 
 
+class CollectionSearchGuidanceTests(unittest.TestCase):
+    """Budget, hints, and recommended_next for cross-document search."""
+
+    def setUp(self):
+        tools_module.clear_document_cache()
+        token_counting.set_token_counter(_CharCounter())
+        self._tmp = tempfile.TemporaryDirectory()
+        self.store = Path(self._tmp.name) / ".documa"
+        self._build_store()
+
+    def tearDown(self):
+        token_counting.reset_token_counter()
+        self._tmp.cleanup()
+        tools_module.clear_document_cache()
+
+    def _build_store(self):
+        from documa.collections import registry as registry_store
+        from documa.collections.sqlite_index import build_collection_index
+
+        for name in ("a", "b", "c", "d", "e"):
+            source = Path(self._tmp.name) / f"{name}.md"
+            source.write_text(f"# {name}\n\nspread needle appears in document {name}.\n", encoding="utf-8")
+            registry_store.ingest_document(str(source), store_dir=self.store)
+        build_collection_index(self.store)
+
+    def _search(self, **params):
+        payload = {"store_dir": str(self.store), "query": "needle", **params}
+        return call_documa_tool("documa_search_collection", payload)["structuredContent"]
+
+    def test_flat_search_recommends_read_and_group_hint(self):
+        result = self._search(limit=10)
+
+        recommended = result["recommended_next"]
+        self.assertEqual(recommended["tool"], "documa_read_block")
+        self.assertTrue(recommended["ir_path"].startswith("doc-"))
+        self.assertEqual(recommended["block_ids"][0], result["results"][0]["read_ref"]["block_id"])
+        # Hits spread across >=4 documents without grouping -> group-mode hint.
+        self.assertTrue(any("group_by_document" in hint for hint in result["hints"]))
+
+    def test_grouped_search_recommends_top_block_of_top_document(self):
+        result = self._search(limit=10, group_by_document=True)
+
+        recommended = result["recommended_next"]
+        top_ref = result["results"][0]["top_blocks"][0]["read_ref"]
+        self.assertEqual(recommended["ir_path"], top_ref["ir_path"])
+        self.assertEqual(recommended["block_ids"], [top_ref["block_id"]])
+        self.assertFalse(any("group_by_document" in hint for hint in result["hints"]))
+
+    def test_zero_results_hint_mentions_doctor(self):
+        result = self._search(query="absent-token-entirely")
+        self.assertEqual(result["results"], [])
+        self.assertTrue(any("documa_doctor" in hint for hint in result["hints"]))
+        self.assertNotIn("recommended_next", result)
+
+    def test_offset_hint_appears_when_more_matches_exist(self):
+        result = self._search(limit=2)
+        self.assertTrue(result["has_more"])
+        self.assertTrue(any("offset=2" in hint for hint in result["hints"]))
+
+    def test_budget_requires_counter_and_drops_lowest_ranked(self):
+        token_counting.set_token_counter(None)
+        unavailable = self._search(max_response_tokens=500)
+        self.assertEqual(unavailable["code"], "TOKEN_COUNTER_UNAVAILABLE")
+
+        token_counting.set_token_counter(_CharCounter())
+        unbounded = self._search(limit=10)
+        bounded = self._search(limit=10, max_response_tokens=1200)
+
+        self.assertGreater(len(unbounded["results"]), len(bounded["results"]))
+        self.assertGreaterEqual(len(bounded["results"]), 1)
+        self.assertEqual(bounded["budget"]["dropped_results"], len(unbounded["results"]) - len(bounded["results"]))
+        self.assertEqual(bounded["result_count"], len(bounded["results"]))
+
+
 if __name__ == "__main__":
     unittest.main()

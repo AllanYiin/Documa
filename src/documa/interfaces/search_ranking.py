@@ -98,3 +98,58 @@ def search_hints(
         if term_count > 1 and top_matched_terms < term_count:
             hints.append("No returned block matches every term; consider splitting the question or dropping a term.")
     return hints[:2]
+
+
+def collection_recommended_next_action(results: list[dict[str, Any]], *, grouped: bool) -> dict[str, Any] | None:
+    """Deterministic cross-document read recommendation.
+
+    Returns a ready-to-issue documa_read_block call chaining the top hit's
+    read_ref (ir_path is a doc- registry id the tool resolves directly). In
+    flat mode the runner-up joins only when it lives in the same document and
+    the leader's score margin is too thin to separate them.
+    """
+    if not results:
+        return None
+    if grouped:
+        top_blocks = results[0].get("top_blocks") or []
+        if not top_blocks:
+            return None
+        read_ref = top_blocks[0]["read_ref"]
+        return {"tool": "documa_read_block", "ir_path": read_ref["ir_path"], "block_ids": [read_ref["block_id"]]}
+    top = results[0]
+    read_ref = top["read_ref"]
+    block_ids = [read_ref["block_id"]]
+    runner_up = results[1] if len(results) > 1 else None
+    if (
+        runner_up is not None
+        and runner_up["read_ref"]["ir_path"] == read_ref["ir_path"]
+        and top["score"] < _CONFIDENT_SCORE_LEAD * max(runner_up["score"], 1e-9)
+    ):
+        block_ids.append(runner_up["read_ref"]["block_id"])
+    return {"tool": "documa_read_block", "ir_path": read_ref["ir_path"], "block_ids": block_ids}
+
+
+def collection_search_hints(
+    *,
+    result_count: int,
+    has_more: bool,
+    offset: int,
+    match_mode: str | None,
+    distinct_documents: int,
+    per_document_limit: int | None,
+    group_by_document: bool,
+) -> list[str]:
+    """At most two deterministic hints for cross-document search, by priority."""
+    hints: list[str] = []
+    if result_count == 0:
+        hints.append("No matches; loosen terms or check index freshness via documa_doctor with store_dir.")
+        return hints
+    if match_mode == "any_term":
+        hints.append("Precision degraded to any-term matching; tighten terms or quote phrases.")
+    if has_more:
+        hints.append(f"More matches available: retry with offset={offset + result_count}.")
+    if not group_by_document and per_document_limit is None and distinct_documents >= 4:
+        hints.append(
+            f"Hits span {distinct_documents} documents; retry with group_by_document=true or per_document_limit=1."
+        )
+    return hints[:2]

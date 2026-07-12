@@ -159,6 +159,9 @@ def build_parser() -> argparse.ArgumentParser:
     search_collection_cmd.add_argument("--limit", type=int, default=20, help="Maximum result count.")
     search_collection_cmd.add_argument("--offset", type=int, default=0, help="Skip this many results (paging).")
     search_collection_cmd.add_argument("--per-document-limit", type=int, default=None, help="Maximum results per document.")
+    search_collection_cmd.add_argument("--document-id", action="append", dest="document_ids", help="Restrict to this registry document id. Repeatable.")
+    search_collection_cmd.add_argument("--group-by-document", action="store_true", help="Return document-level rollups instead of a flat block list.")
+    search_collection_cmd.add_argument("--max-response-tokens", type=int, default=None, help="Hard ceiling on counted response tokens; lowest-ranked rows drop first.")
 
     block_tree_cmd = subparsers.add_parser("block-tree", help="Return the Documa document block tree (outline).")
     block_tree_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
@@ -369,6 +372,9 @@ def main(argv: list[str] | None = None) -> int:
             limit=args.limit,
             offset=args.offset,
             per_document_limit=args.per_document_limit,
+            document_ids=args.document_ids,
+            group_by_document=args.group_by_document,
+            max_response_tokens=args.max_response_tokens,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 

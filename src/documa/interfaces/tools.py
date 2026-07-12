@@ -532,6 +532,39 @@ def _token_counter_unavailable_payload() -> ToolPayload:
     return {"status": "error", "code": "TOKEN_COUNTER_UNAVAILABLE", "message": token_counting.UNAVAILABLE_MESSAGE}
 
 
+def _apply_response_token_budget(
+    payload: ToolPayload,
+    page: list[dict[str, Any]],
+    max_response_tokens: int,
+) -> tuple[list[dict[str, Any]], ToolPayload | None]:
+    """Greedily keep ranked rows while the counted response size fits the cap.
+
+    Shared by single-document and collection search. The top-ranked row always
+    survives so a too-small budget still returns actionable output; what was
+    dropped is reported so the caller pages instead of re-querying blindly.
+    Returns (kept_rows, error_payload); error_payload is set when no token
+    counter is configured.
+    """
+    counter = token_counting.get_token_counter()
+    if counter is None:
+        return [], _token_counter_unavailable_payload()
+    kept: list[dict[str, Any]] = []
+    spent = counter.count(json.dumps(payload, ensure_ascii=False))
+    for row in page:
+        row_cost = counter.count(json.dumps(row, ensure_ascii=False))
+        if kept and spent + row_cost > max_response_tokens:
+            break
+        kept.append(row)
+        spent += row_cost
+    payload["budget"] = {
+        "max_response_tokens": max_response_tokens,
+        "spent_estimate": spent,
+        "dropped_results": len(page) - len(kept),
+        "token_counter": counter.name,
+    }
+    return kept, None
+
+
 # Hit-centered snippet windows are shared with collection search via the core
 # leaf module; these aliases keep existing call sites unchanged.
 _find_hits = snippet_windows.find_hits
@@ -1007,27 +1040,9 @@ def search_blocks_tool(
     }
     page = results[offset : offset + limit]
     if max_response_tokens is not None:
-        counter = token_counting.get_token_counter()
-        if counter is None:
-            return _token_counter_unavailable_payload()
-        # Greedily keep ranked rows while the counted response size fits the
-        # caller's hard ceiling; report what was dropped so the caller can
-        # page instead of re-querying blindly.
-        kept: list[dict[str, Any]] = []
-        spent = counter.count(json.dumps(payload, ensure_ascii=False))
-        for row in page:
-            row_cost = counter.count(json.dumps(row, ensure_ascii=False))
-            if kept and spent + row_cost > max_response_tokens:
-                break
-            kept.append(row)
-            spent += row_cost
-        payload["budget"] = {
-            "max_response_tokens": max_response_tokens,
-            "spent_estimate": spent,
-            "dropped_results": len(page) - len(kept),
-            "token_counter": counter.name,
-        }
-        page = kept
+        page, budget_error = _apply_response_token_budget(payload, page, max_response_tokens)
+        if budget_error is not None:
+            return budget_error
     payload["results"] = page
     payload["hints"] = search_ranking.search_hints(
         result_count=len(page),
@@ -1291,15 +1306,51 @@ def search_collection_tool(
     limit: int = 20,
     offset: int = 0,
     per_document_limit: int | None = None,
+    document_ids: list[str] | None = None,
+    group_by_document: bool = False,
+    max_response_tokens: int | None = None,
 ) -> ToolPayload:
-    return collection_index.search_collection(
+    payload = collection_index.search_collection(
         store_dir=store_dir,
         query=query,
         collection_id=collection_id,
         limit=limit,
         offset=offset,
         per_document_limit=per_document_limit,
+        document_ids=document_ids,
+        group_by_document=group_by_document,
     )
+    if payload.get("status") != "ok":
+        return payload
+    results = payload.get("results", [])
+    if max_response_tokens is not None:
+        results, budget_error = _apply_response_token_budget(payload, results, max_response_tokens)
+        if budget_error is not None:
+            return budget_error
+        payload["results"] = results
+        payload["result_count"] = len(results)
+        if group_by_document:
+            payload["document_count"] = len(results)
+    if payload.get("match_mode") is None:
+        payload["hints"] = ["Empty query; provide search terms (quote adjacent words for phrases)."]
+        return payload
+    if group_by_document:
+        distinct_documents = len(results)
+    else:
+        distinct_documents = len({row["read_ref"]["ir_path"] for row in results})
+    payload["hints"] = search_ranking.collection_search_hints(
+        result_count=len(results),
+        has_more=bool(payload.get("has_more")),
+        offset=int(payload.get("offset", 0)),
+        match_mode=payload.get("match_mode"),
+        distinct_documents=distinct_documents,
+        per_document_limit=per_document_limit,
+        group_by_document=group_by_document,
+    )
+    recommended = search_ranking.collection_recommended_next_action(results, grouped=group_by_document)
+    if recommended is not None:
+        payload["recommended_next"] = recommended
+    return payload
 
 
 def list_documents_tool(store_dir: str = registry_store.DEFAULT_STORE_DIR) -> ToolPayload:
