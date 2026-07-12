@@ -6,6 +6,7 @@ from documa.interfaces.tools import (
     benchmark_tool,
     block_tree_tool,
     block_xref_tool,
+    cite_block_tool,
     doctor_tool,
     export_document_tool,
     index_collection_tool,
@@ -13,11 +14,15 @@ from documa.interfaces.tools import (
     inspect_document_tool,
     ingest_mailbox_tool,
     list_blocks_tool,
+    list_documents_tool,
     parse_document_tool,
     process_document_tool,
     read_block_tool,
+    render_citation_tool,
     search_blocks_tool,
     search_collection_tool,
+    source_window_tool,
+    verify_citations_tool,
     view_document_tool,
 )
 
@@ -260,6 +265,36 @@ def create_mcp_server() -> Any:
         """Return references around one progressive document block."""
 
         return block_xref_tool(ir_path=ir_path, block_id=block_id)
+
+    @mcp.tool()
+    def documa_cite_block(ir_path: str, block_id: str, style: str = "page-bbox") -> dict[str, Any]:
+        """Build a stable citation record with a bounded excerpt for one block."""
+
+        return cite_block_tool(ir_path=ir_path, block_id=block_id, style=style)
+
+    @mcp.tool()
+    def documa_render_citation(ir_path: str, ref_id: str, style: str = "page-bbox") -> dict[str, Any]:
+        """Render a citation string for a block or chunk reference."""
+
+        return render_citation_tool(ir_path=ir_path, ref_id=ref_id, style=style)
+
+    @mcp.tool()
+    def documa_source_window(ir_path: str, block_id: str, before: int = 1, after: int = 1) -> dict[str, Any]:
+        """Read neighbor blocks around a hit in reading order, without another search."""
+
+        return source_window_tool(ir_path=ir_path, block_id=block_id, before=before, after=after)
+
+    @mcp.tool()
+    def documa_verify_citations(ir_path: str, block_ids: list[str] | str) -> dict[str, Any]:
+        """Verify that cited block ids exist and their excerpts match source text."""
+
+        return verify_citations_tool(ir_path=ir_path, block_ids=block_ids)
+
+    @mcp.tool()
+    def documa_list_documents(store_dir: str = ".documa") -> dict[str, Any]:
+        """List registry documents so collection read_refs can be resolved."""
+
+        return list_documents_tool(store_dir=store_dir)
 
     @mcp.tool()
     def documa_benchmark(

@@ -478,6 +478,13 @@ class Stage10BlockReadingTests(unittest.TestCase):
         self.assertIn("documa_inspect_block", server.tools)
         self.assertIn("documa_read_block", server.tools)
         self.assertIn("documa_search_blocks", server.tools)
+        # Evidence loop: citation, neighbor window, verification, and registry
+        # listing must be reachable over MCP, not only from the CLI.
+        self.assertIn("documa_cite_block", server.tools)
+        self.assertIn("documa_render_citation", server.tools)
+        self.assertIn("documa_source_window", server.tools)
+        self.assertIn("documa_verify_citations", server.tools)
+        self.assertIn("documa_list_documents", server.tools)
 
 
 if __name__ == "__main__":
