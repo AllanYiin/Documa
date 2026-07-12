@@ -19,7 +19,7 @@ from documa.core.errors import DocumaError
 from documa.core.ir import DocumentBlockIR, DocumentBlockType, DocumentIR, repair_surrogate_text, to_plain_data
 from documa.core.serialization import document_from_plain_data
 from documa.exporters import BlockJsonExporter, ExportOptions, JsonExporter, MarkdownExporter, RagJsonExporter
-from documa.interfaces import citation
+from documa.interfaces import citation, search_ranking
 from documa.interfaces.tool_schemas import documa_tool_schemas
 from documa.pipeline import (
     BlockKeywordExtractionStage,
@@ -590,9 +590,18 @@ def _block_doc_region(block: DocumentBlockIR, by_id: dict[str, DocumentBlockIR])
     return "body"
 
 
-def _block_neighbor_metadata(block: DocumentBlockIR, document: DocumentIR) -> dict[str, Any]:
+def _ordered_block_positions(document: DocumentIR) -> tuple[list[DocumentBlockIR], dict[str, int]]:
+    """Reading-order block list plus id->position map, computed once per tool call."""
     ordered = sorted(document.document_blocks, key=lambda item: (item.order_index is None, item.order_index or 0))
     positions = {item.id: index for index, item in enumerate(ordered)}
+    return ordered, positions
+
+
+def _block_neighbor_metadata(
+    block: DocumentBlockIR,
+    ordered: list[DocumentBlockIR],
+    positions: dict[str, int],
+) -> dict[str, Any]:
     index = positions.get(block.id)
     prev_id = ordered[index - 1].id if index is not None and index > 0 else None
     next_id = ordered[index + 1].id if index is not None and index + 1 < len(ordered) else None
@@ -620,12 +629,19 @@ def _block_answer_tags(text: str, block: DocumentBlockIR) -> list[str]:
     return list(dict.fromkeys(tags))
 
 
-def _selection_metadata(block: DocumentBlockIR, document: DocumentIR, by_id: dict[str, DocumentBlockIR]) -> dict[str, Any]:
+def _selection_metadata(
+    block: DocumentBlockIR,
+    document: DocumentIR,
+    by_id: dict[str, DocumentBlockIR],
+    ordered: list[DocumentBlockIR],
+    positions: dict[str, int],
+    doc_region: str | None = None,
+) -> dict[str, Any]:
     content = document_block_text(document, block)
     selection_text = " ".join(part for part in [block.title or "", block.text_preview or "", content[:1200]] if part)
     char_count = len(content)
     token_estimate = max(1, math.ceil(char_count / 4)) if char_count else 0
-    doc_region = _block_doc_region(block, by_id)
+    doc_region = doc_region if doc_region is not None else _block_doc_region(block, by_id)
     return {
         "block_id": block.id,
         "block_type": block.type.value,
@@ -635,7 +651,7 @@ def _selection_metadata(block: DocumentBlockIR, document: DocumentIR, by_id: dic
         "char_count": char_count,
         "token_estimate": token_estimate,
         "recommended_read_chars": min(3000, max(800, char_count if char_count else len(block.text_preview or ""))),
-        "neighbors": _block_neighbor_metadata(block, document),
+        "neighbors": _block_neighbor_metadata(block, ordered, positions),
         "flags": {
             "has_numeric": bool(_NUMBER_PATTERN.search(selection_text)),
             "has_date": bool(_DATE_PATTERN.search(selection_text)),
@@ -805,12 +821,21 @@ def search_blocks_tool(
                 "context_words": context_words,
             },
             "verbosity": output_verbosity,
+            "total_matches": 0,
             "results": [],
         }
 
     query_terms = [term.casefold() for term in raw_terms]
     max_snippets = max(0, int(max_snippets_per_block))
-    results = []
+    ordered_blocks, block_positions = _ordered_block_positions(document)
+
+    # Pass 1: collect per-term/per-field hit counts, block frequencies for IDF,
+    # and body-length statistics; snippets are extracted here so field text is
+    # only materialized once per block.
+    candidates = []
+    term_block_frequency = [0] * len(query_terms)
+    body_length_total = 0
+    body_length_count = 0
     for block in document.document_blocks:
         body: str | None = None
         field_values = {
@@ -831,20 +856,22 @@ def search_blocks_tool(
                 field_text = field_values.get(field_name, "")
             if field_text:
                 field_texts.append((field_name, field_text))
-        score = 0
+        body_length = len(body) if body is not None else 0
+        if body is not None:
+            body_length_total += body_length
+            body_length_count += 1
         matched: list[str] = []
         matches: dict[str, list[str]] = {}
         snippets: list[dict[str, str]] = []
-        for raw_term, term in zip(raw_terms, query_terms):
-            term_hit = False
+        term_field_hits: list[list[tuple[str, int]]] = []
+        for term_index, (raw_term, term) in enumerate(zip(raw_terms, query_terms)):
+            field_hits: list[tuple[str, int]] = []
             for field_name, field_text in field_texts:
                 hits = _find_hits(field_text, term)
                 if not hits:
                     continue
-                term_hit = True
                 matches.setdefault(field_name, []).append(raw_term)
-                multiplier = _SEARCH_FIELD_WEIGHTS.get(field_name, 1)
-                score += len(hits) * multiplier
+                field_hits.append((field_name, len(hits)))
                 for start, end in hits:
                     if not include_snippets or field_name not in snippet_field_set or len(snippets) >= max_snippets:
                         break
@@ -862,10 +889,37 @@ def search_blocks_tool(
                             ),
                         }
                     )
-            if term_hit and raw_term not in matched:
-                matched.append(raw_term)
-        if query and query.casefold() in " ".join(text for _, text in field_texts).casefold():
-            score += 2
+            if field_hits:
+                term_block_frequency[term_index] += 1
+                if raw_term not in matched:
+                    matched.append(raw_term)
+            term_field_hits.append(field_hits)
+        exact_phrase = bool(query) and query.casefold() in " ".join(text for _, text in field_texts).casefold()
+        if not matched and not exact_phrase:
+            continue
+        candidates.append((block, term_field_hits, matched, matches, snippets, body_length, exact_phrase))
+
+    # Pass 2: BM25-lite scoring — IDF over blocks, saturated term frequency,
+    # existing field weights as multipliers, mild length normalization on body
+    # hits, and doc-region demotion (TOC/furniture never outrank body evidence).
+    block_count = len(document.document_blocks)
+    average_body_length = body_length_total / body_length_count if body_length_count else 0.0
+    results = []
+    for block, term_field_hits, matched, matches, snippets, body_length, exact_phrase in candidates:
+        score = 0.0
+        for term_index, field_hits in enumerate(term_field_hits):
+            if not field_hits:
+                continue
+            idf = search_ranking.inverse_block_frequency(block_count, term_block_frequency[term_index])
+            for field_name, hit_count in field_hits:
+                field_score = _SEARCH_FIELD_WEIGHTS.get(field_name, 1) * search_ranking.saturated_term_frequency(hit_count)
+                if field_name == "body":
+                    field_score *= search_ranking.body_length_normalization(body_length, average_body_length)
+                score += idf * field_score
+        if exact_phrase:
+            score += 2.0
+        doc_region = _block_doc_region(block, by_id)
+        score *= search_ranking.doc_region_multiplier(doc_region)
         if score <= 0:
             continue
         row = {
@@ -875,7 +929,7 @@ def search_blocks_tool(
             "block_type": block.type.value,
             "title": block.title,
             "heading_path": _block_path(block.id, by_id),
-            "score": score,
+            "score": round(score, 4),
             "page_refs": block.page_refs,
             **page_citation_metadata(block.page_refs, page_citations),
             "children_count": len(block.child_ids),
@@ -884,7 +938,7 @@ def search_blocks_tool(
             "matched_terms_count": len(set(matched)),
             "snippets": snippets,
         }
-        selection = _selection_metadata(block, document, by_id)
+        selection = _selection_metadata(block, document, by_id, ordered_blocks, block_positions, doc_region)
         row.update(
             {
                 "doc_region": selection["doc_region"],
@@ -931,6 +985,7 @@ def search_blocks_tool(
             "context_words": context_words,
         },
         "verbosity": output_verbosity,
+        "total_matches": len(results),
         "results": results[:limit],
     }
 

@@ -341,6 +341,103 @@ class Stage10BlockReadingTests(unittest.TestCase):
             self.assertEqual(output["status"], "ok")
             self.assertGreaterEqual(output["block_count"], 2)
 
+    def test_search_blocks_ranks_rare_term_evidence_above_common_term_repetition(self):
+        doc = DocumentIR(
+            id="d1",
+            source_name="rank.pdf",
+            pages=[
+                PageIR(
+                    id="p1",
+                    page_number=1,
+                    width=400,
+                    height=500,
+                    blocks=[
+                        block("s1", "常見詞 常見詞 常見詞 常見詞 常見詞 常見詞", order_index=1),
+                        block("s2", "常見詞出現一次，並包含資本緩衝要求的細節。", order_index=2),
+                    ],
+                )
+            ],
+            document_blocks=[
+                DocumentBlockIR(
+                    id="db_common",
+                    type=DocumentBlockType.PARAGRAPH,
+                    source_block_ids=["s1"],
+                    page_refs=[1],
+                    order_index=1,
+                ),
+                DocumentBlockIR(
+                    id="db_rare",
+                    type=DocumentBlockType.PARAGRAPH,
+                    source_block_ids=["s2"],
+                    page_refs=[1],
+                    order_index=2,
+                ),
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            ir_path = Path(tmp) / "documa.ir.json"
+            ir_path.write_text(json.dumps(to_plain_data(doc), ensure_ascii=False), encoding="utf-8")
+
+            result = call_documa_tool(
+                "documa_search_blocks",
+                {"ir_path": str(ir_path), "query": "常見詞 資本緩衝"},
+            )
+
+            content = result["structuredContent"]
+            self.assertEqual(content["total_matches"], 2)
+            # The block matching the rare term must outrank the block that only
+            # repeats the common term, even though the latter has more raw hits.
+            self.assertEqual(content["results"][0]["id"], "db_rare")
+            self.assertEqual(content["results"][0]["matched_terms_count"], 2)
+
+    def test_search_blocks_demotes_toc_hits_below_body_evidence(self):
+        doc = DocumentIR(
+            id="d1",
+            source_name="toc.pdf",
+            pages=[
+                PageIR(
+                    id="p1",
+                    page_number=1,
+                    width=400,
+                    height=500,
+                    blocks=[block("s1", "本節說明資本緩衝要求的計算方式。", order_index=2)],
+                )
+            ],
+            document_blocks=[
+                DocumentBlockIR(
+                    id="db_toc",
+                    type=DocumentBlockType.TOC,
+                    title="目錄",
+                    text_preview="第三章 資本緩衝要求 ...... 12",
+                    page_refs=[1],
+                    order_index=1,
+                ),
+                DocumentBlockIR(
+                    id="db_body",
+                    type=DocumentBlockType.PARAGRAPH,
+                    source_block_ids=["s1"],
+                    page_refs=[1],
+                    order_index=2,
+                ),
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            ir_path = Path(tmp) / "documa.ir.json"
+            ir_path.write_text(json.dumps(to_plain_data(doc), ensure_ascii=False), encoding="utf-8")
+
+            result = call_documa_tool(
+                "documa_search_blocks",
+                {"ir_path": str(ir_path), "query": "資本緩衝"},
+            )
+
+            content = result["structuredContent"]
+            ids = [row["id"] for row in content["results"]]
+            self.assertIn("db_toc", ids)
+            self.assertEqual(content["results"][0]["id"], "db_body")
+            toc_row = next(row for row in content["results"] if row["id"] == "db_toc")
+            self.assertEqual(toc_row["doc_region"], "toc")
+            self.assertLess(toc_row["score"], content["results"][0]["score"])
+
     def test_mcp_server_exposes_block_reading_tools(self):
         class FakeFastMCP:
             def __init__(self, name, instructions):
