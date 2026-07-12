@@ -153,6 +153,22 @@
         "需要更深層內容時以 parent_id 下鑽，而不是一次展開整棵樹。"
       ],
       "trigger_class": "indirect"
+    },
+    {
+      "id": 10,
+      "name": "breadth-question-uses-group-mode-then-narrows",
+      "type": "functional",
+      "language": "zh",
+      "coverage_tags": ["should-trigger", "routing", "efficiency"],
+      "prompt": "store 裡有十幾份合約，先告訴我哪幾份提到違約金條款，再把其中最相關兩份的條文找出來。",
+      "expected_output": "The response should first call documa_search_collection with group_by_document=true to identify documents (exact hit_count per document), then narrow with document_ids plus per_document_limit, and chain top_blocks read_refs into documa_read_block.",
+      "files": [],
+      "expectations": [
+        "廣度階段使用 group_by_document=true 的文件層 rollup，而不是拉高 limit 的扁平搜尋。",
+        "收斂階段使用 document_ids 鎖定候選文件並配 per_document_limit 控制深度。",
+        "讀取階段沿用 rollup 的 top_blocks read_ref，不重新盲搜。"
+      ],
+      "trigger_class": "direct"
     }
   ]
 }

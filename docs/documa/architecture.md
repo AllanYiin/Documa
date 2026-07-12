@@ -190,8 +190,10 @@ The trace is written as structured JSON and includes:
 - deterministic answer synthesis and evidence.
 
 The demo is intentionally offline and deterministic. It does not require an LLM
-provider or network access. Token accounting uses `tiktoken` when available and
-falls back to a clearly labeled heuristic otherwise.
+provider or network access. Token accounting uses the pluggable token counter
+(`documa.interfaces.token_counting`); character-ratio heuristics are banned, so
+without a configured counter the demo reports zero usage and labels the backend
+as unavailable.
 
 ## Stage 12 Local Collection Search Baseline
 
@@ -206,4 +208,11 @@ The baseline adds:
 
 Search result identity is registry-first: every hit includes `registry_document_id`, `ir_document_id`, `block_id`, `source_name`, `heading_path`, `page_refs`, `bbox_refs`, `citation_string`, and `read_ref`. The stable cross-document block key is `(registry_document_id, block_id)`; `ir_document_id` is returned for compatibility with existing IR consumers.
 
-This stage deliberately does not introduce embeddings, an external vector database, LLM answer synthesis, or UI. Optional hybrid/vector adapters can be added later behind the collection search boundary without changing the parser-neutral IR or the progressive block reading tools.
+Query-efficiency layer on top of the baseline:
+
+- **Incremental maintenance**: ingest and delete keep the derived index coherent by default (`upsert_document_index` / `remove_document_index`, content-hash short-circuit, single transaction per document). The full rebuild is the repair path for missing or version-outdated indexes; `store_collection_health` flags both.
+- **Ranking**: `bm25()` weights fields (title 4, heading_path 2, preview 1.5, body 1, keywords 3), matching the single-document field weights. Per-document capping runs inside SQL via `ROW_NUMBER`, making `per_document_limit` exact.
+- **Response shapes**: flat block hits or `group_by_document` rollups (exact per-document hit counts from the pre-cap window `COUNT`, best snippet, up to three read-ready `top_blocks`) with document-level paging. `document_ids` scopes follow-up searches. Snippets center on the query hit via `documa.core.snippet_windows`.
+- **Guidance and budgets**: responses carry deterministic `recommended_next` (a ready `documa_read_block` call chaining `read_ref`) and priority-ordered `hints`; `max_response_tokens` enforces a hard response ceiling through the pluggable token counter.
+
+This stage deliberately does not introduce embeddings, an external vector database, LLM answer synthesis, or UI. Optional hybrid/vector adapters can be added later behind the collection search boundary without changing the parser-neutral IR or the progressive block reading tools. Mailbox ingestion remains a parallel collection type that does not enter the registry or this index; per-file `documa ingest` is the bridge until a dedicated one exists.
