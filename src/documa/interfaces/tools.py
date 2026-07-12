@@ -6,6 +6,7 @@ import hashlib
 import json
 import math
 import re
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Callable
 
@@ -93,8 +94,21 @@ def _stamp_provenance(document: DocumentIR, pipeline_profile: str | None = None)
     document.pipeline_profile = pipeline_profile
 
 
-def load_document(path: str | Path) -> DocumentIR:
-    """Load an IR document from a file path or a registry document_id.
+# Parsed-document cache keyed by (resolved path, mtime_ns, size): the key
+# self-invalidates whenever the IR file is rewritten. Cached DocumentIR objects
+# are shared across tool calls, so tools may only apply idempotent in-place
+# enrichment (block tree build, page-citation map) — never destructive mutation.
+_DOCUMENT_CACHE: OrderedDict[tuple[str, int, int], DocumentIR] = OrderedDict()
+_DOCUMENT_CACHE_MAX_ENTRIES = 8
+
+
+def clear_document_cache() -> None:
+    """Drop all cached parsed documents (used by tests and after bulk rewrites)."""
+    _DOCUMENT_CACHE.clear()
+
+
+def _resolve_document_path(path: str | Path) -> Path:
+    """Resolve a file path or ``doc-`` registry reference to an IR file path.
 
     Resolution rule: an existing file path always wins; otherwise a ``doc-``
     prefixed reference is looked up in the local registry (``./.documa``).
@@ -109,8 +123,35 @@ def load_document(path: str | Path) -> DocumentIR:
                     f"DOCUMENT_ID_NOT_FOUND: no file at {ref!r} and no registry entry in ./{registry_store.DEFAULT_STORE_DIR}"
                 )
             resolved = registry_path
+    return resolved
+
+
+def _load_document_uncached(path: str | Path) -> DocumentIR:
+    """Parse an IR document fresh from disk, bypassing the shared cache.
+
+    Use this when the caller applies parameterized mutation (e.g. chunking with
+    a caller-supplied max_chars) that must not leak into the shared cache.
+    """
+    resolved = _resolve_document_path(path)
     payload = json.loads(resolved.read_text(encoding="utf-8"))
     return document_from_plain_data(payload)
+
+
+def load_document(path: str | Path) -> DocumentIR:
+    """Load an IR document from a file path or a registry document_id."""
+    resolved = _resolve_document_path(path)
+    stat = resolved.stat()
+    cache_key = (str(resolved.resolve()), stat.st_mtime_ns, stat.st_size)
+    cached = _DOCUMENT_CACHE.get(cache_key)
+    if cached is not None:
+        _DOCUMENT_CACHE.move_to_end(cache_key)
+        return cached
+    payload = json.loads(resolved.read_text(encoding="utf-8"))
+    document = document_from_plain_data(payload)
+    _DOCUMENT_CACHE[cache_key] = document
+    while len(_DOCUMENT_CACHE) > _DOCUMENT_CACHE_MAX_ENTRIES:
+        _DOCUMENT_CACHE.popitem(last=False)
+    return document
 
 
 def write_payload(path: str | Path, payload: Any) -> None:
@@ -327,6 +368,9 @@ def export_document_tool(
         return {"status": "error", "message": str(exc)}
 
     if format == "rag-json" and not document.chunks:
+        # Chunking depends on the caller-supplied max_chars, so it must run on a
+        # private copy — never on the shared cached document.
+        document = _load_document_uncached(ir_path)
         context = PipelineContext(settings={"max_chars": max_chars})
         if not document.document_blocks:
             BlockTreeBuildingStage().run(document, context)
