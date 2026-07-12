@@ -48,6 +48,8 @@ def normalize_ir_payload(payload: dict) -> dict:
     # Normalise both forward- and back-slash separators so the result is
     # identical on Windows and Linux runners.
     posix_src = payload["source_name"].replace("\\", "/")
+    # Keep only the last two parts of the path (fixture parent dir + filename)
+    # so that snapshots are stable regardless of where the repo is checked out.
     src_parts = PurePosixPath(posix_src).parts
     normalized_source = "/".join(src_parts[-2:])
 
@@ -61,6 +63,11 @@ def normalize_ir_payload(payload: dict) -> dict:
     # (block title, search_terms, …).  We normalise backslashes in each
     # candidate string before comparing so both slash styles are caught.
     def _replace_source_path(value: object) -> object:
+        """Recursively replace the absolute source path with its normalized form.
+
+        Compares after normalising backslashes so Windows and Linux paths are
+        both caught.
+        """
         if isinstance(value, str):
             norm = value.replace("\\", "/")
             if posix_src in norm:
