@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from io import StringIO
 from pathlib import Path
+from unittest import mock
 
 from documa.collections import registry as registry_store
 from documa.cli import main
@@ -106,6 +107,70 @@ class CollectionIndexTests(unittest.TestCase):
             self.assertEqual(hit["page_refs"], [1])
             self.assertEqual(hit["citation_string"], "[alpha.md, PDF p.1]")
             self.assertIn("unique", hit["snippet"])
+
+    def test_multi_term_queries_require_all_terms_before_falling_back(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Path(tmp) / ".documa"
+            _write_document(store, "doc-both", "ir-both", "both.md", "capital buffer requirement details")
+            _write_document(store, "doc-partial", "ir-partial", "partial.md", "requirement only appears here")
+            registry_store.rebuild_index(store)
+            build_collection_index(store)
+
+            strict = search_collection(store, query="capital requirement", limit=10)
+            fallback = search_collection(store, query="capital nonexistent-term", limit=10)
+
+            # Both terms present -> only the document containing both matches.
+            self.assertEqual(strict["match_mode"], "all_terms")
+            self.assertEqual(strict["result_count"], 1)
+            self.assertEqual(strict["results"][0]["registry_document_id"], "doc-both")
+            # One term matches nothing -> degrade to any-term and say so.
+            self.assertEqual(fallback["match_mode"], "any_term")
+            self.assertEqual(fallback["result_count"], 1)
+            self.assertEqual(fallback["results"][0]["registry_document_id"], "doc-both")
+
+    def test_quoted_phrases_match_adjacent_terms_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Path(tmp) / ".documa"
+            _write_document(store, "doc-phrase", "ir-phrase", "phrase.md", "capital buffer requirement")
+            _write_document(store, "doc-scattered", "ir-scattered", "scattered.md", "buffer of working capital")
+            registry_store.rebuild_index(store)
+            build_collection_index(store)
+
+            phrase = search_collection(store, query='"capital buffer"', limit=10)
+
+            self.assertEqual(phrase["match_mode"], "all_terms")
+            self.assertEqual(phrase["result_count"], 1)
+            self.assertEqual(phrase["results"][0]["registry_document_id"], "doc-phrase")
+
+    def test_cjk_subphrase_queries_match_indexed_blocks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Path(tmp) / ".documa"
+            _write_document(store, "doc-zh", "ir-zh", "zh.md", "本節說明資本緩衝要求的計算方式。")
+            _write_document(store, "doc-zh-other", "ir-zh-other", "zh2.md", "本節討論流動性覆蓋比率。")
+            registry_store.rebuild_index(store)
+            build_collection_index(store)
+
+            result = search_collection(store, query="資本緩衝", limit=10)
+
+            self.assertEqual(result["match_mode"], "all_terms")
+            self.assertEqual(result["result_count"], 1)
+            self.assertEqual(result["results"][0]["registry_document_id"], "doc-zh")
+
+    def test_health_reports_outdated_index_version_as_stale(self):
+        from documa.collections import sqlite_index
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Path(tmp) / ".documa"
+            _write_document(store, "doc-active-a", "ir-a", "alpha.md", "version needle")
+            registry_store.rebuild_index(store)
+            build_collection_index(store)
+
+            with mock.patch.object(sqlite_index, "INDEX_VERSION", "999"):
+                health = store_collection_health(store)
+
+            self.assertEqual(health["status"], "warning")
+            self.assertEqual(health["code"], "COLLECTION_INDEX_STALE")
+            self.assertTrue(health["index_version_outdated"])
 
     def test_collection_health_reports_missing_and_stale_indexes(self):
         with tempfile.TemporaryDirectory() as tmp:

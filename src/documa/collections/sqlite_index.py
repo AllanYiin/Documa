@@ -14,11 +14,28 @@ from documa.core.serialization import document_from_plain_data
 from documa.pipeline.block_tree import document_block_text
 from documa.pipeline.page_refs import ensure_page_citation_map, page_citation_metadata
 
-INDEX_VERSION = "1"
+# Version 2: FTS columns store CJK text with per-character segmentation so the
+# unicode61 tokenizer can match CJK sub-phrases. Version-1 indexes are reported
+# stale by store_collection_health and must be rebuilt via build_collection_index.
+INDEX_VERSION = "2"
 DEFAULT_COLLECTION_ID = "default"
 INDEX_FILENAME = "collection_index.sqlite3"
 
 ToolPayload = dict[str, Any]
+
+_CJK_CHAR_RE = re.compile(r"([぀-ヿ㐀-䶿一-鿿豈-﫿])")
+_FTS_TERM_RE = re.compile(r"[\w぀-ヿ㐀-䶿一-鿿豈-﫿]+", re.UNICODE)
+
+
+def _fts_segment(text: str) -> str:
+    """Space-pad each CJK character so unicode61 indexes it as its own token.
+
+    unicode61 treats a contiguous CJK run as one token, which makes CJK
+    sub-phrase queries unmatchable. Per-character tokens plus FTS5 phrase
+    queries restore substring semantics for CJK while leaving non-CJK text
+    untouched.
+    """
+    return _CJK_CHAR_RE.sub(r" \1 ", text)
 
 
 def _now_iso() -> str:
@@ -265,11 +282,11 @@ def build_collection_index(
                             row["collection_id"],
                             row["registry_document_id"],
                             row["block_id"],
-                            row["title"],
-                            row["heading_path_text"],
-                            row["text_preview"],
-                            row["body"],
-                            row["keywords_text"],
+                            _fts_segment(row["title"]),
+                            _fts_segment(row["heading_path_text"]),
+                            _fts_segment(row["text_preview"]),
+                            _fts_segment(row["body"]),
+                            _fts_segment(row["keywords_text"]),
                         ),
                     )
                     block_count += 1
@@ -287,9 +304,38 @@ def build_collection_index(
     }
 
 
-def _fts_query(query: str) -> str:
-    terms = [term for term in re.findall(r"[\w\u4e00-\u9fff\u3040-\u30ff]+", query, flags=re.UNICODE) if term]
-    return " OR ".join(f'"{term.replace(chr(34), chr(34) + chr(34))}"' for term in terms)
+def _fts_phrase(unit: str) -> str | None:
+    """Convert one query unit (term or quoted phrase) into an FTS5 phrase.
+
+    CJK characters are segmented exactly like the indexed text, so a CJK unit
+    becomes a multi-token phrase that matches the same character sequence.
+    """
+    tokens = _FTS_TERM_RE.findall(_fts_segment(unit))
+    if not tokens:
+        return None
+    joined = " ".join(tokens).replace('"', '""')
+    return f'"{joined}"'
+
+
+def _fts_query_variants(query: str) -> tuple[str, str]:
+    """Build (all_units, any_unit) FTS5 MATCH expressions from a raw query.
+
+    Double-quoted segments stay together as single phrase units; the remaining
+    text contributes one unit per term. The all-units (AND) form is the primary
+    query; the any-unit (OR) form is the precision fallback.
+    """
+    phrases = re.findall(r'"([^"]+)"', query)
+    remainder = re.sub(r'"[^"]*"?', " ", query)
+    units: list[str] = []
+    for phrase in phrases:
+        unit = _fts_phrase(phrase)
+        if unit:
+            units.append(unit)
+    for term in _FTS_TERM_RE.findall(remainder):
+        unit = _fts_phrase(term)
+        if unit and unit not in units:
+            units.append(unit)
+    return " AND ".join(units), " OR ".join(units)
 
 
 def _snippet(row: sqlite3.Row) -> str:
@@ -329,12 +375,13 @@ def search_collection(
 
     store = Path(store_dir)
     limit = max(1, min(int(limit), 100))
-    fts_query = _fts_query(query)
-    if not fts_query:
+    and_query, or_query = _fts_query_variants(query)
+    if not and_query:
         return {
             "status": "ok",
             "collection_id": collection_id,
             "query": query,
+            "match_mode": None,
             "result_count": 0,
             "results": [],
         }
@@ -345,23 +392,29 @@ def search_collection(
             "message": f"Collection index not found: {index_path(store)}",
         }
 
+    fetch_limit = limit * 5 if per_document_limit else limit
+    match_sql = """
+        SELECT blocks.*, documents.content_hash AS indexed_content_hash, bm25(blocks_fts) AS rank
+        FROM blocks_fts
+        JOIN blocks ON blocks.rowid = blocks_fts.rowid
+        JOIN documents ON documents.collection_id = blocks.collection_id
+          AND documents.registry_document_id = blocks.registry_document_id
+        WHERE blocks_fts MATCH ? AND blocks.collection_id = ?
+        ORDER BY rank ASC, blocks.registry_document_id ASC, blocks.order_index ASC
+        LIMIT ?
+        """
     try:
         active_entries = _active_registry_entry_map(store)
         with _connect(store) as conn:
             _init_schema(conn)
-            rows = conn.execute(
-                """
-                SELECT blocks.*, documents.content_hash AS indexed_content_hash, bm25(blocks_fts) AS rank
-                FROM blocks_fts
-                JOIN blocks ON blocks.rowid = blocks_fts.rowid
-                JOIN documents ON documents.collection_id = blocks.collection_id
-                  AND documents.registry_document_id = blocks.registry_document_id
-                WHERE blocks_fts MATCH ? AND blocks.collection_id = ?
-                ORDER BY rank ASC, blocks.registry_document_id ASC, blocks.order_index ASC
-                LIMIT ?
-                """,
-                (fts_query, collection_id, limit * 5 if per_document_limit else limit),
-            ).fetchall()
+            # All query units are required first; fall back to any-unit matching
+            # only when the strict query finds nothing, and say so in match_mode
+            # so callers know precision was degraded.
+            match_mode = "all_terms"
+            rows = conn.execute(match_sql, (and_query, collection_id, fetch_limit)).fetchall()
+            if not rows and or_query != and_query:
+                match_mode = "any_term"
+                rows = conn.execute(match_sql, (or_query, collection_id, fetch_limit)).fetchall()
     except sqlite3.OperationalError as exc:
         return {"status": "error", "code": "FTS_QUERY_INVALID", "message": str(exc), "query": query}
     except (OSError, ValueError) as exc:
@@ -387,6 +440,7 @@ def search_collection(
         "status": "ok",
         "collection_id": collection_id,
         "query": query,
+        "match_mode": match_mode,
         "result_count": len(results),
         "results": results,
     }
@@ -436,7 +490,8 @@ def store_collection_health(
     stale_documents = sorted(
         doc_id for doc_id, content_hash in indexed_hashes.items() if active_hashes.get(doc_id) != content_hash
     )
-    stale = bool(missing_from_index or stale_documents)
+    index_version_outdated = str(collection["index_version"]) != INDEX_VERSION
+    stale = bool(missing_from_index or stale_documents or index_version_outdated)
 
     return {
         "status": "warning" if stale else "ok",
@@ -444,6 +499,7 @@ def store_collection_health(
         "collection_id": collection_id,
         "index_path": str(path),
         "index_version": collection["index_version"],
+        "index_version_outdated": index_version_outdated,
         "updated_at": collection["updated_at"],
         "document_count": document_count,
         "active_document_count": len(active_entries),
