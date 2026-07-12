@@ -176,7 +176,7 @@ chunks:
 - asset_refs: []
   bbox_refs:
   - - 56.0
-    - 762.86
+    - 765.01
     - 273.66
     - 778.54
   heading_path:
@@ -203,8 +203,8 @@ chunks:
   source_block_ids:
   - p2_b10
   text:
-    normalized_text: 1  Revenue figures are unaudited management estimates.
-    raw_text: 1  Revenue figures are unaudited management estimates.
+    normalized_text: 1 Revenue figures are unaudited management estimates.
+    raw_text: 1 Revenue figures are unaudited management estimates.
     simplified_traditional_converted: false
     unicode_form: NFC
     width_normalized: false
@@ -554,14 +554,14 @@ document_blocks:
       min_freq: 2
       min_support: 1
       strategy: bottom_up_aggregation
-      text_length: 948
+      text_length: 947
     new_word_terms: []
     page_ref_kind: physical_page_number_1_based
     pdf_page_labels: []
     printed_page_labels: []
     role: body
     search_terms:
-    - D:\PycharmProjects\Documa\fixtures\pdf\real\annual-report.pdf
+    - real/annual-report.pdf
     - the
     - fiscal
     - year
@@ -584,7 +584,7 @@ document_blocks:
   source_block_ids: []
   source_chunk_ids: []
   text_preview: null
-  title: D:\PycharmProjects\Documa\fixtures\pdf\real\annual-report.pdf
+  title: real/annual-report.pdf
   type: document
 - bbox_refs:
   - - 56.0
@@ -1230,7 +1230,7 @@ document_blocks:
       min_freq: 2
       min_support: 2
       strategy: bottom_up_aggregation
-      text_length: 309
+      text_length: 308
     new_word_terms: []
     page_ref_kind: physical_page_number_1_based
     pdf_page_labels: []
@@ -1261,7 +1261,7 @@ document_blocks:
     - 510.61
     - 368.51
   - - 56.0
-    - 762.86
+    - 765.01
     - 273.66
     - 778.54
   child_ids:
@@ -1343,7 +1343,7 @@ document_blocks:
       min_freq: 2
       min_support: 1
       strategy: bottom_up_aggregation
-      text_length: 309
+      text_length: 308
     new_word_terms: []
     page_ref_kind: physical_page_number_1_based
     pdf_page_labels: []
@@ -1536,12 +1536,12 @@ document_blocks:
   type: paragraph
 - bbox_refs:
   - - 56.0
-    - 762.86
+    - 765.01
     - 273.66
     - 778.54
   child_ids: []
   confidence: high
-  content_hash: 3b2d3e2d7950b7e5f24e5b04558053f9aa4e81e02736dc0e78f24ca1a8dc6548
+  content_hash: a2889f91dc5dddc3adbaae75623983905f9004be925e387c6040435f05f9406e
   depth: 3
   id: db_doc_snapshot_p2_b10
   metadata:
@@ -1574,7 +1574,7 @@ document_blocks:
       min_freq: 1
       min_support: 1
       strategy: bottom_up_aggregation
-      text_length: 54
+      text_length: 53
     new_word_terms: []
     page_ref_kind: physical_page_number_1_based
     pdf_page_labels: []
@@ -3016,7 +3016,7 @@ pages:
     type: text
   - bbox:
     - 56.0
-    - 762.86
+    - 765.01
     - 273.66
     - 778.54
     confidence: high
@@ -3060,8 +3060,8 @@ pages:
         unicode_form: NFC
         width_normalized: false
     - bbox:
-      - 59.61
-      - 762.86
+      - 62.0
+      - 766.86
       - 273.66
       - 778.54
       font_name: Helvetica
@@ -3073,18 +3073,18 @@ pages:
         text_direction: ltr
       metadata:
         origin:
-        - 59.61
-        - 772.0
+        - 62.0
+        - 776.0
       style: []
       text:
-        normalized_text: '  Revenue figures are unaudited management estimates.'
-        raw_text: '  Revenue figures are unaudited management estimates.'
+        normalized_text: ' Revenue figures are unaudited management estimates.'
+        raw_text: ' Revenue figures are unaudited management estimates.'
         simplified_traditional_converted: false
         unicode_form: NFC
         width_normalized: false
     text:
-      normalized_text: 1  Revenue figures are unaudited management estimates.
-      raw_text: 1  Revenue figures are unaudited management estimates.
+      normalized_text: 1 Revenue figures are unaudited management estimates.
+      raw_text: 1 Revenue figures are unaudited management estimates.
       simplified_traditional_converted: false
       unicode_form: NFC
       width_normalized: false
@@ -3115,7 +3115,7 @@ pages:
       - block_count: 1
         column_count: 1
         kind: content
-        y0: 762.86
+        y0: 765.01
         y1: 778.54
         zone_id: z1b4
       - band_count: 4

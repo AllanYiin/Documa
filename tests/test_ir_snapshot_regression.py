@@ -38,14 +38,49 @@ def normalize_ir_payload(payload: dict) -> dict:
 
     - The random per-run document id (``doc_<uuid>``) also appears inside
       chunk and document-block ids, so it is replaced globally.
-    - ``source_name`` keeps only the posix-style relative fixture path.
+    - ``source_name`` keeps only the posix-style relative fixture path
+      (``<parent_dir>/<filename>``).  The same path also appears verbatim
+      inside block ``title`` and ``search_terms`` fields, so it is replaced
+      everywhere using a recursive walk after JSON-decode.
     - Floats are rounded to 2 decimals to absorb geometry jitter across
       PyMuPDF builds.
     """
+    # Normalise both forward- and back-slash separators so the result is
+    # identical on Windows and Linux runners.
+    posix_src = payload["source_name"].replace("\\", "/")
+    # Keep only the last two parts of the path (fixture parent dir + filename)
+    # so that snapshots are stable regardless of where the repo is checked out.
+    src_parts = PurePosixPath(posix_src).parts
+    normalized_source = "/".join(src_parts[-2:])
+
+    # Replace the document id globally via the JSON text (it has no special
+    # JSON characters, so a plain str.replace is safe).
     text = json.dumps(payload, ensure_ascii=False)
     text = text.replace(payload["id"], "doc_snapshot")
     data = json.loads(text)
-    data["source_name"] = str(PurePosixPath(*Path(payload["source_name"]).parts[-2:]))
+
+    # Replace the absolute source path wherever it appears in string values
+    # (block title, search_terms, …).  We normalise backslashes in each
+    # candidate string before comparing so both slash styles are caught.
+    def _replace_source_path(value: object) -> object:
+        """Recursively replace the absolute source path with its normalized form.
+
+        Compares after normalising backslashes so Windows and Linux paths are
+        both caught.
+        """
+        if isinstance(value, str):
+            norm = value.replace("\\", "/")
+            if posix_src in norm:
+                return norm.replace(posix_src, normalized_source)
+            return value
+        if isinstance(value, dict):
+            return {k: _replace_source_path(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [_replace_source_path(item) for item in value]
+        return value
+
+    data = _replace_source_path(data)
+    data["source_name"] = normalized_source
     return _round_floats(data)
 
 
