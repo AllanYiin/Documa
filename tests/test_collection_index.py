@@ -212,6 +212,100 @@ class CollectionIndexTests(unittest.TestCase):
             self.assertEqual(second["result_count"], 1)
             self.assertFalse(second["has_more"])
 
+    def test_group_by_document_returns_rollups_with_exact_hit_counts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Path(tmp) / ".documa"
+            _write_document(
+                store,
+                "doc-many",
+                "ir-many",
+                "many.md",
+                "",
+                blocks=[
+                    {"id": f"b{n}", "body": f"rollup needle occurrence {n}"} for n in range(1, 6)
+                ],
+            )
+            _write_document(
+                store,
+                "doc-one",
+                "ir-one",
+                "one.md",
+                "",
+                blocks=[{"id": "b1", "body": "one rollup needle here"}],
+            )
+            registry_store.rebuild_index(store)
+            build_collection_index(store)
+
+            grouped = search_collection(store, query="rollup", group_by_document=True, limit=10)
+
+            self.assertTrue(grouped["group_by_document"])
+            self.assertEqual(grouped["document_count"], 2)
+            by_id = {item["registry_document_id"]: item for item in grouped["results"]}
+            many = by_id["doc-many"]
+            # hit_count is exact even though top_blocks is capped at three.
+            self.assertEqual(many["hit_count"], 5)
+            self.assertEqual(len(many["top_blocks"]), 3)
+            self.assertEqual(many["total_blocks"], 5)
+            self.assertEqual(many["page_count"], 1)
+            self.assertIn("read_ref", many["top_blocks"][0])
+            self.assertEqual(by_id["doc-one"]["hit_count"], 1)
+
+    def test_group_by_document_pages_over_documents(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Path(tmp) / ".documa"
+            for name in ("a", "b", "c"):
+                _write_document(store, f"doc-{name}", f"ir-{name}", f"{name}.md", f"paged needle in {name}")
+            registry_store.rebuild_index(store)
+            build_collection_index(store)
+
+            first = search_collection(store, query="paged", group_by_document=True, limit=2)
+            second = search_collection(store, query="paged", group_by_document=True, limit=2, offset=2)
+
+            self.assertEqual(first["document_count"], 2)
+            self.assertTrue(first["has_more"])
+            self.assertEqual(second["document_count"], 1)
+            self.assertFalse(second["has_more"])
+            seen = {item["registry_document_id"] for item in first["results"]} | {
+                item["registry_document_id"] for item in second["results"]
+            }
+            self.assertEqual(seen, {"doc-a", "doc-b", "doc-c"})
+
+    def test_v2_documents_table_gains_aggregate_columns_without_crashing(self):
+        import sqlite3
+
+        from documa.collections import sqlite_index
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Path(tmp) / ".documa"
+            store.mkdir(parents=True)
+            # Simulate a v2-era index: documents table without aggregate columns.
+            raw = sqlite3.connect(sqlite_index.index_path(store))
+            try:
+                raw.execute(
+                    """
+                    CREATE TABLE documents (
+                      collection_id TEXT NOT NULL,
+                      registry_document_id TEXT NOT NULL,
+                      ir_path TEXT NOT NULL,
+                      status TEXT NOT NULL,
+                      updated_at TEXT NOT NULL,
+                      PRIMARY KEY (collection_id, registry_document_id)
+                    )
+                    """
+                )
+                raw.commit()
+            finally:
+                raw.close()
+            conn = sqlite_index._connect(store)
+            try:
+                sqlite_index._init_schema(conn)
+                columns = {row["name"] for row in conn.execute("PRAGMA table_info(documents)")}
+            finally:
+                conn.close()
+
+            self.assertIn("block_count", columns)
+            self.assertIn("page_count", columns)
+
     def test_multi_term_queries_require_all_terms_before_falling_back(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = Path(tmp) / ".documa"

@@ -15,9 +15,11 @@ from documa.pipeline.block_tree import document_block_text
 from documa.pipeline.page_refs import ensure_page_citation_map, page_citation_metadata
 
 # Version 2: FTS columns store CJK text with per-character segmentation so the
-# unicode61 tokenizer can match CJK sub-phrases. Version-1 indexes are reported
-# stale by store_collection_health and must be rebuilt via build_collection_index.
-INDEX_VERSION = "2"
+# unicode61 tokenizer can match CJK sub-phrases.
+# Version 3: documents rows carry block_count/page_count aggregates that feed
+# grouped search rollups. Outdated indexes are reported stale by
+# store_collection_health and must be rebuilt via build_collection_index.
+INDEX_VERSION = "3"
 DEFAULT_COLLECTION_ID = "default"
 INDEX_FILENAME = "collection_index.sqlite3"
 
@@ -74,6 +76,8 @@ def _init_schema(conn: sqlite3.Connection) -> None:
           ir_path TEXT NOT NULL,
           status TEXT NOT NULL,
           updated_at TEXT NOT NULL,
+          block_count INTEGER,
+          page_count INTEGER,
           PRIMARY KEY (collection_id, registry_document_id)
         );
         CREATE TABLE IF NOT EXISTS blocks (
@@ -109,6 +113,20 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         );
         """
     )
+    _ensure_documents_columns(conn)
+
+
+def _ensure_documents_columns(conn: sqlite3.Connection) -> None:
+    """Additively migrate pre-v3 documents tables so old indexes stay queryable.
+
+    store_collection_health flags version-outdated indexes as stale, which
+    guides a full rebuild; until then searches must not crash on missing
+    aggregate columns.
+    """
+    existing = {row["name"] for row in conn.execute("PRAGMA table_info(documents)")}
+    for column in ("block_count", "page_count"):
+        if column not in existing:
+            conn.execute(f"ALTER TABLE documents ADD COLUMN {column} INTEGER")
 
 
 def _load_document(store: Path, entry: dict[str, Any]):
@@ -142,7 +160,8 @@ def _citation_string(source_name: str, citation_meta: dict[str, Any]) -> str:
     return f"[{source_name}, {label}]" if label else f"[{source_name}]"
 
 
-def _record_rows(store: Path, collection_id: str, entry: dict[str, Any], now: str) -> list[dict[str, Any]]:
+def _record_rows(store: Path, collection_id: str, entry: dict[str, Any], now: str) -> tuple[list[dict[str, Any]], int]:
+    """Build block rows for one registry document; also returns its page count."""
     document, _ = _load_document(store, entry)
     page_citations = ensure_page_citation_map(document)
     by_id = {block.id: block for block in document.document_blocks}
@@ -176,7 +195,7 @@ def _record_rows(store: Path, collection_id: str, entry: dict[str, Any], now: st
                 "created_at": now,
             }
         )
-    return rows
+    return rows, len(document.pages)
 
 
 def _active_registry_entries(store_dir: Path) -> list[dict[str, Any]]:
@@ -188,6 +207,96 @@ def _active_registry_entries(store_dir: Path) -> list[dict[str, Any]]:
 
 def _active_registry_entry_map(store_dir: Path) -> dict[str, dict[str, Any]]:
     return {entry["document_id"]: entry for entry in _active_registry_entries(store_dir)}
+
+
+def _insert_document_rows(
+    conn: sqlite3.Connection,
+    store: Path,
+    collection_id: str,
+    entry: dict[str, Any],
+    now: str,
+) -> int:
+    """Insert one registry document's documents/blocks/blocks_fts rows.
+
+    Shared by the full rebuild and the incremental upsert; returns the number
+    of block rows inserted.
+    """
+    rows, page_count = _record_rows(store, collection_id, entry, now)
+    conn.execute(
+        """
+        INSERT INTO documents(
+          collection_id, registry_document_id, ir_document_id, source_name,
+          source_path, content_hash, ir_path, status, updated_at,
+          block_count, page_count
+        )
+        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            collection_id,
+            entry["document_id"],
+            entry.get("ir_document_id"),
+            entry.get("source_name"),
+            entry.get("source_path"),
+            entry.get("content_hash"),
+            entry["ir_path"],
+            entry.get("status", "active"),
+            now,
+            len(rows),
+            page_count,
+        ),
+    )
+    for row in rows:
+        cursor = conn.execute(
+            """
+            INSERT INTO blocks(
+              collection_id, registry_document_id, ir_document_id, source_name,
+              block_id, block_type, title, heading_path_json, text_preview, body,
+              keywords_json, page_refs_json, bbox_refs_json, citation_string,
+              dedupe_key, order_index, created_at
+            )
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                row["collection_id"],
+                row["registry_document_id"],
+                row["ir_document_id"],
+                row["source_name"],
+                row["block_id"],
+                row["block_type"],
+                row["title"],
+                row["heading_path_json"],
+                row["text_preview"],
+                row["body"],
+                row["keywords_json"],
+                row["page_refs_json"],
+                row["bbox_refs_json"],
+                row["citation_string"],
+                row["dedupe_key"],
+                row["order_index"],
+                row["created_at"],
+            ),
+        )
+        conn.execute(
+            """
+            INSERT INTO blocks_fts(
+              rowid, collection_id, registry_document_id, block_id,
+              title, heading_path, preview, body, keywords
+            )
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                cursor.lastrowid,
+                row["collection_id"],
+                row["registry_document_id"],
+                row["block_id"],
+                _fts_segment(row["title"]),
+                _fts_segment(row["heading_path_text"]),
+                _fts_segment(row["text_preview"]),
+                _fts_segment(row["body"]),
+                _fts_segment(row["keywords_text"]),
+            ),
+        )
+    return len(rows)
 
 
 def build_collection_index(
@@ -218,78 +327,7 @@ def build_collection_index(
 
             block_count = 0
             for entry in entries:
-                conn.execute(
-                    """
-                    INSERT INTO documents(
-                      collection_id, registry_document_id, ir_document_id, source_name,
-                      source_path, content_hash, ir_path, status, updated_at
-                    )
-                    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        collection_id,
-                        entry["document_id"],
-                        entry.get("ir_document_id"),
-                        entry.get("source_name"),
-                        entry.get("source_path"),
-                        entry.get("content_hash"),
-                        entry["ir_path"],
-                        entry.get("status", "active"),
-                        now,
-                    ),
-                )
-                for row in _record_rows(store, collection_id, entry, now):
-                    cursor = conn.execute(
-                        """
-                        INSERT INTO blocks(
-                          collection_id, registry_document_id, ir_document_id, source_name,
-                          block_id, block_type, title, heading_path_json, text_preview, body,
-                          keywords_json, page_refs_json, bbox_refs_json, citation_string,
-                          dedupe_key, order_index, created_at
-                        )
-                        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        (
-                            row["collection_id"],
-                            row["registry_document_id"],
-                            row["ir_document_id"],
-                            row["source_name"],
-                            row["block_id"],
-                            row["block_type"],
-                            row["title"],
-                            row["heading_path_json"],
-                            row["text_preview"],
-                            row["body"],
-                            row["keywords_json"],
-                            row["page_refs_json"],
-                            row["bbox_refs_json"],
-                            row["citation_string"],
-                            row["dedupe_key"],
-                            row["order_index"],
-                            row["created_at"],
-                        ),
-                    )
-                    conn.execute(
-                        """
-                        INSERT INTO blocks_fts(
-                          rowid, collection_id, registry_document_id, block_id,
-                          title, heading_path, preview, body, keywords
-                        )
-                        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        (
-                            cursor.lastrowid,
-                            row["collection_id"],
-                            row["registry_document_id"],
-                            row["block_id"],
-                            _fts_segment(row["title"]),
-                            _fts_segment(row["heading_path_text"]),
-                            _fts_segment(row["text_preview"]),
-                            _fts_segment(row["body"]),
-                            _fts_segment(row["keywords_text"]),
-                        ),
-                    )
-                    block_count += 1
+                block_count += _insert_document_rows(conn, store, collection_id, entry, now)
             conn.commit()
     except (OSError, sqlite3.Error, KeyError, ValueError, json.JSONDecodeError) as exc:
         return {"status": "error", "code": "COLLECTION_INDEX_BUILD_FAILED", "message": str(exc)}
@@ -371,6 +409,7 @@ def _row_to_result(row: sqlite3.Row, score: float) -> dict[str, Any]:
 _BM25_RANK = "bm25(blocks_fts, 0.0, 0.0, 0.0, 4.0, 2.0, 1.5, 1.0, 3.0)"
 _MAX_DOCUMENT_IDS = 100
 _UNLIMITED_DOC_RANK = 2**31
+_GROUP_TOP_REFS = 3
 
 
 def _match_sql(document_id_count: int) -> str:
@@ -391,6 +430,8 @@ def _match_sql(document_id_count: int) -> str:
                    COUNT(*) OVER (PARTITION BY matched.registry_document_id) AS doc_hit_count
             FROM (
                 SELECT blocks.*, documents.content_hash AS indexed_content_hash,
+                       documents.block_count AS doc_block_count,
+                       documents.page_count AS doc_page_count,
                        {_BM25_RANK} AS rank
                 FROM blocks_fts
                 JOIN blocks ON blocks.rowid = blocks_fts.rowid
@@ -413,8 +454,15 @@ def search_collection(
     offset: int = 0,
     per_document_limit: int | None = None,
     document_ids: list[str] | None = None,
+    group_by_document: bool = False,
 ) -> ToolPayload:
-    """Search the local collection index and return citation-ready block hits."""
+    """Search the local collection index and return citation-ready block hits.
+
+    With ``group_by_document`` the response pages over document-level rollups
+    (exact hit_count, best_score, top snippet, up to three read-ready
+    top_blocks per document) instead of a flat block list — the right shape
+    for breadth questions like "which documents mention X".
+    """
 
     store = Path(store_dir)
     limit = max(1, min(int(limit), 100))
@@ -448,10 +496,18 @@ def search_collection(
         }
 
     # Per-document capping happens inside SQL via ROW_NUMBER, so fetching one
-    # row past the requested page (after the registry staleness post-filter)
-    # keeps has_more exact without over-fetch multipliers.
+    # unit past the requested page (after the registry staleness post-filter)
+    # keeps has_more exact without over-fetch multipliers. In grouped mode the
+    # paging unit is a document, and each contributes at most doc_rank_cap rows.
     fetch_budget = offset + limit + 1
-    doc_rank_cap = max(1, int(per_document_limit)) if per_document_limit is not None else _UNLIMITED_DOC_RANK
+    if group_by_document:
+        doc_rank_cap = _GROUP_TOP_REFS
+        if per_document_limit is not None:
+            doc_rank_cap = max(1, min(int(per_document_limit), _GROUP_TOP_REFS))
+        fetch_limit = fetch_budget * doc_rank_cap
+    else:
+        doc_rank_cap = max(1, int(per_document_limit)) if per_document_limit is not None else _UNLIMITED_DOC_RANK
+        fetch_limit = fetch_budget
     match_sql = _match_sql(len(scoped_ids))
     try:
         active_entries = _active_registry_entry_map(store)
@@ -461,7 +517,7 @@ def search_collection(
             # only when the strict query finds nothing, and say so in match_mode
             # so callers know precision was degraded.
             match_mode = "all_terms"
-            base_params = (collection_id, *scoped_ids, doc_rank_cap, fetch_budget)
+            base_params = (collection_id, *scoped_ids, doc_rank_cap, fetch_limit)
             rows = conn.execute(match_sql, (and_query, *base_params)).fetchall()
             if not rows and or_query != and_query:
                 match_mode = "any_term"
@@ -472,6 +528,48 @@ def search_collection(
         return {"status": "error", "code": "REGISTRY_LOAD_FAILED", "message": str(exc)}
     except sqlite3.Error as exc:
         return {"status": "error", "code": "COLLECTION_SEARCH_FAILED", "message": str(exc)}
+
+    if group_by_document:
+        rollups: list[dict[str, Any]] = []
+        by_doc: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            doc_id = row["registry_document_id"]
+            active_entry = active_entries.get(doc_id)
+            if active_entry is None or active_entry.get("content_hash") != row["indexed_content_hash"]:
+                continue
+            rollup = by_doc.get(doc_id)
+            block_result = _row_to_result(row, score=round(float(-row["rank"]), 6))
+            if rollup is None:
+                if len(rollups) >= fetch_budget:
+                    continue
+                rollup = {
+                    "registry_document_id": doc_id,
+                    "ir_document_id": row["ir_document_id"],
+                    "source_name": row["source_name"],
+                    # Exact: the window COUNT runs before the doc_rank cut.
+                    "hit_count": int(row["doc_hit_count"]),
+                    "best_score": block_result["score"],
+                    "top_snippet": block_result["snippet"],
+                    "total_blocks": row["doc_block_count"],
+                    "page_count": row["doc_page_count"],
+                    "top_blocks": [],
+                }
+                by_doc[doc_id] = rollup
+                rollups.append(rollup)
+            rollup["top_blocks"].append(block_result)
+        results = rollups[offset : offset + limit]
+        return {
+            "status": "ok",
+            "collection_id": collection_id,
+            "query": query,
+            "match_mode": match_mode,
+            "group_by_document": True,
+            "result_count": len(results),
+            "document_count": len(results),
+            "offset": offset,
+            "has_more": len(rollups) > offset + limit,
+            "results": results,
+        }
 
     filtered = []
     for row in rows:
