@@ -868,6 +868,7 @@ def search_blocks_tool(
             "total_matches": 0,
             "offset": 0,
             "results": [],
+            "hints": ["Empty query; provide query terms or any_of synonyms."],
         }
 
     query_terms = [term.casefold() for term in raw_terms]
@@ -1055,6 +1056,17 @@ def search_blocks_tool(
         }
         page = kept
     payload["results"] = page
+    payload["hints"] = search_ranking.search_hints(
+        result_count=len(page),
+        total_matches=len(results),
+        offset=offset,
+        search_body=search_body,
+        term_count=len(raw_terms),
+        top_matched_terms=page[0]["matched_terms_count"] if page else 0,
+    )
+    recommended = search_ranking.recommended_next_action(page)
+    if recommended is not None:
+        payload["recommended_next"] = recommended
     return payload
 
 

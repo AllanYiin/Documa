@@ -208,6 +208,32 @@ class TokenBudgetTests(unittest.TestCase):
             self.assertGreater(page["total_blocks"], 4)
             self.assertTrue(page["has_more"])
 
+    def test_search_blocks_recommends_next_read_and_paging_hint(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ir_path = _write_ir(tmp, self._multi_block_document())
+            payload = call_documa_tool(
+                "documa_search_blocks",
+                {"ir_path": str(ir_path), "query": "budget-needle", "limit": 2},
+            )["structuredContent"]
+
+            recommended = payload["recommended_next"]
+            self.assertEqual(recommended["tool"], "documa_read_block")
+            self.assertEqual(recommended["block_ids"][0], payload["results"][0]["block_id"])
+            self.assertEqual(recommended["max_chars"], payload["results"][0]["recommended_read_chars"])
+            self.assertTrue(any("offset=2" in hint for hint in payload["hints"]))
+
+    def test_search_blocks_zero_results_hint_suggests_recovery(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ir_path = _write_ir(tmp, self._multi_block_document())
+            payload = call_documa_tool(
+                "documa_search_blocks",
+                {"ir_path": str(ir_path), "query": "totally-absent-term"},
+            )["structuredContent"]
+
+            self.assertEqual(payload["results"], [])
+            self.assertNotIn("recommended_next", payload)
+            self.assertTrue(any("any_of" in hint for hint in payload["hints"]))
+
     def test_compact_search_response_size_stays_bounded(self):
         # Regression guardrail: the serialized compact response must stay small
         # enough that a default search costs well under ~1k estimated tokens.
