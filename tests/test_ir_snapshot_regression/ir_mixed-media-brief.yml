@@ -31,9 +31,9 @@ chunks:
   - p1_para1
   text:
     normalized_text: 'Sampling rate: 4 kHz per channel, 32 channels total. Noise floor:
-      0.8 uV2  under shielded conditions.'
+      0.8 uV2 under shielded conditions.'
     raw_text: 'Sampling rate: 4 kHz per channel, 32 channels total. Noise floor: 0.8
-      uV2  under shielded conditions.'
+      uV2 under shielded conditions.'
     simplified_traditional_converted: false
     unicode_form: NFC
     width_normalized: false
@@ -165,7 +165,7 @@ chunks:
 - asset_refs: []
   bbox_refs:
   - - 56.0
-    - 290.86
+    - 293.01
     - 241.06
     - 306.04
   heading_path:
@@ -192,8 +192,8 @@ chunks:
   source_block_ids:
   - p2_b4
   text:
-    normalized_text: 2  Measured with inputs shorted at the connector.
-    raw_text: 2  Measured with inputs shorted at the connector.
+    normalized_text: 2 Measured with inputs shorted at the connector.
+    raw_text: 2 Measured with inputs shorted at the connector.
     simplified_traditional_converted: false
     unicode_form: NFC
     width_normalized: false
@@ -482,14 +482,14 @@ document_blocks:
       min_freq: 5
       min_support: 3
       strategy: bottom_up_aggregation
-      text_length: 1066
+      text_length: 1064
     new_word_terms: []
     page_ref_kind: physical_page_number_1_based
     pdf_page_labels: []
     printed_page_labels: []
     role: body
     search_terms:
-    - D:\PycharmProjects\Documa\fixtures\pdf\real\mixed-media-brief.pdf
+    - real/mixed-media-brief.pdf
     - the
     stage: block_tree
   order_index: 1
@@ -500,7 +500,7 @@ document_blocks:
   source_block_ids: []
   source_chunk_ids: []
   text_preview: null
-  title: D:\PycharmProjects\Documa\fixtures\pdf\real\mixed-media-brief.pdf
+  title: real/mixed-media-brief.pdf
   type: document
 - bbox_refs:
   - - 56.0
@@ -619,7 +619,7 @@ document_blocks:
       min_freq: 2
       min_support: 2
       strategy: bottom_up_aggregation
-      text_length: 153
+      text_length: 152
     new_word_terms: []
     page_ref_kind: physical_page_number_1_based
     pdf_page_labels: []
@@ -707,7 +707,7 @@ document_blocks:
       min_freq: 2
       min_support: 1
       strategy: bottom_up_aggregation
-      text_length: 153
+      text_length: 152
     new_word_terms: []
     page_ref_kind: physical_page_number_1_based
     pdf_page_labels: []
@@ -732,7 +732,7 @@ document_blocks:
     - 152.99
   child_ids: []
   confidence: medium
-  content_hash: c25ea7601c80c98ca5112aa71e20d7d6ccadad95caaf470972a94739d9195d33
+  content_hash: fdc1b00ccdec40e561eef32f8f04c9d9a32be89c8bc2f3450fda801a7fd519b3
   depth: 3
   id: db_doc_snapshot_p1_para1
   metadata:
@@ -785,7 +785,7 @@ document_blocks:
       min_freq: 1
       min_support: 1
       strategy: bottom_up_aggregation
-      text_length: 101
+      text_length: 100
     new_word_terms: []
     page_ref_kind: physical_page_number_1_based
     pdf_page_labels: []
@@ -1458,7 +1458,7 @@ document_blocks:
       min_freq: 2
       min_support: 2
       strategy: bottom_up_aggregation
-      text_length: 540
+      text_length: 539
     new_word_terms: []
     page_ref_kind: physical_page_number_1_based
     pdf_page_labels: []
@@ -1485,7 +1485,7 @@ document_blocks:
     - 534.01
     - 182.59
   - - 56.0
-    - 290.86
+    - 293.01
     - 241.06
     - 306.04
   child_ids:
@@ -1641,7 +1641,7 @@ document_blocks:
       min_freq: 2
       min_support: 1
       strategy: bottom_up_aggregation
-      text_length: 540
+      text_length: 539
     new_word_terms: []
     page_ref_kind: physical_page_number_1_based
     pdf_page_labels: []
@@ -1851,12 +1851,12 @@ document_blocks:
   type: paragraph
 - bbox_refs:
   - - 56.0
-    - 290.86
+    - 293.01
     - 241.06
     - 306.04
   child_ids: []
   confidence: high
-  content_hash: fd285833a00d4459505801a70b18e1f5335567050f0695972f9d9c0c16e8af90
+  content_hash: fd8c2563c9f7b6cc043188ef89d24258eeed356053a1f0d755293c6cf886687a
   depth: 3
   id: db_doc_snapshot_p2_b4
   metadata:
@@ -1892,7 +1892,7 @@ document_blocks:
       min_freq: 1
       min_support: 1
       strategy: bottom_up_aggregation
-      text_length: 49
+      text_length: 48
     new_word_terms: []
     page_ref_kind: physical_page_number_1_based
     pdf_page_labels: []
@@ -2201,8 +2201,8 @@ pages:
         unicode_form: NFC
         width_normalized: false
     - bbox:
-      - 155.61
-      - 135.75
+      - 158.0
+      - 139.25
       - 276.95
       - 152.99
       font_name: Helvetica
@@ -2214,20 +2214,20 @@ pages:
         text_direction: ltr
       metadata:
         origin:
-        - 155.61
-        - 146.5
+        - 158.0
+        - 150.0
       style: []
       text:
-        normalized_text: '  under shielded conditions.'
-        raw_text: '  under shielded conditions.'
+        normalized_text: ' under shielded conditions.'
+        raw_text: ' under shielded conditions.'
         simplified_traditional_converted: false
         unicode_form: NFC
         width_normalized: false
     text:
       normalized_text: 'Sampling rate: 4 kHz per channel, 32 channels total. Noise
-        floor: 0.8 uV2  under shielded conditions.'
+        floor: 0.8 uV2 under shielded conditions.'
       raw_text: 'Sampling rate: 4 kHz per channel, 32 channels total. Noise floor:
-        0.8 uV2  under shielded conditions.'
+        0.8 uV2 under shielded conditions.'
       simplified_traditional_converted: false
       unicode_form: NFC
       width_normalized: false
@@ -2770,7 +2770,7 @@ pages:
     type: paragraph
   - bbox:
     - 56.0
-    - 290.86
+    - 293.01
     - 241.06
     - 306.04
     confidence: high
@@ -2814,8 +2814,8 @@ pages:
         unicode_form: NFC
         width_normalized: false
     - bbox:
-      - 59.61
-      - 290.86
+      - 62.0
+      - 294.36
       - 241.06
       - 306.04
       font_name: Helvetica
@@ -2827,18 +2827,18 @@ pages:
         text_direction: ltr
       metadata:
         origin:
-        - 59.61
-        - 300.0
+        - 62.0
+        - 303.5
       style: []
       text:
-        normalized_text: '  Measured with inputs shorted at the connector.'
-        raw_text: '  Measured with inputs shorted at the connector.'
+        normalized_text: ' Measured with inputs shorted at the connector.'
+        raw_text: ' Measured with inputs shorted at the connector.'
         simplified_traditional_converted: false
         unicode_form: NFC
         width_normalized: false
     text:
-      normalized_text: 2  Measured with inputs shorted at the connector.
-      raw_text: 2  Measured with inputs shorted at the connector.
+      normalized_text: 2 Measured with inputs shorted at the connector.
+      raw_text: 2 Measured with inputs shorted at the connector.
       simplified_traditional_converted: false
       unicode_form: NFC
       width_normalized: false
@@ -2863,7 +2863,7 @@ pages:
       - block_count: 1
         column_count: 1
         kind: content
-        y0: 290.86
+        y0: 293.01
         y1: 306.04
         zone_id: z1b3
       - band_count: 3

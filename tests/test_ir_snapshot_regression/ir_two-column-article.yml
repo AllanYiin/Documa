@@ -534,7 +534,7 @@ document_blocks:
     printed_page_labels: []
     role: body
     search_terms:
-    - D:\PycharmProjects\Documa\fixtures\pdf\real\two-column-article.pdf
+    - real/two-column-article.pdf
     - the
     stage: block_tree
   order_index: 1
@@ -545,7 +545,7 @@ document_blocks:
   source_block_ids: []
   source_chunk_ids: []
   text_preview: null
-  title: D:\PycharmProjects\Documa\fixtures\pdf\real\two-column-article.pdf
+  title: real/two-column-article.pdf
   type: document
 - bbox_refs:
   - - 56.0
