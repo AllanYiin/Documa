@@ -364,6 +364,47 @@ def _row_to_result(row: sqlite3.Row, score: float) -> dict[str, Any]:
     }
 
 
+# bm25() weights are positional in blocks_fts column-declaration order:
+# collection_id, registry_document_id, block_id (UNINDEXED -> 0.0), then
+# title=4, heading_path=2, preview=1.5, body=1, keywords=3 — mirroring the
+# single-document _SEARCH_FIELD_WEIGHTS so title/keyword hits outrank body.
+_BM25_RANK = "bm25(blocks_fts, 0.0, 0.0, 0.0, 4.0, 2.0, 1.5, 1.0, 3.0)"
+_MAX_DOCUMENT_IDS = 100
+_UNLIMITED_DOC_RANK = 2**31
+
+
+def _match_sql(document_id_count: int) -> str:
+    # bm25() is an FTS5 auxiliary function and may only appear in the query
+    # level that MATCHes blocks_fts, so the innermost query materializes it as
+    # a plain `rank` column; window functions run one level up over that.
+    doc_filter = ""
+    if document_id_count:
+        placeholders = ", ".join("?" for _ in range(document_id_count))
+        doc_filter = f" AND blocks.registry_document_id IN ({placeholders})"
+    return f"""
+        SELECT * FROM (
+            SELECT matched.*,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY matched.registry_document_id
+                       ORDER BY matched.rank ASC, matched.order_index ASC
+                   ) AS doc_rank,
+                   COUNT(*) OVER (PARTITION BY matched.registry_document_id) AS doc_hit_count
+            FROM (
+                SELECT blocks.*, documents.content_hash AS indexed_content_hash,
+                       {_BM25_RANK} AS rank
+                FROM blocks_fts
+                JOIN blocks ON blocks.rowid = blocks_fts.rowid
+                JOIN documents ON documents.collection_id = blocks.collection_id
+                  AND documents.registry_document_id = blocks.registry_document_id
+                WHERE blocks_fts MATCH ? AND blocks.collection_id = ?{doc_filter}
+            ) AS matched
+        )
+        WHERE doc_rank <= ?
+        ORDER BY rank ASC, registry_document_id ASC, order_index ASC
+        LIMIT ?
+        """
+
+
 def search_collection(
     store_dir: str | Path = registry_store.DEFAULT_STORE_DIR,
     query: str = "",
@@ -371,12 +412,22 @@ def search_collection(
     limit: int = 20,
     offset: int = 0,
     per_document_limit: int | None = None,
+    document_ids: list[str] | None = None,
 ) -> ToolPayload:
     """Search the local collection index and return citation-ready block hits."""
 
     store = Path(store_dir)
     limit = max(1, min(int(limit), 100))
     offset = max(0, int(offset))
+    scoped_ids: list[str] = []
+    if document_ids is not None:
+        scoped_ids = [str(item).strip() for item in document_ids]
+        if not scoped_ids or any(not item for item in scoped_ids) or len(scoped_ids) > _MAX_DOCUMENT_IDS:
+            return {
+                "status": "error",
+                "code": "DOCUMENT_IDS_INVALID",
+                "message": f"document_ids must contain 1-{_MAX_DOCUMENT_IDS} non-empty document ids.",
+            }
     and_query, or_query = _fts_query_variants(query)
     if not and_query:
         return {
@@ -396,20 +447,12 @@ def search_collection(
             "message": f"Collection index not found: {index_path(store)}",
         }
 
-    # Fetch one row past the requested page (after the registry/per-document
-    # post-filters) so has_more is exact without a second query.
+    # Per-document capping happens inside SQL via ROW_NUMBER, so fetching one
+    # row past the requested page (after the registry staleness post-filter)
+    # keeps has_more exact without over-fetch multipliers.
     fetch_budget = offset + limit + 1
-    fetch_limit = fetch_budget * 5 if per_document_limit else fetch_budget
-    match_sql = """
-        SELECT blocks.*, documents.content_hash AS indexed_content_hash, bm25(blocks_fts) AS rank
-        FROM blocks_fts
-        JOIN blocks ON blocks.rowid = blocks_fts.rowid
-        JOIN documents ON documents.collection_id = blocks.collection_id
-          AND documents.registry_document_id = blocks.registry_document_id
-        WHERE blocks_fts MATCH ? AND blocks.collection_id = ?
-        ORDER BY rank ASC, blocks.registry_document_id ASC, blocks.order_index ASC
-        LIMIT ?
-        """
+    doc_rank_cap = max(1, int(per_document_limit)) if per_document_limit is not None else _UNLIMITED_DOC_RANK
+    match_sql = _match_sql(len(scoped_ids))
     try:
         active_entries = _active_registry_entry_map(store)
         with _connect(store) as conn:
@@ -418,10 +461,11 @@ def search_collection(
             # only when the strict query finds nothing, and say so in match_mode
             # so callers know precision was degraded.
             match_mode = "all_terms"
-            rows = conn.execute(match_sql, (and_query, collection_id, fetch_limit)).fetchall()
+            base_params = (collection_id, *scoped_ids, doc_rank_cap, fetch_budget)
+            rows = conn.execute(match_sql, (and_query, *base_params)).fetchall()
             if not rows and or_query != and_query:
                 match_mode = "any_term"
-                rows = conn.execute(match_sql, (or_query, collection_id, fetch_limit)).fetchall()
+                rows = conn.execute(match_sql, (or_query, *base_params)).fetchall()
     except sqlite3.OperationalError as exc:
         return {"status": "error", "code": "FTS_QUERY_INVALID", "message": str(exc), "query": query}
     except (OSError, ValueError) as exc:
@@ -430,15 +474,11 @@ def search_collection(
         return {"status": "error", "code": "COLLECTION_SEARCH_FAILED", "message": str(exc)}
 
     filtered = []
-    per_doc_counts: dict[str, int] = {}
     for row in rows:
         doc_id = row["registry_document_id"]
         active_entry = active_entries.get(doc_id)
         if active_entry is None or active_entry.get("content_hash") != row["indexed_content_hash"]:
             continue
-        if per_document_limit is not None and per_doc_counts.get(doc_id, 0) >= per_document_limit:
-            continue
-        per_doc_counts[doc_id] = per_doc_counts.get(doc_id, 0) + 1
         filtered.append(_row_to_result(row, score=round(float(-row["rank"]), 6)))
         if len(filtered) >= fetch_budget:
             break

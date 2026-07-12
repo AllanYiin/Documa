@@ -22,33 +22,60 @@ from documa.core.ir import (
 )
 
 
-def _write_document(store: Path, document_id: str, ir_document_id: str, source_name: str, body: str, *, status: str = "active") -> None:
-    source = BlockIR(
-        id=f"{document_id}-source",
-        type=BlockType.PARAGRAPH,
-        page_number=1,
-        text=TextContent(body),
-        bbox=(40, 40, 220, 80),
-        order_index=1,
-    )
+def _write_document(
+    store: Path,
+    document_id: str,
+    ir_document_id: str,
+    source_name: str,
+    body: str,
+    *,
+    status: str = "active",
+    blocks: list[dict] | None = None,
+) -> None:
+    """Write a synthetic registry document.
+
+    ``blocks`` overrides the default single-block layout: each entry is a dict
+    with optional keys id/title/body/keywords (body required).
+    """
+    specs = blocks or [
+        {
+            "id": "target-block",
+            "title": f"{source_name} section",
+            "body": body,
+            "keywords": ["alpha", "needle"],
+        }
+    ]
+    sources = []
+    document_blocks = []
+    for index, spec in enumerate(specs, start=1):
+        source = BlockIR(
+            id=f"{document_id}-source-{index}",
+            type=BlockType.PARAGRAPH,
+            page_number=1,
+            text=TextContent(spec["body"]),
+            bbox=(40, 40 + index * 40, 220, 70 + index * 40),
+            order_index=index,
+        )
+        sources.append(source)
+        document_blocks.append(
+            DocumentBlockIR(
+                id=spec.get("id") or f"block-{index}",
+                type=DocumentBlockType.PARAGRAPH,
+                title=spec.get("title"),
+                source_block_ids=[source.id],
+                page_refs=[1],
+                bbox_refs=[(40, 40 + index * 40, 220, 70 + index * 40)],
+                text_preview=spec["body"][:80],
+                content_hash=f"{document_id}-hash-{index}",
+                order_index=index,
+                metadata={"keyword_terms": spec.get("keywords", [])},
+            )
+        )
     doc = DocumentIR(
         id=ir_document_id,
         source_name=source_name,
-        pages=[PageIR(id=f"{document_id}-page", page_number=1, width=400, height=500, blocks=[source])],
-        document_blocks=[
-            DocumentBlockIR(
-                id="target-block",
-                type=DocumentBlockType.PARAGRAPH,
-                title=f"{source_name} section",
-                source_block_ids=[source.id],
-                page_refs=[1],
-                bbox_refs=[(40, 40, 220, 80)],
-                text_preview=body[:80],
-                content_hash=f"{document_id}-hash",
-                order_index=1,
-                metadata={"keyword_terms": ["alpha", "needle"]},
-            )
-        ],
+        pages=[PageIR(id=f"{document_id}-page", page_number=1, width=400, height=500, blocks=sources)],
+        document_blocks=document_blocks,
     )
 
     doc_dir = store / "documents" / document_id
@@ -107,6 +134,83 @@ class CollectionIndexTests(unittest.TestCase):
             self.assertEqual(hit["page_refs"], [1])
             self.assertEqual(hit["citation_string"], "[alpha.md, PDF p.1]")
             self.assertIn("unique", hit["snippet"])
+
+    def test_title_hits_outrank_body_hits_across_documents(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Path(tmp) / ".documa"
+            _write_document(
+                store,
+                "doc-title-hit",
+                "ir-title",
+                "title.md",
+                "",
+                blocks=[{"id": "b1", "title": "solvency buffer overview", "body": "unrelated body text here."}],
+            )
+            _write_document(
+                store,
+                "doc-body-hit",
+                "ir-body",
+                "body.md",
+                "",
+                blocks=[{"id": "b1", "title": "chapter two", "body": "the solvency margin is described in this body."}],
+            )
+            registry_store.rebuild_index(store)
+            build_collection_index(store)
+
+            result = search_collection(store, query="solvency", limit=10)
+
+            self.assertEqual(result["result_count"], 2)
+            # Weighted bm25: a title hit must outrank a body hit.
+            self.assertEqual(result["results"][0]["registry_document_id"], "doc-title-hit")
+
+    def test_document_ids_scopes_search_and_rejects_invalid_input(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Path(tmp) / ".documa"
+            _write_document(store, "doc-a", "ir-a", "a.md", "shared needle in document a")
+            _write_document(store, "doc-b", "ir-b", "b.md", "shared needle in document b")
+            registry_store.rebuild_index(store)
+            build_collection_index(store)
+
+            scoped = search_collection(store, query="shared", document_ids=["doc-b"])
+            invalid_empty = search_collection(store, query="shared", document_ids=[])
+            invalid_blank = search_collection(store, query="shared", document_ids=["doc-a", " "])
+
+            self.assertEqual(scoped["result_count"], 1)
+            self.assertEqual(scoped["results"][0]["registry_document_id"], "doc-b")
+            self.assertEqual(invalid_empty["code"], "DOCUMENT_IDS_INVALID")
+            self.assertEqual(invalid_blank["code"], "DOCUMENT_IDS_INVALID")
+
+    def test_per_document_limit_caps_exactly_with_paging(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Path(tmp) / ".documa"
+            for doc_index in ("a", "b"):
+                _write_document(
+                    store,
+                    f"doc-{doc_index}",
+                    f"ir-{doc_index}",
+                    f"{doc_index}.md",
+                    "",
+                    blocks=[
+                        {"id": f"b{n}", "body": f"cluster needle occurrence {n} in document {doc_index}"}
+                        for n in range(1, 4)
+                    ],
+                )
+            registry_store.rebuild_index(store)
+            build_collection_index(store)
+
+            first = search_collection(store, query="cluster", limit=2, per_document_limit=1)
+            second = search_collection(store, query="cluster", limit=2, offset=1, per_document_limit=1)
+
+            # Exactly one hit per document; both documents represented.
+            self.assertEqual(first["result_count"], 2)
+            self.assertEqual(
+                {row["registry_document_id"] for row in first["results"]},
+                {"doc-a", "doc-b"},
+            )
+            self.assertFalse(first["has_more"])
+            # Paging over the capped set stays exact (no over-fetch heuristics).
+            self.assertEqual(second["result_count"], 1)
+            self.assertFalse(second["has_more"])
 
     def test_multi_term_queries_require_all_terms_before_falling_back(self):
         with tempfile.TemporaryDirectory() as tmp:
