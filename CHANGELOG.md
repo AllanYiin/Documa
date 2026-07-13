@@ -1,8 +1,18 @@
 # Changelog
 
-## Unreleased — v0.3：reading order v2, credible benchmark, evidence runtime（2026-07）
+## v0.3.0 — reading order v2, credible benchmark, evidence runtime, query efficiency（2026-07-13）
 
 定位收斂為 **document evidence runtime for agents**：ingest → block reading → citation → verifiable answer。
+
+### 新增（查詢效率與多文件檢索）
+
+- **單文件查詢效率**：文件 LRU 快取（mtime/size 自失效，`DOCUMA_DOCUMENT_CACHE_SIZE` 可調）；`documa_search_blocks` 改 BM25-lite 排序（IDF、TF 飽和、body 長度正規化、TOC/頁眉降權）；`offset`/`total_matches` 分頁；有界 `documa_block_tree`（`max_depth`/`max_nodes`/`include_citations`）；搜尋回應內建確定性 `recommended_next`（可直接照發的 read 呼叫）與 `hints`（零結果補救、分頁、拆題）。
+- **Token 計數政策**：全面禁止 chars/4 類啟發式。可插拔 counter（`documa.interfaces.token_counting`）：tiktoken 自動偵測（OpenAI 系）、`DOCUMA_TOKEN_COUNTER=anthropic:<model>` 走 Anthropic count-tokens API（content-hash 快取、二分截斷）。`max_tokens`／`max_response_tokens` 預算參數；無 counter 時 token 欄位為 null、預算參數回 `TOKEN_COUNTER_UNAVAILABLE`。新 extras：`documa[tokens]`、`documa[anthropic-tokens]`。
+- **Collection 檢索修正與擴充**：FTS 欄位改 CJK 逐字切分（**中文子詞查詢從無法命中變為可用**；`INDEX_VERSION` 升 3，舊索引由 health 標 stale 引導重建）；查詢詞 AND 優先、引號片語、零命中才 OR 降級並以 `match_mode` 標示；`bm25()` 欄位權重；SQL 窗函數精確 `per_document_limit`（廢除過抓啟發式）；`group_by_document` 文件層 rollup（精確命中數、查詢置中 snippet、≤3 個 read-ready top_blocks）；`document_ids` 子集過濾；snippet 一律以命中詞置中（共用 `documa.core.snippet_windows`）；`recommended_next`/`hints`/`max_response_tokens` 與單文件同構。
+- **增量索引維護**：`documa ingest`/`delete-document` 預設自動 upsert/remove 集合索引（content-hash 短路、單交易、`--no-update-index` 可關），ingest 完立即可搜；全量 `index-collection` 降級為修復手段。registry map 以 mtime 快取免除每查重 parse。
+- **MCP 面補全**：`documa_ingest`、`documa_list_documents`、citation 家族（`cite_block`/`render_citation`/`source_window`/`verify_citations`）上 MCP，agent 可走完「ingest → 搜尋 → 讀取 → 引用 → 驗證」閉環。
+- **Plugins 與 skills**：三個 host wrapper 都補齊多文件迴圈（openclaw 新增 4 個 collection 工具）；documa-evidence skill 深化為查詢策略指南（問題形狀路由表、廣度→收斂流程、token 旋鈕、反模式）；`scripts/package_plugins.py` 確定性打包 + CI freshness gate。
+- **documa-mcp 孤兒防護**：stdio host 消失時自動退場（Windows PeekNamedPipe／POSIX POLLHUP，非消耗性偵測，互動執行不受影響）。
 
 ### 新增
 
