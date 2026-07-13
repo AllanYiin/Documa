@@ -29,6 +29,10 @@ jobs:
         run: python -m pip install -e ".[dev,documents]"
       - name: Check schema is in sync with IR dataclasses
         run: python scripts/generate_schema.py --check
+      - name: Validate agent plugins
+        run: python scripts/validate_agent_plugins.py
+      - name: Check plugin zips are in sync with plugin sources
+        run: python scripts/package_plugins.py --check
       - name: Run tests
         run: python -m pytest
       - name: Run Documa doctor

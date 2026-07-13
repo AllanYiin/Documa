@@ -35,11 +35,23 @@ Codex 與 Claude Code 的 plugin manifest 都用 `mcpServers` 指向 MCP config�
 
 不要把兩邊 `.mcp.json` 合併成同一份；wrapper 應維持 host-specific。
 
+## Packaging
+
+`plugins/claude-code-documa.zip` 是 tracked 發佈產物，一律用打包腳本重生（確定性輸出：固定時間戳、排序條目），不要手動壓縮：
+
+```powershell
+python scripts\package_plugins.py          # 重生 zip
+python scripts\package_plugins.py --check  # CI 強制：zip 與 plugin 目錄不同步即失敗
+```
+
+改動任何 `plugins/claude-code-documa/` 檔案後必須重跑打包腳本並一併 commit zip，否則 CI 會擋下。
+
 ## Minimum Smoke Checks
 
 ```powershell
 documa doctor
 python scripts\validate_agent_plugins.py
+python scripts\package_plugins.py --check
 ```
 
 For OpenClaw plugin source sanity:
