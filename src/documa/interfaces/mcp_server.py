@@ -1,5 +1,9 @@
 """Optional MCP server wrapper for Documa tools."""
 
+import os
+import sys
+import threading
+import time
 from typing import Any
 
 from documa.interfaces.tools import (
@@ -352,7 +356,75 @@ def create_mcp_server() -> Any:
     return mcp
 
 
+def _stdin_pipe_broken_windows() -> bool:
+    """Non-consuming probe: has the host's end of the stdin pipe gone away?
+
+    PeekNamedPipe never removes data, so it is safe to call while the MCP
+    transport is concurrently reading stdin.
+    """
+    import ctypes
+    import msvcrt
+
+    kernel32 = ctypes.windll.kernel32
+    handle = msvcrt.get_osfhandle(sys.stdin.fileno())
+    available = ctypes.c_ulong(0)
+    ok = kernel32.PeekNamedPipe(ctypes.c_void_p(handle), None, 0, None, ctypes.byref(available), None)
+    return not ok
+
+
+def install_stdio_exit_watchdog(poll_seconds: float = 2.0) -> bool:
+    """Exit the process when the stdio host disappears (orphan guard).
+
+    MCP-over-stdio contract: the server's lifetime is bounded by the client
+    that spawned it. On abrupt host termination the transport read loop does
+    not always observe EOF (seen on Windows), stranding documa-mcp processes
+    that keep serving the code they were started with and lock the console
+    script against reinstalls. The watchdog detects the dead peer without
+    consuming transport bytes: PeekNamedPipe on Windows, POLLHUP/POLLERR on
+    POSIX. Returns False when stdin is not a pipe (interactive/manual runs),
+    in which case no watchdog is installed.
+    """
+    try:
+        stdin_fd = sys.stdin.fileno()
+    except (OSError, ValueError, AttributeError):
+        return False
+
+    if os.name == "nt":
+        import ctypes
+        import msvcrt
+
+        FILE_TYPE_PIPE = 3
+        handle = msvcrt.get_osfhandle(stdin_fd)
+        if ctypes.windll.kernel32.GetFileType(ctypes.c_void_p(handle)) != FILE_TYPE_PIPE:
+            return False
+
+        def watch() -> None:
+            while not _stdin_pipe_broken_windows():
+                time.sleep(poll_seconds)
+            os._exit(0)
+
+    else:
+        import select
+
+        if not hasattr(select, "poll"):  # pragma: no cover - exotic platforms
+            return False
+        poller = select.poll()
+        # Event mask 0: POLLHUP/POLLERR are always reported, POLLIN never is,
+        # so normal transport traffic cannot trip the watchdog.
+        poller.register(stdin_fd, 0)
+
+        def watch() -> None:
+            while True:
+                events = poller.poll(int(poll_seconds * 1000))
+                if any(flags & (select.POLLHUP | select.POLLERR) for _, flags in events):
+                    os._exit(0)
+
+    threading.Thread(target=watch, daemon=True, name="documa-mcp-stdio-watchdog").start()
+    return True
+
+
 def main() -> None:
+    install_stdio_exit_watchdog()
     create_mcp_server().run()
 
 
