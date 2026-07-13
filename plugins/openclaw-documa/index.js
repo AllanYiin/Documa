@@ -163,6 +163,114 @@ export default definePluginEntry({
     });
 
     api.registerTool({
+      name: "documa_ingest",
+      description: "Ingest a document into the local store; returns a stable doc- id and keeps the collection index fresh.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          source: { type: "string" },
+          store_dir: { type: "string", default: ".documa" },
+          lang: { type: "string", default: "auto" },
+          max_chars: { type: "number", default: 1200 },
+          ocr: { type: "boolean", default: false },
+        },
+        required: ["source"],
+      },
+      async execute(_id, params, context) {
+        const args = ["ingest", params.source, "--store-dir", params.store_dir || ".documa"];
+        const lang = optionalString(params.lang);
+        const maxChars = optionalNumber(params.max_chars);
+        if (lang) args.push("--lang", lang);
+        if (maxChars) args.push("--max-chars", maxChars);
+        if (params.ocr) args.push("--ocr");
+        return asToolResult(await runDocuma(context?.config, args, context?.signal));
+      },
+    });
+
+    api.registerTool({
+      name: "documa_list_documents",
+      description: "List registry documents so collection read_refs can be resolved to doc- ids.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          store_dir: { type: "string", default: ".documa" },
+        },
+      },
+      async execute(_id, params, context) {
+        const args = ["list-documents", "--store-dir", params.store_dir || ".documa"];
+        return asToolResult(await runDocuma(context?.config, args, context?.signal));
+      },
+    });
+
+    api.registerTool({
+      name: "documa_index_collection",
+      description: "Rebuild the local collection search index (repair path; ingest maintains it incrementally).",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          store_dir: { type: "string", default: ".documa" },
+          collection_id: { type: "string", default: "default" },
+        },
+      },
+      async execute(_id, params, context) {
+        const args = ["index-collection", "--store-dir", params.store_dir || ".documa"];
+        const collectionId = optionalString(params.collection_id);
+        if (collectionId) args.push("--collection-id", collectionId);
+        return asToolResult(await runDocuma(context?.config, args, context?.signal));
+      },
+    });
+
+    api.registerTool({
+      name: "documa_search_collection",
+      description: "Search all active store documents; group_by_document returns per-document rollups for breadth questions.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          query: { type: "string" },
+          store_dir: { type: "string", default: ".documa" },
+          collection_id: { type: "string", default: "default" },
+          limit: { type: "number", default: 20 },
+          offset: { type: "number", default: 0 },
+          per_document_limit: { type: "number" },
+          document_ids: { type: "array", items: { type: "string" } },
+          group_by_document: { type: "boolean", default: false },
+          max_response_tokens: { type: "number" },
+        },
+        required: ["query"],
+      },
+      async execute(_id, params, context) {
+        const args = [
+          "search-collection",
+          "--store-dir",
+          params.store_dir || ".documa",
+          "--query",
+          params.query,
+          "--limit",
+          String(params.limit ?? 20),
+        ];
+        const collectionId = optionalString(params.collection_id);
+        const offset = optionalNumber(params.offset);
+        const perDocumentLimit = optionalNumber(params.per_document_limit);
+        const maxResponseTokens = optionalNumber(params.max_response_tokens);
+        if (collectionId) args.push("--collection-id", collectionId);
+        if (offset && params.offset > 0) args.push("--offset", offset);
+        if (perDocumentLimit) args.push("--per-document-limit", perDocumentLimit);
+        for (const documentId of params.document_ids || []) {
+          if (typeof documentId === "string" && documentId.length > 0) {
+            args.push("--document-id", documentId);
+          }
+        }
+        if (params.group_by_document) args.push("--group-by-document");
+        if (maxResponseTokens) args.push("--max-response-tokens", maxResponseTokens);
+        return asToolResult(await runDocuma(context?.config, args, context?.signal));
+      },
+    });
+
+    api.registerTool({
       name: "documa_doctor",
       description: "Run Documa environment diagnostics.",
       parameters: {

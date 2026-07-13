@@ -25,6 +25,7 @@ dependencies:
     - documa-mcp
   tools:
     - documa_process
+    - documa_ingest
     - documa_search_blocks
     - documa_list_blocks
     - documa_read_block

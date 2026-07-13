@@ -485,6 +485,8 @@ class Stage10BlockReadingTests(unittest.TestCase):
         self.assertIn("documa_source_window", server.tools)
         self.assertIn("documa_verify_citations", server.tools)
         self.assertIn("documa_list_documents", server.tools)
+        # Multi-document flow starts with ingest into the registry store.
+        self.assertIn("documa_ingest", server.tools)
 
 
 if __name__ == "__main__":

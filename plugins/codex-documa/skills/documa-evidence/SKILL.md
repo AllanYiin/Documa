@@ -34,7 +34,7 @@ Fallback rule:
 <workflow>
 Step 0: Confirm tool availability
 - Input: User request, current Codex tool list, and any referenced local/uploaded documents.
-- Action: Check whether plugin-provided Documa MCP tools such as `documa_process`, `documa_search_blocks`, `documa_list_blocks`, `documa_read_block`, and `documa_doctor` are visible. If they are not visible, discover or load the plugin-provided MCP server before reading the document.
+- Action: Check whether plugin-provided Documa MCP tools such as `documa_process`, `documa_search_blocks`, `documa_list_blocks`, `documa_read_block`, `documa_ingest`, `documa_search_collection`, and `documa_doctor` are visible. If they are not visible, discover or load the plugin-provided MCP server before reading the document.
 - Output: Clear decision to use Documa tools or an explicit fallback reason.
 - Validation: Do not pretend Documa tools exist when they are absent; do not start with generic PDF reading unless fallback conditions are met.
 
@@ -117,6 +117,12 @@ Input:
 User: "Documa tools are not in the current tool list; summarize the exported markdown instead."
 Output:
 First try to discover or load the Documa MCP server. If unavailable, explicitly fall back to exported Markdown and avoid calling that the primary Documa workflow.
+
+Example 4
+Input:
+User: "store 裡有十幾份合約，哪幾份提到違約金？把最相關兩份的條文找出來。"
+Output:
+Breadth first: `documa_search_collection` with `query="違約金"`, `group_by_document=true` — read the rollups' exact `hit_count` to name the documents. Then narrow: `documa_search_collection` with `document_ids=[top two doc- ids]`, `per_document_limit=2`. Read via each hit's `read_ref` chained into `documa_read_block`, and cite with block ids plus page metadata. Do not loop `documa_search_blocks` per document.
 </examples>
 
 ## Hard Rules

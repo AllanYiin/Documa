@@ -12,8 +12,9 @@ python -m pip install -e ".[documents,mcp]"
 
 1. 支援 MCP 的 host 一律優先使用 `documa-mcp`。
 2. 只有 host-native runtime 需要直接註冊 tool 時，才包 `documa` CLI。
-3. 回答流程維持 evidence-driven：先 process 文件，再 search/list blocks，最後只 read 選中的 blocks。
-4. 不依賴 parser-native objects，也不繞過 Documa IR。
+3. 回答流程維持 evidence-driven：單文件先 process，再 search/list blocks，最後只 read 選中的 blocks；多文件先逐檔 ingest（集合索引增量維護），廣度問題用 `search_collection --group-by-document`，再以 `document_ids` 收斂並沿 `read_ref` 讀取。
+4. 每個 wrapper 都必須同時暴露單文件與多文件（collection）兩條查詢路徑，並遵循搜尋回應內建的 `recommended_next`／`hints` 引導。
+5. 不依賴 parser-native objects，也不繞過 Documa IR。
 
 ## Plugin Layouts
 

@@ -8,6 +8,10 @@
       "documa_process",
       "documa_search_blocks",
       "documa_read_block",
+      "documa_ingest",
+      "documa_list_documents",
+      "documa_index_collection",
+      "documa_search_collection",
       "documa_doctor"
     ]
   },

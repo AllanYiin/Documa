@@ -10,6 +10,7 @@ from documa.interfaces.tools import (
     doctor_tool,
     export_document_tool,
     index_collection_tool,
+    ingest_document_tool,
     inspect_block_tool,
     inspect_document_tool,
     ingest_mailbox_tool,
@@ -219,8 +220,28 @@ def create_mcp_server() -> Any:
         )
 
     @mcp.tool()
+    def documa_ingest(
+        source: str,
+        store_dir: str = ".documa",
+        lang: str = "auto",
+        max_chars: int = 1200,
+        ocr: bool = False,
+        update_index: bool = True,
+    ) -> dict[str, Any]:
+        """Ingest a document into the local store; returns a stable doc- registry id and keeps the collection index fresh."""
+
+        return ingest_document_tool(
+            source=source,
+            store_dir=store_dir,
+            lang=lang,
+            max_chars=max_chars,
+            ocr=ocr,
+            update_index=update_index,
+        )
+
+    @mcp.tool()
     def documa_index_collection(store_dir: str = ".documa", collection_id: str = "default") -> dict[str, Any]:
-        """Build the local collection search index from active registry documents."""
+        """Rebuild the local collection search index (repair path; ingest maintains it incrementally)."""
 
         return index_collection_tool(store_dir=store_dir, collection_id=collection_id)
 
