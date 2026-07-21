@@ -1,5 +1,9 @@
 # Documa
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/AllanYiin/Documa/main/assets/documa-logo.png" alt="Documa logo" width="320">
+</p>
+
 Documa 是給 agent 用的 **document evidence runtime**：讓 agent 讀懂文件、只讀需要的部分、回答時指得出出處，而且引用可以被驗證。
 
 核心流程只有四步：

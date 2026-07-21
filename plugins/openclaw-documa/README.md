@@ -1,5 +1,9 @@
 # OpenClaw Documa Plugin
 
+<p align="center">
+  <img src="assets/documa-logo.png" alt="Documa logo" width="320">
+</p>
+
 This is a native OpenClaw tool plugin that wraps the installed `documa` CLI. It does not bundle Documa itself; install Documa in the environment visible to the OpenClaw Gateway first.
 
 ```powershell

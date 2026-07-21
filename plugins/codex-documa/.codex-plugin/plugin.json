@@ -1,9 +1,9 @@
 {
   "name": "codex-documa",
-  "version": "0.3.0+codex.20260713000000",
-  "description": "Use Documa document understanding from Codex via MCP.",
+  "version": "0.3.0+codex.20260718200325",
+  "description": "透過 MCP 在 Codex 中使用 Documa 的文件理解能力。",
   "author": {
-    "name": "Documa contributors"
+    "name": "Documa 貢獻者"
   },
   "homepage": "https://github.com/AllanYiin/Documa",
   "repository": "https://github.com/AllanYiin/Documa",
@@ -17,19 +17,22 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Documa",
-    "shortDescription": "Read documents with Documa IR and block evidence.",
-    "longDescription": "Adds Documa MCP tools and an evidence-first workflow for processing documents, searching blocks, and reading only selected evidence.",
-    "developerName": "Documa contributors",
+    "shortDescription": "用 Documa IR 與區塊證據閱讀文件。",
+    "longDescription": "加入 Documa MCP 工具與證據優先工作流程，協助處理文件、搜尋區塊，並只讀取選定的證據。",
+    "developerName": "Documa 貢獻者",
+    "composerIcon": "./assets/documa-logo.png",
+    "logo": "./assets/documa-logo.png",
+    "logoDark": "./assets/documa-logo.png",
     "category": "Productivity",
     "capabilities": [
       "MCP",
-      "Document understanding",
-      "Evidence search"
+      "文件理解",
+      "證據搜尋"
     ],
     "defaultPrompt": [
-      "Use Documa to answer from this document with evidence.",
-      "Search Documa blocks before reading full content.",
-      "Process this file into Documa IR and inspect it."
+      "使用 Documa，依據這份文件中的證據回答問題。",
+      "先搜尋 Documa 區塊，再讀取完整內容。",
+      "將這個檔案處理成 Documa IR 並檢查結果。"
     ]
   },
   "mcpServers": "./.mcp.json"

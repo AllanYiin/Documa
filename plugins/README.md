@@ -1,5 +1,9 @@
 # Documa Agent Plugins
 
+<p align="center">
+  <img src="../assets/documa-logo.png" alt="Documa logo" width="320">
+</p>
+
 這個目錄放 host-specific plugin wrappers。它們把 Documa 當成第三方 package 使用，並且刻意留在 `src/` 外面，避免 Documa core 變成某個 agent host 專用的實作。
 
 所有 wrapper 都假設 host 執行環境已經能找到 Documa：

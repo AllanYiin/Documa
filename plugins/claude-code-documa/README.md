@@ -1,5 +1,9 @@
 # Claude Code Documa Plugin
 
+<p align="center">
+  <img src="assets/documa-logo.png" alt="Documa logo" width="320">
+</p>
+
 這個 plugin 透過 plugin-provided MCP server 與 evidence workflow skill，把 Documa 暴露給 Claude Code。它不打包 Documa 本體；請先在 Claude Code 可見的 Python 環境安裝 Documa。
 
 ```powershell

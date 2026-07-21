@@ -1,7 +1,7 @@
 {
   "name": "documa-local",
   "interface": {
-    "displayName": "Documa Local"
+    "displayName": "Documa 本地外掛程式市集"
   },
   "plugins": [
     {

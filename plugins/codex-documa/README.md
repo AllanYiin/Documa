@@ -1,5 +1,9 @@
 # Codex Documa Plugin
 
+<p align="center">
+  <img src="assets/documa-logo.png" alt="Documa logo" width="320">
+</p>
+
 這個 plugin 透過 bundled MCP server config 與 reusable evidence workflow skill，把 Documa 暴露給 Codex。它不打包 Documa 本體；請先在 Codex 可見的 Python 環境安裝 Documa。
 
 ```powershell
