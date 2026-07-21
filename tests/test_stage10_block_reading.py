@@ -1,3 +1,4 @@
+import hashlib
 import json
 import sys
 import tempfile
@@ -62,6 +63,21 @@ class Stage10BlockReadingTests(unittest.TestCase):
         self.assertTrue(any(item.source_block_ids == ["p1"] for item in doc.document_blocks))
         root = next(item for item in doc.document_blocks if item.parent_id is None)
         self.assertEqual(len(root.metadata["furniture"]), 2)
+
+    def test_block_tree_hashes_surrogate_text_as_valid_utf8_without_overwriting_raw_text(self):
+        source = block("body", "earth \ud83c\udf0f broken \udf0f")
+        doc = DocumentIR(
+            id="d1",
+            source_name="surrogate.pdf",
+            pages=[PageIR(id="p1", page_number=1, width=400, height=500, blocks=[source])],
+        )
+
+        BlockTreeBuildingStage().run(doc)
+
+        paragraph = next(item for item in doc.document_blocks if item.source_block_ids == ["body"])
+        expected_text = "earth \U0001F30F broken \ufffd"
+        self.assertEqual(paragraph.content_hash, hashlib.sha256(expected_text.encode("utf-8")).hexdigest())
+        self.assertEqual(source.text.raw_text, "earth \ud83c\udf0f broken \udf0f")
 
     def test_block_tree_adds_printed_page_citation_metadata(self):
         doc = DocumentIR(

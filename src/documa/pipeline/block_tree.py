@@ -16,6 +16,7 @@ from documa.core.ir import (
     DocumentIR,
     RelationIR,
     RelationType,
+    repair_surrogate_text,
 )
 from documa.pipeline.base import PipelineContext, PipelineStage, StageResult
 from documa.pipeline.page_refs import ensure_page_citation_map, page_citation_metadata, printed_page_label_from_footer
@@ -48,7 +49,7 @@ def _preview(text: str, max_chars: int = 160) -> str | None:
 def _hash(text: str) -> str | None:
     if not text:
         return None
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return hashlib.sha256(repair_surrogate_text(text).encode("utf-8")).hexdigest()
 
 
 def _block_type(block: BlockIR) -> DocumentBlockType:
