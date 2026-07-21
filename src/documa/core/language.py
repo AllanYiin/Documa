@@ -7,6 +7,8 @@ import re
 
 
 SUPPORTED_LANGUAGES = {"auto", "zh-Hant", "zh-Hans", "en"}
+# Retained as the historical set Documa emits itself; validation accepts other BCP 47-like tags.
+LANGUAGE_TAG_PATTERN = re.compile(r"^(?:[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*|x(?:-[A-Za-z0-9]{1,8})+)$")
 SUPPORTED_SCRIPTS = {None, "Traditional", "Simplified", "Latin", "Mixed", "Unknown"}
 
 
@@ -17,8 +19,10 @@ class LanguageHint:
     text_direction: str = "ltr"
 
     def __post_init__(self) -> None:
-        if self.language not in SUPPORTED_LANGUAGES:
+        normalized_language = self.language.replace("_", "-")
+        if normalized_language != "auto" and LANGUAGE_TAG_PATTERN.fullmatch(normalized_language) is None:
             raise ValueError(f"Unsupported language hint: {self.language}")
+        object.__setattr__(self, "language", normalized_language)
         if self.script not in SUPPORTED_SCRIPTS:
             raise ValueError(f"Unsupported script hint: {self.script}")
         if self.text_direction not in {"ltr", "rtl", "vertical"}:
