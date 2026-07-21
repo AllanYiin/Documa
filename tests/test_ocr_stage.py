@@ -86,7 +86,7 @@ class TestDegradationPaths:
         assert payload["status"] == "ok"
         assert payload["warnings"] == []
         ocr_stage = next(s for s in payload["pipeline"]["stages"] if s["stage_name"] == "ocr")
-        assert ocr_stage["report"]["skipped_reason"] == "ocr_disabled"
+        assert ocr_stage["skipped_reason"] == "ocr_disabled"
 
 
 class _FakeEngine:

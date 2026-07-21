@@ -62,7 +62,13 @@ def create_mcp_server() -> Any:
         max_chars: int = 1200,
         export_formats: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Parse a document and run the default Documa processing pipeline."""
+        """Parse and process a document.
+
+        Required input field: source (not input_path). For large documents,
+        set out so the full IR is written to disk instead of returned inline.
+        The response carries a one-line-per-stage pipeline summary; full stage
+        diagnostics are written to pipeline_report_path when out is set.
+        """
 
         return process_document_tool(
             source=source,

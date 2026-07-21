@@ -41,6 +41,19 @@ class PipelineRun:
             ],
         }
 
+    def summary(self) -> dict:
+        # Compact one-entry-per-stage view for tool responses; full per-stage
+        # diagnostics stay in report(), which callers persist to disk instead
+        # of returning inline (a full report can exceed MCP response limits).
+        stages = []
+        for result in self.stage_results:
+            entry: dict = {"stage_name": result.stage_name, "changed": result.changed}
+            skipped_reason = result.report.get("skipped_reason")
+            if skipped_reason:
+                entry["skipped_reason"] = skipped_reason
+            stages.append(entry)
+        return {"stage_count": len(self.stage_results), "stages": stages}
+
 
 def default_pipeline_stages(*, include_chunking: bool = True) -> list[PipelineStage]:
     stages: list[PipelineStage] = [

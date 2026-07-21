@@ -1,3 +1,4 @@
+import asyncio
 import json
 import tempfile
 import unittest
@@ -6,6 +7,11 @@ from pathlib import Path
 from documa.cli import main
 from documa.core.ir import BlockIR, BlockType, DocumentIR, PageIR, TextContent, to_plain_data
 from documa.interfaces import call_documa_tool, list_documa_tools, openai_tool_schemas
+from documa.interfaces.mcp_server import create_mcp_server
+from documa.interfaces.tools import process_document_tool
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+ANNUAL_REPORT = REPO_ROOT / "fixtures" / "pdf" / "real" / "annual-report.pdf"
 
 
 def make_ir_file(tmp: str) -> Path:
@@ -91,6 +97,35 @@ class Stage6ToolInterfaceTests(unittest.TestCase):
         self.assertIn("inputSchema", schemas["documa_export"])
         self.assertIn("documa_ingest_mailbox", schemas)
         self.assertEqual(schemas["documa_ingest_mailbox"]["inputSchema"]["required"], ["source", "out"])
+
+    def test_fastmcp_process_schema_names_source_and_bounds_large_results(self):
+        try:
+            tools = asyncio.run(create_mcp_server().list_tools())
+        except RuntimeError as exc:
+            self.skipTest(str(exc))
+
+        process = next(tool for tool in tools if tool.name == "documa_process")
+        self.assertEqual(process.inputSchema["required"], ["source"])
+        self.assertIn("source", process.description)
+        self.assertIn("not input_path", process.description)
+        self.assertIn("set out", process.description)
+
+    def test_process_tool_returns_pipeline_summary_and_writes_full_report_to_disk(self):
+        # Regression: full per-stage diagnostics once came back inline (~84K chars
+        # for a large PDF) and blew past MCP response limits even with out set.
+        with tempfile.TemporaryDirectory() as tmp:
+            payload = process_document_tool(source=str(ANNUAL_REPORT), out=tmp)
+
+            self.assertEqual(payload["status"], "ok")
+            for stage in payload["pipeline"]["stages"]:
+                self.assertNotIn("report", stage)
+            self.assertLess(len(json.dumps(payload["pipeline"])), 4000)
+
+            report_path = Path(payload["pipeline_report_path"])
+            self.assertEqual(report_path.parent, Path(tmp))
+            full_report = json.loads(report_path.read_text(encoding="utf-8"))
+            self.assertEqual(full_report["stage_count"], payload["pipeline"]["stage_count"])
+            self.assertIn("report", full_report["stages"][0])
 
     def test_openai_tool_schemas_use_function_shape(self):
         tools = {tool["function"]["name"]: tool for tool in openai_tool_schemas(strict=True)}

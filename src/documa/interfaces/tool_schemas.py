@@ -58,7 +58,12 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
         {
             "name": "documa_process",
             "title": "Parse and process document",
-            "description": "Ingest a large PDF or long document, run the Documa understanding pipeline, and export agent-ready IR, block, RAG, or Markdown outputs.",
+            "description": (
+                "Process a large PDF or long document. Pass the required source field (not input_path) "
+                "and set out for large files so the full IR is written to disk instead of returned inline. "
+                "The response includes a one-line-per-stage pipeline summary; full stage diagnostics are "
+                "written to pipeline_report_path when out is set."
+            ),
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -82,6 +87,7 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
                     "output_path": {"type": ["string", "null"]},
                     "export_paths": {"type": "object"},
                     "pipeline": {"type": "object"},
+                    "pipeline_report_path": {"type": ["string", "null"]},
                 },
                 "required": ["status"],
             },

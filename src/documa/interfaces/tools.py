@@ -272,12 +272,15 @@ def process_document_tool(
         if stage.stage_name == "ocr" and ocr and reason:
             warnings.append(f"ocr: {reason}")
     output_path = None
+    pipeline_report_path = None
     export_paths: dict[str, str] = {}
 
     if output_dir:
         output_dir.mkdir(parents=True, exist_ok=True)
         output_path = output_dir / "documa.ir.json"
         write_payload(output_path, payload)
+        pipeline_report_path = output_dir / "pipeline_report.json"
+        write_payload(pipeline_report_path, pipeline_run.report())
         exporters = {
             "json": JsonExporter(),
             "markdown": MarkdownExporter(),
@@ -305,7 +308,8 @@ def process_document_tool(
         "output_path": str(output_path) if output_path else None,
         "export_paths": export_paths,
         "warnings": warnings,
-        "pipeline": pipeline_run.report(),
+        "pipeline": pipeline_run.summary(),
+        "pipeline_report_path": str(pipeline_report_path) if pipeline_report_path else None,
         "document": None if output_path else payload,
     }
 
