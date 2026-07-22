@@ -143,6 +143,31 @@ class TokenBudgetTests(unittest.TestCase):
         self.assertTrue(was_truncated)
         self.assertLessEqual(counter.count(truncated_text), count // 2)
 
+    def test_tiktoken_budget_counts_final_serialized_payload(self):
+        try:
+            counter = token_counting.TiktokenCounter()
+        except Exception as exc:  # pragma: no cover - env without tiktoken
+            self.skipTest(f"tiktoken unavailable: {exc}")
+        token_counting.set_token_counter(counter)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            ir_path = _write_ir(tmp, self._multi_block_document())
+            bounded = call_documa_tool(
+                "documa_search_blocks",
+                {
+                    "ir_path": str(ir_path),
+                    "query": "budget-needle",
+                    "limit": 10,
+                    "max_response_tokens": 180,
+                },
+            )["structuredContent"]
+
+            serialized = json.dumps(bounded, ensure_ascii=False, separators=(",", ":"))
+            self.assertEqual(bounded["status"], "ok")
+            self.assertLessEqual(counter.count(serialized), 180)
+            self.assertEqual(bounded["budget"]["spent_tokens"], counter.count(serialized))
+
+
     def test_anthropic_counter_caches_and_truncates_without_extra_calls(self):
         from types import SimpleNamespace
 
@@ -178,7 +203,7 @@ class TokenBudgetTests(unittest.TestCase):
 
             read = call_documa_tool("documa_read_block", {"ir_path": str(ir_path), "block_id": block_id})
             searched = call_documa_tool(
-                "documa_search_blocks", {"ir_path": str(ir_path), "query": "cache-probe"}
+                "documa_search_blocks", {"ir_path": str(ir_path), "query": "cache-probe", "response_profile": "evidence"}
             )
 
             self.assertIsNone(read["structuredContent"]["token_estimate"])
@@ -237,6 +262,75 @@ class TokenBudgetTests(unittest.TestCase):
             pages=[PageIR(id="p1", page_number=1, width=400, height=500, blocks=blocks)],
         )
 
+    def test_default_nav_profile_is_navigation_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ir_path = _write_ir(tmp, _fixture_document())
+            payload = call_documa_tool(
+                "documa_search_blocks",
+                {"ir_path": str(ir_path), "query": "cache-probe"},
+            )["structuredContent"]
+
+            self.assertEqual(payload["response_profile"], "nav")
+            self.assertEqual(
+                set(payload["results"][0]),
+                {"block_id", "kind", "path", "page", "score", "coverage", "snippet", "read_chars"},
+            )
+            self.assertNotIn("searched_fields", payload)
+            self.assertNotIn("snippet_policy", payload)
+
+    def test_single_document_quoted_phrase_search(self):
+        document = DocumentIR(
+            id="d1",
+            source_name="phrases.pdf",
+            pages=[
+                PageIR(
+                    id="p1",
+                    page_number=1,
+                    width=400,
+                    height=500,
+                    blocks=[
+                        _paragraph("b1", "The capital buffer requirement applies.", order_index=1),
+                        _paragraph("b2", "Capital planning mentions a separate buffer.", order_index=2),
+                    ],
+                )
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            ir_path = _write_ir(tmp, document)
+            payload = call_documa_tool(
+                "documa_search_blocks",
+                {"ir_path": str(ir_path), "query": '"capital buffer"', "response_profile": "evidence"},
+            )["structuredContent"]
+
+            self.assertEqual(payload["terms"], ["capital buffer"])
+            self.assertGreaterEqual(len(payload["results"]), 1)
+            self.assertTrue(all(row["matched_terms"] == ["capital buffer"] for row in payload["results"]))
+            snippets = [snippet["snippet"].casefold() for row in payload["results"] for snippet in row["snippets"]]
+            self.assertTrue(all("capital buffer" in snippet for snippet in snippets))
+
+    def test_exact_token_counts_only_run_after_pagination(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ir_path = _write_ir(tmp, self._multi_block_document())
+            with mock.patch.object(tools_module, "_count_tokens", wraps=tools_module._count_tokens) as count_spy:
+                call_documa_tool(
+                    "documa_search_blocks",
+                    {
+                        "ir_path": str(ir_path),
+                        "query": "budget-needle",
+                        "limit": 2,
+                        "response_profile": "evidence",
+                    },
+                )
+            self.assertEqual(count_spy.call_count, 2)
+
+            with mock.patch.object(tools_module, "_count_tokens", wraps=tools_module._count_tokens) as nav_spy:
+                call_documa_tool(
+                    "documa_search_blocks",
+                    {"ir_path": str(ir_path), "query": "budget-needle", "limit": 2},
+                )
+            self.assertEqual(nav_spy.call_count, 0)
+
+
     def test_search_blocks_offset_pages_through_results(self):
         with tempfile.TemporaryDirectory() as tmp:
             ir_path = _write_ir(tmp, self._multi_block_document())
@@ -252,8 +346,8 @@ class TokenBudgetTests(unittest.TestCase):
             self.assertGreaterEqual(first["total_matches"], 4)
             self.assertEqual(len(first["results"]), 2)
             self.assertEqual(second["offset"], 2)
-            first_ids = {row["id"] for row in first["results"]}
-            second_ids = {row["id"] for row in second["results"]}
+            first_ids = {row["block_id"] for row in first["results"]}
+            second_ids = {row["block_id"] for row in second["results"]}
             self.assertFalse(first_ids & second_ids)
 
     def test_search_blocks_max_response_tokens_drops_lowest_ranked_rows(self):
@@ -272,10 +366,12 @@ class TokenBudgetTests(unittest.TestCase):
             self.assertLess(len(bounded["results"]), len(unbounded["results"]))
             # At least the top-ranked row always survives the budget.
             self.assertGreaterEqual(len(bounded["results"]), 1)
-            self.assertEqual(bounded["results"][0]["id"], unbounded["results"][0]["id"])
+            self.assertEqual(bounded["results"][0]["block_id"], unbounded["results"][0]["block_id"])
             budget = bounded["budget"]
             self.assertEqual(budget["max_response_tokens"], 300)
             self.assertEqual(budget["dropped_results"], len(unbounded["results"]) - len(bounded["results"]))
+            serialized = json.dumps(bounded, ensure_ascii=False, separators=(",", ":"))
+            self.assertLessEqual(len(serialized), 300)
 
     def test_list_blocks_supports_limit_and_offset(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -299,9 +395,11 @@ class TokenBudgetTests(unittest.TestCase):
             )["structuredContent"]
 
             recommended = payload["recommended_next"]
-            self.assertEqual(recommended["tool"], "documa_read_block")
-            self.assertEqual(recommended["block_ids"][0], payload["results"][0]["block_id"])
-            self.assertEqual(recommended["max_chars"], payload["results"][0]["recommended_read_chars"])
+            first_action = recommended["actions"][0]
+            self.assertIn(first_action["tool"], {"documa_read_block", "documa_source_window"})
+            self.assertEqual(first_action["arguments"]["ir_path"], str(ir_path))
+            self.assertEqual(first_action["arguments"]["block_id"], payload["results"][0]["block_id"])
+            self.assertNotIn("block_ids", first_action["arguments"])
             self.assertTrue(any("offset=2" in hint for hint in payload["hints"]))
 
     def test_search_blocks_zero_results_hint_suggests_recovery(self):
@@ -451,9 +549,10 @@ class CollectionSearchGuidanceTests(unittest.TestCase):
         result = self._search(limit=10)
 
         recommended = result["recommended_next"]
-        self.assertEqual(recommended["tool"], "documa_read_block")
-        self.assertTrue(recommended["ir_path"].startswith("doc-"))
-        self.assertEqual(recommended["block_ids"][0], result["results"][0]["read_ref"]["block_id"])
+        action = recommended["actions"][0]
+        self.assertEqual(action["tool"], "documa_read_block")
+        self.assertTrue(action["arguments"]["ir_path"].startswith("doc-"))
+        self.assertEqual(action["arguments"]["block_id"], result["results"][0]["read_ref"]["block_id"])
         # Hits spread across >=4 documents without grouping -> group-mode hint.
         self.assertTrue(any("group_by_document" in hint for hint in result["hints"]))
 
@@ -462,9 +561,10 @@ class CollectionSearchGuidanceTests(unittest.TestCase):
 
         recommended = result["recommended_next"]
         top_ref = result["results"][0]["top_blocks"][0]["read_ref"]
-        self.assertEqual(recommended["ir_path"], top_ref["ir_path"])
-        self.assertEqual(recommended["block_ids"], [top_ref["block_id"]])
-        self.assertFalse(any("group_by_document" in hint for hint in result["hints"]))
+        action = recommended["actions"][0]
+        self.assertEqual(action["arguments"]["ir_path"], top_ref["ir_path"])
+        self.assertEqual(action["arguments"]["block_id"], top_ref["block_id"])
+        self.assertFalse(any("group_by_document" in hint for hint in result.get("hints", [])))
 
     def test_zero_results_hint_mentions_doctor(self):
         result = self._search(query="absent-token-entirely")

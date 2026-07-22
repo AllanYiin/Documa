@@ -44,6 +44,15 @@ class Stage6ToolInterfaceTests(unittest.TestCase):
             self.assertEqual(result["content"][0]["type"], "text")
             self.assertEqual(result["structuredContent"]["status"], "ok")
             self.assertEqual(result["structuredContent"]["document_id"], "d1")
+            self.assertEqual(json.loads(result["content"][0]["text"]), result["structuredContent"])
+            self.assertNotIn("\n", result["content"][0]["text"])
+
+            summary = call_documa_tool(
+                "documa_inspect",
+                {"ir_path": str(ir_path)},
+                text_mode="summary",
+            )
+            self.assertEqual(summary["content"][0]["text"], "Tool completed with status=ok.")
 
     def test_direct_tool_call_reports_unknown_tool_as_tool_error(self):
         result = call_documa_tool("missing_tool", {})
@@ -97,6 +106,10 @@ class Stage6ToolInterfaceTests(unittest.TestCase):
         self.assertIn("inputSchema", schemas["documa_export"])
         self.assertIn("documa_ingest_mailbox", schemas)
         self.assertEqual(schemas["documa_ingest_mailbox"]["inputSchema"]["required"], ["source", "out"])
+        search_properties = schemas["documa_search_blocks"]["inputSchema"]["properties"]
+        self.assertEqual(search_properties["response_profile"]["default"], "nav")
+        self.assertEqual(search_properties["response_profile"]["enum"], ["nav", "evidence", "debug"])
+        self.assertNotIn("default", search_properties["verbosity"])
 
     def test_fastmcp_process_schema_names_source_and_bounds_large_results(self):
         try:

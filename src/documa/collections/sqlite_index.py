@@ -12,6 +12,7 @@ from typing import Any
 
 from documa.collections import registry as registry_store
 from documa.core import snippet_windows
+from documa.core.query import parse_query
 from documa.core.serialization import document_from_plain_data
 from documa.pipeline.block_tree import document_block_text
 from documa.pipeline.page_refs import ensure_page_citation_map, page_citation_metadata
@@ -392,13 +393,7 @@ def _query_units(query: str) -> list[str]:
     Shared by the FTS MATCH builder and snippet centering so snippets follow
     exactly what was searched.
     """
-    phrases = re.findall(r'"([^"]+)"', query)
-    remainder = re.sub(r'"[^"]*"?', " ", query)
-    units = [phrase.strip() for phrase in phrases if phrase.strip()]
-    for term in _FTS_TERM_RE.findall(remainder):
-        if term not in units:
-            units.append(term)
-    return units
+    return list(parse_query(query).units)
 
 
 def _fts_query_variants(query: str) -> tuple[str, str]:

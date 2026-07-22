@@ -196,10 +196,24 @@ Get-ChildItem -LiteralPath .\out\sample-demo
 agent（或你）查一份文件時，依問題形狀選路徑，再逐級收斂：
 
 1. **結構／總覽問題**（「有哪些章節」）：`documa block-tree --max-depth 2 --no-citations` 取得便宜的大綱，需要更深再用 `documa blocks --parent-id <id>` 下鑽。
-2. **特定事實**：`documa search-blocks --query "..." --limit 5`，預設 compact 輸出。搜尋回應內建兩個確定性引導：`recommended_next`（直接可用的下一步 `read_block` 呼叫，含建議的 `max_chars`）與 `hints`（零結果補救、`offset=N` 分頁、拆題建議）。
+2. **特定事實**：`documa search-blocks --query "..." --limit 5` 預設使用 `response_profile=nav`，每筆只回傳 routing 所需的 `block_id/kind/path/page/score/coverage/snippet/read_chars`；要完整 citation/selection metadata 時改用 `--response-profile evidence`，舊 `--verbosity` 僅作相容入口。單文件與 collection 共用 quote-aware parser，`--query '\"capital buffer\"'` 會保留為相鄰片語。`recommended_next.actions[]` 中每一項都是可直接照發、符合實際 tool schema 的 `{tool, arguments}`；`hints` 提供零結果補救、`offset=N` 分頁與拆題建議。
 3. **讀取證據**：`documa block --id <id> --read --max-chars 1500`（或 `--max-tokens`，兩者取較嚴者）。token 一律由真實 counter 計算，不用 chars/4 之類的估算：裝了 `documa[tokens]`（tiktoken）會自動啟用；針對 Claude 可設 `DOCUMA_TOKEN_COUNTER=anthropic:<model>` 走 Anthropic count-tokens API（需 `anthropic` 套件與 `ANTHROPIC_API_KEY`）。沒有 counter 時 token 欄位為 null、`--max-tokens` 會回報 `TOKEN_COUNTER_UNAVAILABLE`。證據不足時先用 `documa source-window --id <id>` 取相鄰 block、`documa block-xref --id <id>` 看父子關係，最後才整節讀取。
-4. **跨文件問題**：廣度問題（「哪幾份文件提到 X」）用 `documa search-collection --query "..." --group-by-document`——每份文件一列 rollup（精確命中數、最佳 snippet、至多 3 個可直接讀取的 top_blocks），再用 `--document-id doc-XXXX --per-document-limit 2` 鎖定候選文件深挖。事實問題直接 `documa search-collection --query '"資本適足率"'`——查詢詞預設全部必須命中（AND）、引號片語比對相鄰字序、snippet 以命中詞置中；全無命中時自動降級為任一詞命中並在 `match_mode` 標示。回應同樣內建 `recommended_next` 與 `hints`；`--max-response-tokens` 可設回應硬上限。命中的 `read_ref` 直接餵給 `documa block` 讀取。`documa ingest`／`delete-document` 預設會增量維護集合索引（ingest 完立即可搜）；`index-collection` 全量重建只在 `doctor` 回報索引陳舊或版本過期時作為修復手段。注意：`ingest-mailbox` 的信件**不會**進集合索引，要跨文件搜尋 email 請對 `.eml`/`.msg` 逐檔 `documa ingest`。
+4. **跨文件問題**：廣度問題（「哪幾份文件提到 X」）用 `documa search-collection --query "..." --group-by-document`——每份文件一列 rollup（精確命中數、最佳 snippet、至多 3 個可直接讀取的 top_blocks），再用 `--document-id doc-XXXX --per-document-limit 2` 鎖定候選文件深挖。事實問題直接 `documa search-collection --query '"資本適足率"'`——查詢詞預設全部必須命中（AND）、引號片語比對相鄰 token、snippet 以命中詞置中；全無命中時自動降級為任一詞命中並在 `match_mode` 標示。回應同樣內建 executable `recommended_next.actions` 與 `hints`；`--max-response-tokens` 對包含 results、guidance、budget metadata 的最終 compact-serialized structured payload 設硬上限。命中的 `read_ref` 直接餵給 `documa block` 讀取。`documa ingest`／`delete-document` 預設會增量維護集合索引（ingest 完立即可搜）；`index-collection` 全量重建只在 `doctor` 回報索引陳舊或版本過期時作為修復手段。注意：`ingest-mailbox` 的信件**不會**進集合索引，要跨文件搜尋 email 請對 `.eml`/`.msg` 逐檔 `documa ingest`。
 5. **收尾**：`documa cite-block` 產生穩定引用；agent 端另有 `documa_verify_citations` 工具（MCP／tool-calling 層）可在宣稱已驗證前做核對。
+
+### P1/P2：批次證據、分層路由與 retrieval sidecar
+
+- `documa read-blocks documa.ir.json --id <block-id> --id <block-id> --total-max-tokens 800` 會在一個精確共享預算下批次讀取；單筆 `block --read` 回傳 `returned_range`、完整單位類型與可直接續讀的 `continuation.start`。
+- `search-blocks` 支援 `--granularity auto|section|leaf|mixed`、`--scope-block-id`、`--max-evidence-tokens` 與 branch cap。排序同時考慮 BM25-lite、coverage、term proximity、question intent、MMR novelty 與 read cost；含不同數值的近似段落不會被誤當重複。
+- 有輸出目錄的 `process`/`ingest` 會在 IR 旁建立 `documa.search.idx`。這是有 `PRAGMA user_version`、source digest、feature/tokenizer version 的可重建 SQLite 衍生物，保存 document DF、block terms/features、hierarchical routes 與 deterministic section sketches；引用與原文真相仍只在 IR。
+- MCP/tool schemas 提供 `agent`、`advanced`、`admin` 三個累進 profile。`documa tools --profile agent` 可預覽最小 evidence surface；`DOCUMA_MCP_PROFILE=agent` 可縮減 MCP `tools/list`。
+- collection 的相容預設仍是 `response_profile=evidence`；`--response-profile nav --group-by-document` 會改回傳精簡的 `document_id/source/hits/pages/best_score/best_snippet/top_refs` rollup。
+
+可重現 token gate：
+
+```bash
+python benchmarks/token_economy/run_agent_benchmark.py --check --out token-economy.json
+```
 
 ## 處理真實文件
 

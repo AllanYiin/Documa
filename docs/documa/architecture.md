@@ -213,6 +213,21 @@ Query-efficiency layer on top of the baseline:
 - **Incremental maintenance**: ingest and delete keep the derived index coherent by default (`upsert_document_index` / `remove_document_index`, content-hash short-circuit, single transaction per document). The full rebuild is the repair path for missing or version-outdated indexes; `store_collection_health` flags both.
 - **Ranking**: `bm25()` weights fields (title 4, heading_path 2, preview 1.5, body 1, keywords 3), matching the single-document field weights. Per-document capping runs inside SQL via `ROW_NUMBER`, making `per_document_limit` exact.
 - **Response shapes**: flat block hits or `group_by_document` rollups (exact per-document hit counts from the pre-cap window `COUNT`, best snippet, up to three read-ready `top_blocks`) with document-level paging. `document_ids` scopes follow-up searches. Snippets center on the query hit via `documa.core.snippet_windows`.
-- **Guidance and budgets**: responses carry deterministic `recommended_next` (a ready `documa_read_block` call chaining `read_ref`) and priority-ordered `hints`; `max_response_tokens` enforces a hard response ceiling through the pluggable token counter.
+- **Profiles, guidance, and budgets**: single-document search defaults to a navigation-only `nav` profile and expands citation/selection metadata only after pagination for `evidence`/`debug`. `recommended_next.actions[]` contains schema-valid `{tool, arguments}` calls (read, source-window, or child browse according to block shape). `max_response_tokens` counts the complete compact-serialized structured payload, including results, hints, next actions, and budget metadata, through the pluggable token counter.
 
 This stage deliberately does not introduce embeddings, an external vector database, LLM answer synthesis, or UI. Optional hybrid/vector adapters can be added later behind the collection search boundary without changing the parser-neutral IR or the progressive block reading tools. Mailbox ingestion remains a parallel collection type that does not enter the registry or this index; per-file `documa ingest` is the bridge until a dedicated one exists.
+
+## Stage 13 Adaptive Evidence Retrieval And Sidecar
+
+P1/P2 keeps evidence truth and retrieval optimization separate:
+
+- `documa.ir.json` remains authoritative for original/normalized text, hierarchy, identity, provenance, page/bbox references, and citations.
+- `documa.search.idx` is disposable SQLite derived state. `application_id`, `user_version`, source digest, feature version, normalizer version, and tokenizer version decide whether it can be reused; any mismatch requires a rebuild.
+- The sidecar stores leaf document frequency, block terms/features, stable SimHash fingerprints, section routes, subtree read cost, and deterministic extractive sketches. It never becomes citation evidence.
+- Coarse-to-fine search routes through section title/terms/sketch/page range/subtree cost for large outlines, then ranks eligible descendants. `scope_block_id` constrains the hierarchy and `granularity` controls section/leaf/mixed output.
+- Ranking combines lexical relevance, coverage, proximity, intent fit, read cost, deterministic MMR, exact/near duplicate suppression, and ancestor/descendant suppression. Stable ids and order indexes break ties.
+- Reads are boundary-aware and cursor-based. Paragraphs prefer sentence boundaries, tables/code/lists prefer row/line/item boundaries, and `documa_read_blocks` enforces a shared real-token budget.
+
+MCP profiles are Documa server policy rather than a standardized MCP client capability. `agent` exposes ingest/search/read/cite/verify, `advanced` adds hierarchy/xref/source-window/collection controls, and `admin` adds export/doctor/benchmark/validation/repair surfaces. Discovery filtering and call authorization must use the same allow-list.
+
+`benchmarks/token_economy` records per-query skill/schema/tool tokens, call failures, first relevant rank, evidence tokens, citation precision/recall, support, budget violations, paraphrase stability, and aggregate Tokens-to-Supported-Answer, Evidence Recall@300/600/1200, Minimal Evidence Regret, Search Path Length, Result Redundancy, and Budget Correctness.

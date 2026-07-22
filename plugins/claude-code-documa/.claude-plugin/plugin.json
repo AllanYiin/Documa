@@ -2,7 +2,7 @@
   "name": "claude-code-documa",
   "displayName": "Documa",
   "description": "Use Documa MCP document understanding for large PDFs, long documents, block evidence search, and citation-ready answers.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "author": {
     "name": "Documa contributors"
   },

@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+## v0.4.0 — adaptive retrieval, batch evidence, retrieval sidecar（2026-07-22）
+
+- 新增 `documa_read_blocks`、boundary-aware continuation cursor 與共享 evidence token budget。
+- `documa_search_blocks` 新增 scope/granularity、coverage/proximity/intent-fit、stable SimHash、branch-aware suppression、MMR 與 adaptive evidence selection。
+- 新增可重建 `documa.search.idx` SQLite sidecar，包含 version/source generation、document DF、block features、hierarchical routes 與 deterministic section sketches。
+- collection 新增 compact `nav` rollup；MCP/tool schema 新增 `agent`/`advanced`/`admin` profiles。
+- plugin workflow 拆為日常 `documa-evidence` 與維護/發布 `documa-maintenance`。
+- 新增 `benchmarks/token_economy` 真實 tokenizer benchmark 與 CI hard gate。
+
+- **Agent response profiles**：`documa_search_blocks` 預設改為 navigation-only `response_profile=nav`；`evidence` 延後到分頁後才展開 citation/selection metadata 與精確 token count，`debug` 才回診斷欄位。明確傳入舊 `verbosity` 仍保留相容輸出。
+- **Executable next action**：`recommended_next.actions[]` 改為實際 schema 可接受的 `{tool, arguments}` calls，補齊 `ir_path`、移除非法 `block_ids`/`include_children`，並依 section/continuation/leaf 分流到 browse、source window 或 read。
+- **Budget correctness**：`max_response_tokens` 現在計入完整 compact-serialized structured payload（results、hints、next action、budget metadata），按順序縮減 optional metadata、低排名結果與 top ref；`spent_tokens` 為最終實測值。
+- **Shared phrase parser**：單文件與 collection search 共用 quote-aware query AST；引號片語不再把 quote 字元當成查詢詞，且保留 `first-version` 類單一 lexical unit。
+- **MCP transport**：相容模式仍依 MCP 建議在 `content` 保留完整 serialized JSON，但移除 pretty-print whitespace；確認只消費 `structuredContent` 的 direct host 可用 `text_mode="summary"` opt-in 縮小文字副本。
+
+
 ## v0.3.0 — reading order v2, credible benchmark, evidence runtime, query efficiency（2026-07-13）
 
 定位收斂為 **document evidence runtime for agents**：ingest → block reading → citation → verifiable answer。

@@ -32,6 +32,7 @@ from documa.interfaces import (
     parse_document_tool,
     process_document_tool,
     read_block_tool,
+    read_blocks_tool,
     search_blocks_tool,
     search_collection_tool,
     source_window_tool,
@@ -131,6 +132,15 @@ def build_parser() -> argparse.ArgumentParser:
     block_cmd.add_argument("--include-children", action="store_true", help="Include descendant block bodies when reading.")
     block_cmd.add_argument("--max-chars", type=int, help="Limit returned body text.")
     block_cmd.add_argument("--max-tokens", type=int, help="Limit returned body to an estimated token budget (CJK-aware).")
+    block_cmd.add_argument("--start", type=int, default=0, help="Continuation character cursor.")
+
+    read_blocks_cmd = subparsers.add_parser("read-blocks", help="Batch-read evidence blocks under one token budget.")
+    read_blocks_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
+    read_blocks_cmd.add_argument("--id", action="append", required=True, dest="block_ids", help="Block id; repeatable.")
+    read_blocks_cmd.add_argument("--total-max-tokens", type=int, default=800)
+    read_blocks_cmd.add_argument("--per-block-max-tokens", type=int, default=None)
+    read_blocks_cmd.add_argument("--context-mode", choices=["none", "auto", "neighbors", "children"], default="none")
+
 
     search_blocks_cmd = subparsers.add_parser("search-blocks", help="Search Documa document blocks.")
     search_blocks_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
@@ -140,13 +150,19 @@ def build_parser() -> argparse.ArgumentParser:
     search_blocks_cmd.add_argument("--term", action="append", dest="any_of", help="Additional OR search term.")
     search_blocks_cmd.add_argument("--field", action="append", dest="fields", help="Restrict searched fields. Repeatable.")
     search_blocks_cmd.add_argument("--snippet-field", action="append", dest="snippet_fields", help="Field allowed to produce snippets. Repeatable.")
-    search_blocks_cmd.add_argument("--verbosity", choices=["compact", "standard", "debug"], default="compact", help="Search result detail level.")
+    search_blocks_cmd.add_argument("--response-profile", choices=["nav", "evidence", "debug"], default="nav", help="Search response profile; nav is the smallest routing-only shape.")
+    search_blocks_cmd.add_argument("--verbosity", choices=["compact", "standard", "debug"], default=None, help="Deprecated legacy result detail alias.")
     search_blocks_cmd.add_argument("--no-snippets", action="store_true", help="Return matches without snippet context.")
     search_blocks_cmd.add_argument("--no-body", action="store_true", help="Do not search full block body text.")
-    search_blocks_cmd.add_argument("--max-snippets-per-block", type=int, default=5, help="Maximum snippets per result block.")
+    search_blocks_cmd.add_argument("--max-snippets-per-block", type=int, default=2, help="Maximum snippets per result block.")
     search_blocks_cmd.add_argument("--context-chars", type=int, default=24, help="CJK characters around snippet matches.")
     search_blocks_cmd.add_argument("--context-words", type=int, default=8, help="ASCII words around snippet matches.")
     search_blocks_cmd.add_argument("--max-response-tokens", type=int, default=None, help="Hard ceiling on estimated response tokens; lowest-ranked rows drop first.")
+    search_blocks_cmd.add_argument("--granularity", choices=["auto", "section", "leaf", "mixed"], default="auto")
+    search_blocks_cmd.add_argument("--scope-block-id", default=None)
+    search_blocks_cmd.add_argument("--max-evidence-tokens", type=int, default=None)
+    search_blocks_cmd.add_argument("--no-adaptive-top-k", action="store_true")
+    search_blocks_cmd.add_argument("--max-results-per-branch", type=int, default=None)
 
     index_collection_cmd = subparsers.add_parser("index-collection", help="Build the local collection search index.")
     index_collection_cmd.add_argument("--store-dir", default=".documa", help="Document store directory.")
@@ -161,6 +177,7 @@ def build_parser() -> argparse.ArgumentParser:
     search_collection_cmd.add_argument("--per-document-limit", type=int, default=None, help="Maximum results per document.")
     search_collection_cmd.add_argument("--document-id", action="append", dest="document_ids", help="Restrict to this registry document id. Repeatable.")
     search_collection_cmd.add_argument("--group-by-document", action="store_true", help="Return document-level rollups instead of a flat block list.")
+    search_collection_cmd.add_argument("--response-profile", choices=["nav", "evidence"], default="evidence")
     search_collection_cmd.add_argument("--max-response-tokens", type=int, default=None, help="Hard ceiling on counted response tokens; lowest-ranked rows drop first.")
 
     block_tree_cmd = subparsers.add_parser("block-tree", help="Return the Documa document block tree (outline).")
@@ -186,7 +203,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="Maximum body characters loaded for each selected block.",
     )
 
-    subparsers.add_parser("tools", help="List Documa tool-calling schemas.")
+    tools_cmd = subparsers.add_parser("tools", help="List Documa tool-calling schemas.")
+    tools_cmd.add_argument("--profile", choices=["agent", "advanced", "admin"], default="admin")
     benchmark_cmd = subparsers.add_parser("benchmark", help="Run Documa benchmark fixtures.")
     benchmark_cmd.add_argument("--manifest", default="fixtures/pdf/manifest.json", help="Path to fixture manifest JSON.")
     benchmark_cmd.add_argument("--fixtures-dir", default="fixtures/pdf", help="Directory containing fixture files.")
@@ -336,11 +354,22 @@ def main(argv: list[str] | None = None) -> int:
                 include_children=args.include_children,
                 max_chars=args.max_chars,
                 max_tokens=args.max_tokens,
+                start=args.start,
             )
         else:
             payload = inspect_block_tool(ir_path=args.ir_path, block_id=args.block_id)
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
+
+    if args.command == "read-blocks":
+        payload = read_blocks_tool(
+            ir_path=args.ir_path,
+            block_ids=args.block_ids,
+            total_max_tokens=args.total_max_tokens,
+            per_block_max_tokens=args.per_block_max_tokens,
+            context_mode=args.context_mode,
+        )
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
     if args.command == "search-blocks":
         payload = search_blocks_tool(
             ir_path=args.ir_path,
@@ -351,6 +380,12 @@ def main(argv: list[str] | None = None) -> int:
             fields=args.fields,
             snippet_fields=args.snippet_fields,
             verbosity=args.verbosity,
+            response_profile=args.response_profile,
+            granularity=args.granularity,
+            scope_block_id=args.scope_block_id,
+            max_evidence_tokens=args.max_evidence_tokens,
+            adaptive_top_k=not args.no_adaptive_top_k,
+            max_results_per_branch=args.max_results_per_branch,
             include_snippets=not args.no_snippets,
             max_snippets_per_block=args.max_snippets_per_block,
             search_body=not args.no_body,
@@ -374,6 +409,7 @@ def main(argv: list[str] | None = None) -> int:
             per_document_limit=args.per_document_limit,
             document_ids=args.document_ids,
             group_by_document=args.group_by_document,
+            response_profile=args.response_profile,
             max_response_tokens=args.max_response_tokens,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
@@ -403,7 +439,7 @@ def main(argv: list[str] | None = None) -> int:
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
     if args.command == "tools":
-        return _emit_json({"status": "ok", "tools": list_documa_tools()})
+        return _emit_json({"status": "ok", "profile": args.profile, "tools": list_documa_tools(profile=args.profile)})
 
     if args.command == "benchmark":
         payload = benchmark_tool(

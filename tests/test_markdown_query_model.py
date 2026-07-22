@@ -46,10 +46,13 @@ class MarkdownQueryModelTests(unittest.TestCase):
             paragraph_titles = [item["title"] for item in listed["structuredContent"]["blocks"] if item["type"] == "paragraph"]
             self.assertIn("向量資料庫的查詢流程包含 metadata filter、embedding search 與 rerank。", paragraph_titles)
 
-            search = call_documa_tool("documa_search_blocks", {"ir_path": str(ir_path), "query": "P95 latency", "limit": 3})
+            search = call_documa_tool(
+                "documa_search_blocks",
+                {"ir_path": str(ir_path), "query": "P95 latency", "limit": 3, "response_profile": "evidence"},
+            )
             self.assertFalse(search["isError"])
             self.assertGreaterEqual(len(search["structuredContent"]["results"]), 1)
-            self.assertEqual(search["structuredContent"]["results"][0]["matched"], ["P95", "latency"])
+            self.assertEqual(search["structuredContent"]["results"][0]["matched_terms"], ["P95", "latency"])
             self.assertTrue(search["structuredContent"]["results"][0]["snippets"])
 
     def test_markdown_plus_block_header_falls_back_to_first_paragraph_title(self):

@@ -1,0 +1,5 @@
+{"id":"definition-en","query":"What is the capital buffer definition?","any_of":["capital buffer","defined as"],"gold_block_ids":["leaf-capital"],"intent":"definition"}
+{"id":"numeric-zh","query":"資本緩衝比例是多少？","any_of":["資本緩衝","比例","10%"],"gold_block_ids":["leaf-ratio"],"intent":"numeric"}
+{"id":"date-en","query":"When does the policy take effect?","any_of":["effective date","2026"],"gold_block_ids":["leaf-date"],"intent":"date"}
+{"id":"cause-zh","query":"為何風險加權資產上升？","any_of":["原因","風險加權資產","信用曝險"],"gold_block_ids":["leaf-cause"],"intent":"cause"}
+{"id":"comparison-en","query":"Compare the 2025 and 2026 liquidity ratios.","any_of":["2025","2026","liquidity ratio"],"gold_block_ids":["leaf-compare"],"intent":"comparison"}

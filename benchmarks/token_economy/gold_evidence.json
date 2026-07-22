@@ -1,0 +1,12 @@
+{
+  "document_id": "token-economy",
+  "source_name": "token-economy.md",
+  "blocks": [
+    {"id":"leaf-capital","section":"Capital policy","text":"The capital buffer is defined as additional loss-absorbing capital held above the minimum regulatory requirement."},
+    {"id":"leaf-ratio","section":"資本比率","text":"本期資本緩衝比例為 10%，原始揭露值與正規化文字分開保存。"},
+    {"id":"leaf-date","section":"Effective date","text":"The revised policy takes effect on 1 January 2026 and applies to reporting periods beginning after that date."},
+    {"id":"leaf-cause","section":"風險變動原因","text":"風險加權資產上升，主要原因是企業信用曝險增加，因此信用風險部位擴大。"},
+    {"id":"leaf-compare","section":"Liquidity comparison","text":"The liquidity ratio was 118% in 2025 and 126% in 2026, so 2026 was eight percentage points higher."},
+    {"id":"leaf-distractor","section":"Operations","text":"The operations section discusses staffing, offices, and routine administrative controls."}
+  ]
+}

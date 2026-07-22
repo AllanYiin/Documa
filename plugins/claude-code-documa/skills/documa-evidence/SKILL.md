@@ -19,7 +19,7 @@ Trigger and fallback rules:
 | Question shape | Route |
 | --- | --- |
 | Structure / overview of one document ("what sections exist", "summarize") | `documa_block_tree` with `max_depth=2-3, include_citations=false`, or `documa_list_blocks depth=1`; descend with `parent_id` + `limit`/`offset` |
-| Specific fact in one document | `documa_search_blocks` with 2-4 precise terms, `verbosity=compact`, `limit<=5`; bilingual synonyms in `any_of`; quote adjacent words for phrases |
+| Specific fact in one document | `documa_search_blocks` with 2-4 precise terms, `response_profile=nav`, `limit<=5`; bilingual synonyms in `any_of`; quote adjacent words for phrases |
 | Breadth across documents ("which documents mention X") | `documa_search_collection` with `group_by_document=true` — each rollup has an exact `hit_count`, best snippet, and up to 3 read-ready `top_blocks` |
 | Specific fact across documents | `documa_search_collection` flat; narrow follow-ups with `document_ids=[...]` + `per_document_limit` |
 
@@ -27,14 +27,14 @@ Single documents enter via `documa_process` (produces IR + blocks). Document set
 
 ## Converge on evidence
 
-1. Follow the search response's `recommended_next` first — it names the block ids to read and a `max_chars` budget derived from `recommended_read_chars`. Collection hits chain `read_ref.ir_path` (a `doc-` registry id) + `block_id` straight into `documa_read_block`.
+1. Execute `recommended_next.actions[]` first — each item is a schema-valid `{tool, arguments}` call and already carries the required `ir_path`/`block_id` or browse arguments. Collection hits chain their `read_ref` into the same executable action contract.
 2. If evidence is incomplete, escalate in order: `documa_source_window` for neighbor context; `documa_block_xref` for parent/children/relations; refine the query once, guided by the response `hints`; browse `documa_list_blocks` under the nearest section. Whole-section reads (`include_children=true`) are the last resort, justified only when `neighbors.needs_next` is true or the hit is a section heading.
 3. Interpret response signals instead of guessing: `match_mode: "any_term"` means precision degraded — tighten terms or quote phrases; `total_matches`/`has_more` mean page with `offset`, never widen `limit` blindly; a hint suggesting `group_by_document` means hits span many documents and the flat list is the wrong shape.
 
 ## Token budget knobs
 
 - `documa_read_block`: `max_chars` or `max_tokens` (the tighter wins); start from the hit's `recommended_read_chars`.
-- `documa_search_blocks` / `documa_search_collection`: `max_response_tokens` as a hard response ceiling; dropped rows are reported in `budget.dropped_results`.
+- `documa_search_blocks` / `documa_search_collection`: `max_response_tokens` is a hard ceiling on the complete compact-serialized structured response; dropped rows are reported in `budget.dropped_results`.
 - `documa_search_blocks`: `include_snippets=false` when only block ids are needed.
 - Token budgets need a configured counter (tiktoken auto-detected, or `DOCUMA_TOKEN_COUNTER=anthropic:<model>` for Claude counting). On `TOKEN_COUNTER_UNAVAILABLE`, fall back to `max_chars`.
 

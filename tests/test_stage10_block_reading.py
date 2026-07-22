@@ -302,7 +302,10 @@ class Stage10BlockReadingTests(unittest.TestCase):
             ir_path = Path(tmp) / "documa.ir.json"
             ir_path.write_text(json.dumps(to_plain_data(doc), ensure_ascii=False), encoding="utf-8")
 
-            body_search = call_documa_tool("documa_search_blocks", {"ir_path": str(ir_path), "query": "hidden-needle"})
+            body_search = call_documa_tool(
+                "documa_search_blocks",
+                {"ir_path": str(ir_path), "query": "hidden-needle", "verbosity": "compact"},
+            )
             metadata_only = call_documa_tool(
                 "documa_search_blocks",
                 {"ir_path": str(ir_path), "query": "hidden-needle", "search_body": False},
@@ -396,14 +399,14 @@ class Stage10BlockReadingTests(unittest.TestCase):
 
             result = call_documa_tool(
                 "documa_search_blocks",
-                {"ir_path": str(ir_path), "query": "常見詞 資本緩衝"},
+                {"ir_path": str(ir_path), "query": "常見詞 資本緩衝", "response_profile": "evidence"},
             )
 
             content = result["structuredContent"]
             self.assertEqual(content["total_matches"], 2)
             # The block matching the rare term must outrank the block that only
             # repeats the common term, even though the latter has more raw hits.
-            self.assertEqual(content["results"][0]["id"], "db_rare")
+            self.assertEqual(content["results"][0]["block_id"], "db_rare")
             self.assertEqual(content["results"][0]["matched_terms_count"], 2)
 
     def test_search_blocks_demotes_toc_hits_below_body_evidence(self):
@@ -443,14 +446,14 @@ class Stage10BlockReadingTests(unittest.TestCase):
 
             result = call_documa_tool(
                 "documa_search_blocks",
-                {"ir_path": str(ir_path), "query": "資本緩衝"},
+                {"ir_path": str(ir_path), "query": "資本緩衝", "response_profile": "evidence"},
             )
 
             content = result["structuredContent"]
-            ids = [row["id"] for row in content["results"]]
+            ids = [row["block_id"] for row in content["results"]]
             self.assertIn("db_toc", ids)
-            self.assertEqual(content["results"][0]["id"], "db_body")
-            toc_row = next(row for row in content["results"] if row["id"] == "db_toc")
+            self.assertEqual(content["results"][0]["block_id"], "db_body")
+            toc_row = next(row for row in content["results"] if row["block_id"] == "db_toc")
             self.assertEqual(toc_row["doc_region"], "toc")
             self.assertLess(toc_row["score"], content["results"][0]["score"])
 

@@ -6,6 +6,9 @@
 
 這個 plugin 透過 bundled MCP server config 與 reusable evidence workflow skill，把 Documa 暴露給 Codex。它不打包 Documa 本體；請先在 Codex 可見的 Python 環境安裝 Documa。
 
+Plugin 內含兩個邊界清楚的 skills：`documa-evidence` 負責日常文件問答，`documa-maintenance` 負責 doctor、index repair、benchmark、migration 與 release gates。MCP server 可用 `DOCUMA_MCP_PROFILE=agent|advanced|admin` 控制工具發現面；這是 Documa server policy，不是 MCP 標準 capability。
+
+
 ```powershell
 python -m pip install -e ".[documents,mcp]"
 ```

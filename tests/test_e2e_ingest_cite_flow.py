@@ -55,7 +55,7 @@ class TestEndToEndFlow:
         found = search_blocks_tool(ir_path=document_id, query="Revenue")
         assert found["status"] == "ok"
         assert found["results"], "expected search hits for 'Revenue'"
-        block_id = found["results"][0]["id"]
+        block_id = found["results"][0]["block_id"]
 
         cited = cite_block_tool(ir_path=document_id, block_id=block_id)
         assert cited["status"] == "ok"
@@ -87,7 +87,7 @@ class TestEndToEndFlow:
         assert found["status"] == "ok"
         assert found["results"], "OCR text should be searchable"
 
-        block_id = found["results"][0]["id"]
+        block_id = found["results"][0]["block_id"]
         cited = cite_block_tool(ir_path=ingested["document_id"], block_id=block_id)
         assert cited["status"] == "ok"
         assert cited["grounding"] in {"visual", "logical"}
@@ -106,7 +106,7 @@ class TestColumnFlowEndToEnd:
 
         found = search_blocks_tool(ir_path=document_id, query="recycled feedstock")
         assert found["results"], "expected a hit in the third column"
-        block_id = found["results"][0]["id"]
+        block_id = found["results"][0]["block_id"]
 
         cited = cite_block_tool(ir_path=document_id, block_id=block_id)
         assert cited["status"] == "ok"

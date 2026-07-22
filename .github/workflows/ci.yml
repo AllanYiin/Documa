@@ -38,6 +38,29 @@ jobs:
       - name: Run Documa doctor
         run: documa doctor
 
+  token-economy-benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install package with real tokenizer
+        run: python -m pip install -e ".[dev,tokens]"
+      - name: Run token economy contract
+        run: >-
+          python benchmarks/token_economy/run_agent_benchmark.py
+          --check
+          --out token-economy.json
+      - name: Upload token trace
+        uses: actions/upload-artifact@v4
+        with:
+          name: token-economy-benchmark
+          path: token-economy.json
+          retention-days: 30
+
   # Observational quality gate: never blocks merges while thresholds are being
   # calibrated. Promotion to a hard gate is documented in CHANGELOG.md.
   quality-benchmark:

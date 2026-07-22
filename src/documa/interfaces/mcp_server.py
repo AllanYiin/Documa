@@ -23,6 +23,7 @@ from documa.interfaces.tools import (
     parse_document_tool,
     process_document_tool,
     read_block_tool,
+    read_blocks_tool,
     render_citation_tool,
     search_blocks_tool,
     search_collection_tool,
@@ -30,9 +31,40 @@ from documa.interfaces.tools import (
     verify_citations_tool,
     view_document_tool,
 )
+from documa.interfaces.tool_profiles import allowed_tool_names
 
 
-def create_mcp_server() -> Any:
+_MCP_REGISTERED_TOOLS = {
+    "documa_parse",
+    "documa_process",
+    "documa_ingest_mailbox",
+    "documa_export",
+    "documa_inspect",
+    "documa_view",
+    "documa_list_blocks",
+    "documa_inspect_block",
+    "documa_read_block",
+    "documa_read_blocks",
+    "documa_search_blocks",
+    "documa_ingest",
+    "documa_index_collection",
+    "documa_search_collection",
+    "documa_block_tree",
+    "documa_block_xref",
+    "documa_cite_block",
+    "documa_render_citation",
+    "documa_source_window",
+    "documa_verify_citations",
+    "documa_list_documents",
+    "documa_benchmark",
+    "documa_doctor",
+}
+
+
+def create_mcp_server(profile: str | None = None) -> Any:
+    active_profile = (profile or os.environ.get("DOCUMA_MCP_PROFILE") or "admin").casefold()
+    allowed = allowed_tool_names(active_profile)
+
     try:
         from mcp.server.fastmcp import FastMCP
     except ImportError as exc:  # pragma: no cover - depends on optional package
@@ -182,6 +214,7 @@ def create_mcp_server() -> Any:
         include_children: bool = False,
         max_chars: int | None = None,
         max_tokens: int | None = None,
+        start: int = 0,
     ) -> dict[str, Any]:
         """Read one selected document block body."""
 
@@ -191,7 +224,27 @@ def create_mcp_server() -> Any:
             include_children=include_children,
             max_chars=max_chars,
             max_tokens=max_tokens,
+            start=start,
         )
+
+    @mcp.tool()
+    def documa_read_blocks(
+        ir_path: str,
+        block_ids: list[str],
+        total_max_tokens: int = 800,
+        per_block_max_tokens: int | None = None,
+        context_mode: str = "none",
+    ) -> dict[str, Any]:
+        """Batch-read evidence blocks under one exact shared token budget."""
+
+        return read_blocks_tool(
+            ir_path=ir_path,
+            block_ids=block_ids,
+            total_max_tokens=total_max_tokens,
+            per_block_max_tokens=per_block_max_tokens,
+            context_mode=context_mode,
+        )
+
 
     @mcp.tool()
     def documa_search_blocks(
@@ -202,13 +255,19 @@ def create_mcp_server() -> Any:
         any_of: list[str] | None = None,
         fields: list[str] | None = None,
         snippet_fields: list[str] | None = None,
-        verbosity: str = "compact",
+        verbosity: str | None = None,
         include_snippets: bool = True,
         max_snippets_per_block: int = 2,
         search_body: bool = True,
         context_chars: int = 24,
         context_words: int = 8,
         max_response_tokens: int | None = None,
+        response_profile: str = "nav",
+        granularity: str = "auto",
+        scope_block_id: str | None = None,
+        max_evidence_tokens: int | None = None,
+        adaptive_top_k: bool = True,
+        max_results_per_branch: int | None = None,
     ) -> dict[str, Any]:
         """Search progressive document blocks with bounded snippets."""
 
@@ -227,6 +286,12 @@ def create_mcp_server() -> Any:
             context_chars=context_chars,
             context_words=context_words,
             max_response_tokens=max_response_tokens,
+            response_profile=response_profile,
+            granularity=granularity,
+            scope_block_id=scope_block_id,
+            max_evidence_tokens=max_evidence_tokens,
+            adaptive_top_k=adaptive_top_k,
+            max_results_per_branch=max_results_per_branch,
         )
 
     @mcp.tool()
@@ -265,6 +330,7 @@ def create_mcp_server() -> Any:
         per_document_limit: int | None = None,
         document_ids: list[str] | None = None,
         group_by_document: bool = False,
+        response_profile: str = "evidence",
         max_response_tokens: int | None = None,
     ) -> dict[str, Any]:
         """Search active registry documents through the local collection index."""
@@ -278,6 +344,7 @@ def create_mcp_server() -> Any:
             per_document_limit=per_document_limit,
             document_ids=document_ids,
             group_by_document=group_by_document,
+            response_profile=response_profile,
             max_response_tokens=max_response_tokens,
         )
 
@@ -358,6 +425,10 @@ def create_mcp_server() -> Any:
         """Run Documa environment diagnostics."""
 
         return doctor_tool(project_root=project_root, include_benchmark=include_benchmark, store_dir=store_dir)
+
+    for tool_name in sorted(_MCP_REGISTERED_TOOLS - allowed):
+        mcp.remove_tool(tool_name)
+    mcp.documa_profile = active_profile
 
     return mcp
 

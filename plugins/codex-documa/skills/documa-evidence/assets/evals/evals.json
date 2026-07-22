@@ -129,10 +129,10 @@
       "language": "en",
       "coverage_tags": ["should-trigger", "efficiency"],
       "prompt": "Context budget is tight. Find the termination clause in this 200-page contract IR and quote only the minimum evidence needed.",
-      "expected_output": "The response should search with verbosity=compact and a small limit, follow the response's recommended_next into documa_read_block with a max_chars/max_tokens bound, and avoid whole-document reads.",
+      "expected_output": "The response should search with response_profile=nav and a small limit, execute the schema-valid calls in recommended_next.actions, and avoid whole-document reads.",
       "files": [],
       "expectations": [
-        "Uses verbosity=compact and limit<=5 on documa_search_blocks.",
+        "Uses response_profile=nav and limit<=5 on documa_search_blocks.",
         "Follows recommended_next (or recommended_read_chars) instead of unbounded reads.",
         "Does not run two consecutive searches without reading unless the first returned zero results."
       ],

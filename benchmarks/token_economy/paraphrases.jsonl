@@ -1,0 +1,5 @@
+{"query_id":"definition-en","query":"Explain what capital buffer means.","any_of":["capital buffer","defined as"]}
+{"query_id":"numeric-zh","query":"文件揭露的資本緩衝百分比為何？","any_of":["資本緩衝","10%"]}
+{"query_id":"date-en","query":"What is the policy's commencement date?","any_of":["effective date","2026"]}
+{"query_id":"cause-zh","query":"信用風險部位擴大的成因是什麼？","any_of":["原因","信用曝險"]}
+{"query_id":"comparison-en","query":"How did liquidity change from 2025 to 2026?","any_of":["2025","2026","liquidity ratio"]}

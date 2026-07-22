@@ -53,12 +53,27 @@ _CONFIDENT_MATCHED_TERMS = 2
 _CONFIDENT_SCORE_LEAD = 1.35
 
 
-def recommended_next_action(ranked_page: list[dict[str, Any]]) -> dict[str, Any] | None:
-    """Deterministic read recommendation from ranked search rows.
+def _single_document_action(ir_path: str, row: dict[str, Any]) -> dict[str, Any]:
+    block_id = row["block_id"]
+    block_type = row.get("block_type") or row.get("kind")
+    if block_type == "section":
+        return {
+            "tool": "documa_list_blocks",
+            "arguments": {"ir_path": ir_path, "parent_id": block_id, "limit": 10},
+        }
+    if row.get("neighbors", {}).get("needs_next"):
+        return {
+            "tool": "documa_source_window",
+            "arguments": {"ir_path": ir_path, "block_id": block_id, "before": 0, "after": 1},
+        }
+    arguments: dict[str, Any] = {"ir_path": ir_path, "block_id": block_id}
+    if row.get("recommended_read_chars") is not None:
+        arguments["max_chars"] = row["recommended_read_chars"]
+    return {"tool": "documa_read_block", "arguments": arguments}
 
-    Returns a ready-to-issue documa_read_block call: the top hit alone when it
-    is confidently ahead, or the top two when scores are too close to separate.
-    """
+
+def recommended_next_action(ir_path: str, ranked_page: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Return schema-valid calls that can be executed without model rewriting."""
     if not ranked_page:
         return None
     top = ranked_page[0]
@@ -66,15 +81,10 @@ def recommended_next_action(ranked_page: list[dict[str, Any]]) -> dict[str, Any]
     confident = top.get("matched_terms_count", 0) >= _CONFIDENT_MATCHED_TERMS or (
         runner_up is None or top["score"] >= _CONFIDENT_SCORE_LEAD * max(runner_up["score"], 1e-9)
     )
-    block_ids = [top["block_id"]]
+    selected = [top]
     if not confident and runner_up is not None:
-        block_ids.append(runner_up["block_id"])
-    return {
-        "tool": "documa_read_block",
-        "block_ids": block_ids,
-        "include_children": bool(top.get("neighbors", {}).get("needs_next")),
-        "max_chars": top.get("recommended_read_chars"),
-    }
+        selected.append(runner_up)
+    return {"actions": [_single_document_action(ir_path, row) for row in selected]}
 
 
 def search_hints(
@@ -101,13 +111,7 @@ def search_hints(
 
 
 def collection_recommended_next_action(results: list[dict[str, Any]], *, grouped: bool) -> dict[str, Any] | None:
-    """Deterministic cross-document read recommendation.
-
-    Returns a ready-to-issue documa_read_block call chaining the top hit's
-    read_ref (ir_path is a doc- registry id the tool resolves directly). In
-    flat mode the runner-up joins only when it lives in the same document and
-    the leader's score margin is too thin to separate them.
-    """
+    """Return schema-valid cross-document read calls."""
     if not results:
         return None
     if grouped:
@@ -115,18 +119,33 @@ def collection_recommended_next_action(results: list[dict[str, Any]], *, grouped
         if not top_blocks:
             return None
         read_ref = top_blocks[0]["read_ref"]
-        return {"tool": "documa_read_block", "ir_path": read_ref["ir_path"], "block_ids": [read_ref["block_id"]]}
+        return {
+            "actions": [
+                {
+                    "tool": "documa_read_block",
+                    "arguments": {"ir_path": read_ref["ir_path"], "block_id": read_ref["block_id"]},
+                }
+            ]
+        }
     top = results[0]
     read_ref = top["read_ref"]
-    block_ids = [read_ref["block_id"]]
+    read_refs = [read_ref]
     runner_up = results[1] if len(results) > 1 else None
     if (
         runner_up is not None
         and runner_up["read_ref"]["ir_path"] == read_ref["ir_path"]
         and top["score"] < _CONFIDENT_SCORE_LEAD * max(runner_up["score"], 1e-9)
     ):
-        block_ids.append(runner_up["read_ref"]["block_id"])
-    return {"tool": "documa_read_block", "ir_path": read_ref["ir_path"], "block_ids": block_ids}
+        read_refs.append(runner_up["read_ref"])
+    return {
+        "actions": [
+            {
+                "tool": "documa_read_block",
+                "arguments": {"ir_path": ref["ir_path"], "block_id": ref["block_id"]},
+            }
+            for ref in read_refs
+        ]
+    }
 
 
 def collection_search_hints(

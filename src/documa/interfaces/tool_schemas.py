@@ -5,6 +5,8 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+from documa.interfaces.tool_profiles import allowed_tool_names
+
 
 def _status_output_schema() -> dict[str, Any]:
     return {
@@ -18,10 +20,10 @@ def _status_output_schema() -> dict[str, Any]:
     }
 
 
-def documa_tool_schemas() -> list[dict[str, Any]]:
+def documa_tool_schemas(profile: str = "admin") -> list[dict[str, Any]]:
     """Return stable tool descriptors that can be wrapped by MCP servers."""
 
-    return [
+    descriptors = [
         {
             "name": "documa_parse",
             "title": "Parse document into Documa IR",
@@ -233,10 +235,37 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
                     "include_children": {"type": "boolean", "default": False},
                     "max_chars": {"type": ["integer", "null"], "minimum": 1},
                     "max_tokens": {"type": ["integer", "null"], "minimum": 1, "description": "Truncate content to this many tokens, counted by the configured token counter (tiktoken auto-detected, or DOCUMA_TOKEN_COUNTER=anthropic:<model>); errors with TOKEN_COUNTER_UNAVAILABLE when no counter is configured. The tighter of max_chars/max_tokens wins."},
+                    "start": {"type": "integer", "minimum": 0, "default": 0, "description": "Continuation character cursor returned by a previous read."},
                 },
                 "required": ["ir_path", "block_id"],
             },
             "outputSchema": {"type": "object", "properties": {"status": {"type": "string"}}},
+            "annotations": {"readOnlyHint": True},
+        },
+        {
+            "name": "documa_read_blocks",
+            "title": "Read several Documa evidence blocks",
+            "description": "Batch-read selected blocks under one exact token budget, with optional deterministic context expansion.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "ir_path": {"type": "string"},
+                    "block_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+                    "total_max_tokens": {"type": "integer", "minimum": 1, "default": 800},
+                    "per_block_max_tokens": {"type": ["integer", "null"], "minimum": 1},
+                    "context_mode": {
+                        "type": "string",
+                        "enum": ["none", "auto", "neighbors", "children"],
+                        "default": "none"
+                    },
+                },
+                "required": ["ir_path", "block_ids"],
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {"status": {"type": "string"}, "results": {"type": "array"}, "budget": {"type": "object"}},
+                "required": ["status"],
+            },
             "annotations": {"readOnlyHint": True},
         },
         {
@@ -253,13 +282,19 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
                     "any_of": {"type": ["array", "null"], "items": {"type": "string"}},
                     "fields": {"type": ["array", "null"], "items": {"type": "string"}},
                     "snippet_fields": {"type": ["array", "null"], "items": {"type": "string"}},
-                    "verbosity": {"type": "string", "enum": ["compact", "standard", "debug"], "default": "compact"},
+                    "response_profile": {"type": "string", "enum": ["nav", "evidence", "debug"], "default": "nav", "description": "nav returns only routing fields; evidence adds citation and selection metadata; debug adds diagnostics."},
+                    "verbosity": {"type": "string", "enum": ["compact", "standard", "debug"], "description": "Deprecated compatibility alias. Explicit compact/standard requests the legacy evidence shape; debug maps to response_profile=debug."},
                     "include_snippets": {"type": "boolean", "default": True},
                     "max_snippets_per_block": {"type": "integer", "minimum": 0, "default": 2},
                     "search_body": {"type": "boolean", "default": True},
                     "context_chars": {"type": "integer", "minimum": 0, "default": 24},
                     "context_words": {"type": "integer", "minimum": 0, "default": 8},
-                    "max_response_tokens": {"type": ["integer", "null"], "minimum": 1, "description": "Hard ceiling on the counted response size; lowest-ranked rows are dropped first and reported in budget.dropped_results. Requires a configured token counter; errors with TOKEN_COUNTER_UNAVAILABLE otherwise."},
+                    "max_response_tokens": {"type": ["integer", "null"], "minimum": 1, "description": "Hard ceiling on the complete compact-serialized structured response, including results, guidance, and budget metadata. Requires a configured token counter."},
+                    "granularity": {"type": "string", "enum": ["auto", "section", "leaf", "mixed"], "default": "auto"},
+                    "scope_block_id": {"type": ["string", "null"], "description": "Restrict retrieval to this block and its descendants."},
+                    "max_evidence_tokens": {"type": ["integer", "null"], "minimum": 1, "description": "Exact shared token cap used by adaptive evidence selection."},
+                    "adaptive_top_k": {"type": "boolean", "default": True},
+                    "max_results_per_branch": {"type": ["integer", "null"], "minimum": 1},
                 },
                 "required": ["ir_path", "query"],
             },
@@ -601,7 +636,8 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
                     "per_document_limit": {"type": ["integer", "null"], "default": None},
                     "document_ids": {"type": ["array", "null"], "items": {"type": "string"}, "maxItems": 100, "description": "Restrict the search to these doc- registry ids (scoped follow-up queries)."},
                     "group_by_document": {"type": "boolean", "default": False, "description": "Page over document-level rollups (exact hit_count, best snippet, up to 3 read-ready top_blocks) — the right shape for 'which documents mention X'."},
-                    "max_response_tokens": {"type": ["integer", "null"], "minimum": 1, "description": "Hard ceiling on the counted response size; lowest-ranked rows drop first. Requires a configured token counter."},
+                    "response_profile": {"type": "string", "enum": ["nav", "evidence"], "default": "evidence", "description": "nav emits compact document rollups; evidence preserves citation-ready top_blocks."},
+                    "max_response_tokens": {"type": ["integer", "null"], "minimum": 1, "description": "Hard ceiling on the complete compact-serialized structured response, including results, guidance, and budget metadata. Requires a configured token counter."},
                 },
                 "required": ["query"],
             },
@@ -649,6 +685,9 @@ def documa_tool_schemas() -> list[dict[str, Any]]:
             "annotations": {"readOnlyHint": True},
         },
     ]
+    allowed = allowed_tool_names(profile)
+    return [descriptor for descriptor in descriptors if descriptor["name"] in allowed]
+
 
 
 def _with_no_extra_properties(schema: dict[str, Any], *, require_all: bool) -> dict[str, Any]:
@@ -677,11 +716,11 @@ def _apply_no_extra_properties(schema: dict[str, Any], *, require_all: bool) -> 
         _apply_no_extra_properties(schema["items"], require_all=require_all)
 
 
-def openai_tool_schemas(*, strict: bool = False) -> list[dict[str, Any]]:
+def openai_tool_schemas(*, strict: bool = False, profile: str = "admin") -> list[dict[str, Any]]:
     """Return OpenAI function-tool descriptors derived from Documa schemas."""
 
     tools = []
-    for descriptor in documa_tool_schemas():
+    for descriptor in documa_tool_schemas(profile=profile):
         parameters = _with_no_extra_properties(descriptor["inputSchema"], require_all=strict)
         tools.append(
             {

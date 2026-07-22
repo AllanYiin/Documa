@@ -24,7 +24,7 @@ PLUGINS = ROOT / "plugins"
 
 # Plugin directories that ship as tracked zip artifacts (flat layout: the zip
 # root contains the plugin files directly, no wrapping folder).
-ZIPPED_PLUGINS = ["claude-code-documa"]
+ZIPPED_PLUGINS = ["claude-code-documa", "codex-documa"]
 
 # Deterministic metadata: fixed DOS timestamp and regular-file permissions.
 _FIXED_DATE_TIME = (1980, 1, 1, 0, 0, 0)
