@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## v0.5.0 — token economy overhaul（回應層瘦身與雙堆疊排序統一）（2026-07-23）
+
+- **MCP 單份傳輸**：FastMCP wrapper 改為單一 compact JSON text（`structured_output=False`），不再同時送 `structuredContent` 與 pretty-printed text——每個回應的 wire 成本約砍半。`call_documa_tool` 的 direct 路徑仍同時保留兩者供程式端取用。
+- **短 block id**：單文件回應在 envelope 宣告一次 `block_id_prefix`，各項目改發 prefix-stripped 短 id（`p12_para3`）；所有工具輸入端同時接受長短兩型。合成 id（無 prefix）的 IR 不宣告 prefix、不受影響。
+- **Omit-empty 與常數上提**：null/空字串/空集合欄位不再序列化；`page_ref_kind` 常數上提到 envelope；逐項 citation 四欄位（`citation_label`/`page_ref_kind`/`printed_page_labels`/`pdf_page_labels`）收斂為單一 `page` label。basel3 實測：`block_tree max_depth=2` 9,756→2,813 tokens（-71%）、`list_blocks depth=1` 3,476→1,092（-69%）。
+- **Heading path 去根**：`_block_path`／sidecar／collection index 的 heading path 不再重複文件根節點 title（常為完整檔案路徑）；`INDEX_VERSION` 升 4、sidecar `FEATURE_VERSION` 加 `route-path-v2`，舊索引由 health 標 stale 引導重建。
+- **`documa_block_tree` 精簡預設 + sketches**：`include_citations` 預設改 False；新增 `include_sketches`——直接掛上 ingest 時算好的 section sketch 與 `read_cost_chars`，一次呼叫取得「章節＋梗概」全貌，常可零 read 回答 overview 類問題。
+- **`documa_inspect_block` 有界輸出**：不再全量傾倒 block（metadata 僅保留 role/source_range/source_block_type 與截斷後的 keyword/new-word terms），citation 資訊不再重複兩份。
+- **搜尋回應自動預算**：有 token counter 時，search 回應預設套用 2,000 token 上限（未觸發時不輸出 budget 塊）；`max_response_tokens=0` 可關閉。nav 列補上 `needs_next`（僅 True 時輸出）。
+- **診斷欄位分級**：`retrieval`/`snippet_policy`/`query`/`terms` 等診斷 baggage 移到 `debug` profile（evidence 僅保留 `effective_granularity` 與 `selected_evidence_tokens`）；citation 家族移除 `timing_ms`；`read_blocks` 不再回聲輸入參數，巢狀項目剝除 envelope 重複欄位。
+- **Collection 搜尋瘦身與排序統一**：`documa_search_collection` 預設改 `nav`（flat 列真正瘦身為 `document_id/source/block_id/path/page_refs/score/snippet`）；移除 `ir_document_id`、`bbox_refs`、`dedupe_key` 與 `read_ref` 重複（讀取對 = `(document_id, block_id)`）；grouped rollup 的巢狀 top_blocks 剝除文件層重複欄位。flat 路徑補上與單文件一致的 content-hash 去重與 doc-region 降權（共用新模組 `documa.core.doc_regions`）。
+- **Tool 面瘦身**：`agent` profile 補入 `block_tree`/`list_blocks`/`source_window`/`block_xref`（evidence 工作流完整可用），三個 plugin 的 MCP server 預設 `DOCUMA_MCP_PROFILE=agent`（schema 3,227 tokens，較 admin 省約 1,500/session）。
+- **Skills 對齊預設值**：documa-evidence 三份同步改寫——凡工具已是預設的參數建議一律移除，補上短 id、sketch overview、`scope_block_id`/`granularity` 收斂與 collection 讀取對的說明；documa-maintenance 註明 admin profile 切換方式。
+
 ## v0.4.0 — adaptive retrieval, batch evidence, retrieval sidecar（2026-07-22）
 
 - 新增 `documa_read_blocks`、boundary-aware continuation cursor 與共享 evidence token budget。
