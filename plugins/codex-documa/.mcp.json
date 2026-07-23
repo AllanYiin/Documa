@@ -3,7 +3,9 @@
     "documa": {
       "command": "documa-mcp",
       "args": [],
-      "env": {}
+      "env": {
+        "DOCUMA_MCP_PROFILE": "agent"
+      }
     }
   }
 }

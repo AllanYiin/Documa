@@ -1,7 +1,7 @@
 ---
 name: documa-evidence
 description: Use when the user asks Codex to read, search, summarize, compare, verify, or answer from large PDFs, long documents, Office, HTML, email, notebook, Markdown, or Documa IR files with evidence. Prefer Documa MCP block search before generic PDF reading; do not use for visual/layout rendering tasks.
-version: 2026.7.13
+version: 2026.7.23
 homepage: https://github.com/AllanYiin/Documa/tree/main/plugins/codex-documa
 license: MIT
 metadata: {"language":"en","category":"documents","host":"codex","integration":"mcp","short-description":"Documa MCP evidence-first document workflow for Codex"}
@@ -46,11 +46,11 @@ Step 1: Process or identify Documa IR
 
 Step 2: Route the query before reading bodies
 - Input: User question, document/collection scope, and Documa IR reference.
-- Action: Pick the route that matches the question shape:
-  - Structure or overview question ("what sections exist", "summarize the document"): call `documa_search_blocks` with `granularity=section`, or use `documa_block_tree` from the advanced profile for an explicit outline.
-  - Specific fact or keyword question: call `documa_search_blocks` with 2-4 precise terms, `granularity=auto`, `response_profile=nav`, `limit<=5`, and an evidence budget when a token counter is configured. Put bilingual synonyms in `any_of` when the question language may differ from the document language.
-  - Multi-document breadth question ("which documents mention X"): call `documa_search_collection` with `group_by_document=true` and `response_profile=nav`; then narrow with `document_ids=[...]` using the compact rollups' `document_id`.
-  - Multi-document fact question: call `documa_search_collection` directly (terms are AND-ed; quoted phrases supported; snippets center on the hit). If the response says `match_mode: "any_term"`, precision was degraded — tighten terms before trusting ranking. Chain each hit's `read_ref` into `documa_read_block`: `read_ref.ir_path` is a `doc-` registry id that `documa_read_block` accepts directly. Resolve registry ids with `documa_list_documents` when needed.
+- Action: Pick the route that matches the question shape (defaults are already token-lean nav profiles; responses declare `block_id_prefix` once and emit short block ids — pass them back as-is):
+  - Structure or overview question ("what sections exist", "summarize the document"): call `documa_block_tree` with `max_depth=2-3, include_sketches=true` — sections come back with a precomputed one-glance `sketch` plus `read_cost_chars`, often enough to answer without reads. `documa_search_blocks` with `granularity=section` is the query-shaped alternative.
+  - Specific fact or keyword question: call `documa_search_blocks` with 2-4 precise terms. Put bilingual synonyms in `any_of` when the question language may differ from the document language; re-search narrowly with `scope_block_id` + `granularity` instead of widening terms.
+  - Multi-document breadth question ("which documents mention X"): call `documa_search_collection` with `group_by_document=true`; then narrow with `document_ids=[...]` using the compact rollups' `document_id`.
+  - Multi-document fact question: call `documa_search_collection` directly (terms are AND-ed; quoted phrases supported; snippets center on the hit). If the response says `match_mode: "any_term"`, precision was degraded — tighten terms before trusting ranking. Read a hit via `documa_read_block` with `ir_path` set to the hit's `document_id` (a `doc-` registry id accepted directly) and its `block_id`. Resolve registry ids with `documa_list_documents` when needed.
   - Index freshness: `documa_ingest`/delete maintain the collection index incrementally by default, so a fresh ingest is searchable immediately; `documa_index_collection` is the repair path when `documa_doctor` (with `store_dir`) reports the index stale or version-outdated.
   - Email collections: mailbox ingestion (`documa_ingest_mailbox`) does NOT enter the registry or collection index; to make messages cross-document searchable, run `documa_ingest` per `.eml`/`.msg` file instead.
 - Output: Candidate block ids, source/page metadata, and the routing rationale.
@@ -59,7 +59,7 @@ Step 2: Route the query before reading bodies
 Step 3: Read and converge on evidence
 - Input: Candidate block ids, search response metadata, and the narrow evidence need.
 - Action: Execute each schema-valid `{tool, arguments}` entry in `recommended_next.actions[]` first. When several candidate ids are already known, prefer one `documa_read_blocks` call with a shared `total_max_tokens` budget.
-- Token controls: use the `continuation.start` cursor returned by `documa_read_block`; set `max_evidence_tokens` on search and `total_max_tokens` on batch read. Use `response_profile=nav` by default and request `evidence` only when selection diagnostics are needed.
+- Token controls: use the `continuation.start` cursor returned by `documa_read_block`; set `max_evidence_tokens` on search and `total_max_tokens` on batch read. Search responses are auto-capped (~2000 tokens) when a token counter is configured; override with `max_response_tokens` (0 disables). Request `response_profile=evidence` only when selection diagnostics are needed.
 - Collection responses carry the same executable `recommended_next.actions[]` and `hints` surface as single-document search; use `any_term` degradation, `offset=N` paging, and group-mode hints before inventing a new strategy.
 - Output: Quoted or paraphrased evidence, block ids, page/source metadata, and any neighbor context needed for interpretation.
 - Validation: Only cite blocks that were actually read or otherwise provided in the tool result. Never run two consecutive searches without reading in between unless the first search returned zero results.
@@ -111,7 +111,7 @@ Example 4
 Input:
 User: "store 裡有十幾份合約，哪幾份提到違約金？把最相關兩份的條文找出來。"
 Output:
-Breadth first: `documa_search_collection` with `query="違約金"`, `group_by_document=true` — read the rollups' exact `hit_count` to name the documents. Then narrow: `documa_search_collection` with `document_ids=[top two doc- ids]`, `per_document_limit=2`. Read via each hit's `read_ref` chained into `documa_read_block`, and cite with block ids plus page metadata. Do not loop `documa_search_blocks` per document.
+Breadth first: `documa_search_collection` with `query="違約金"`, `group_by_document=true` — read the rollups' exact `hit_count` to name the documents. Then narrow: `documa_search_collection` with `document_ids=[top two doc- ids]`, `per_document_limit=2`. Read each hit via `documa_read_block` with `ir_path=document_id` + `block_id`, and cite with block ids plus page metadata. Do not loop `documa_search_blocks` per document.
 </examples>
 
 ## Hard Rules

@@ -18,17 +18,17 @@ Trigger and fallback rules:
 Preferred sequence (single document):
 
 1. If the source is not already a `documa.ir.json`, call `documa_process` with bounded export formats such as `block-json`, `rag-json`, or `markdown`.
-2. Start with `documa_search_blocks` using 2-4 precise terms, `response_profile=nav`, and `limit<=5`. Treat search snippets as navigation only. Set `max_response_tokens` as a hard ceiling on the complete structured response when context is tight; page further matches with `offset` (the response reports `total_matches`).
+2. For an overview, call `documa_block_tree` with `max_depth=2-3, include_sketches=true` — sections return a precomputed `sketch` and `read_cost_chars`. For facts, start with `documa_search_blocks` using 2-4 precise terms. Defaults are token-lean (nav profile, auto response cap); responses declare `block_id_prefix` once and emit short block ids — pass them back as-is. Treat search snippets as navigation only; page further matches with `offset` (the response reports `total_matches`).
 3. Execute the search response's `recommended_next.actions[]` calls exactly as returned; every item contains a schema-valid `tool` and `arguments` object. Otherwise read the smallest set of block ids that can support the answer, bounding reads with `max_chars` or `max_tokens`.
-4. If evidence is incomplete, refine the query once guided by the response `hints`, or read nearby parent/child blocks (`include_children=true` only when `neighbors.needs_next` is true), before expanding scope.
+4. If evidence is incomplete, refine the query once guided by the response `hints`, re-search narrowly with `scope_block_id` + `granularity`, or read nearby parent/child blocks (`include_children=true` only when the hit reports `needs_next: true`), before expanding scope.
 5. In the final answer, distinguish observed evidence from inference and cite block ids or source/page metadata when available.
 
 Preferred sequence (multiple documents):
 
 1. `documa_ingest` each file into the store — it returns a stable `doc-` id and keeps the collection index fresh incrementally, so ingested files are searchable immediately. `documa_index_collection` is only the repair path when the index is missing or version-outdated.
-2. Breadth question ("which documents mention X"): `documa_search_collection` with `group_by_document=true` — each rollup carries an exact `hit_count`, the best snippet, and up to three read-ready `top_blocks`. Fact question: `documa_search_collection` flat.
+2. Breadth question ("which documents mention X"): `documa_search_collection` with `group_by_document=true` — each rollup carries an exact `hit_count`, the best snippet, and read-ready `top_refs`. Fact question: `documa_search_collection` flat.
 3. Narrow follow-ups with `document_ids=[...]` (the `doc-` ids from rollups or `documa_list_documents`) plus `per_document_limit`; page with `offset`/`has_more` instead of widening `limit`.
-4. Chain each hit's `read_ref` into `documa_read_block`: `read_ref.ir_path` is a `doc-` registry id the tool accepts directly.
+4. Read a hit via `documa_read_block` with `ir_path` set to the hit's `document_id` (a `doc-` registry id the tool accepts directly) and its `block_id`.
 5. Interpret response signals: `match_mode: "any_term"` means precision degraded (tighten terms or quote phrases); follow `recommended_next` and `hints` before inventing a new strategy. `max_response_tokens` bounds the response when context is tight.
 
 Do not silently replace original text with normalized text. Do not depend on parser-native objects.
