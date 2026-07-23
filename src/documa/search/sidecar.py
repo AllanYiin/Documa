@@ -22,7 +22,8 @@ from documa.pipeline.block_tree import document_block_text
 
 SEARCH_INDEX_VERSION = 1
 APPLICATION_ID = 0x444F4355  # "DOCU"
-FEATURE_VERSION = "keyword-v2+simhash64+sketch-v1"
+# route-path-v2: heading paths no longer repeat the document root title.
+FEATURE_VERSION = "keyword-v2+simhash64+sketch-v1+route-path-v2"
 
 
 def sidecar_path(ir_path: str | Path) -> Path:
@@ -99,7 +100,9 @@ def _heading_path(block_id: str, by_id: dict[str, Any]) -> list[str]:
     seen: set[str] = set()
     while current is not None and current.id not in seen:
         seen.add(current.id)
-        if current.title:
+        # Skip the document root title (the source name/path); consumers know
+        # the document identity from their own envelope.
+        if current.title and getattr(current.type, "value", "") != "document":
             path.append(current.title)
         current = by_id.get(current.parent_id) if current.parent_id else None
     return list(reversed(path))
@@ -275,16 +278,9 @@ def build_search_sidecar(document: DocumentIR, path: str | Path) -> dict[str, An
     }
 
 
-def route_sections(
-    path: str | Path,
-    query_terms: list[str],
-    *,
-    source_generation: str | None = None,
-    scope_block_id: str | None = None,
-    limit: int = 5,
-) -> list[dict[str, Any]]:
-    index_path = Path(path)
-    if not index_path.exists() or not query_terms:
+def _valid_route_rows(index_path: Path, source_generation: str | None) -> list[sqlite3.Row]:
+    """Route rows from a generation-matched sidecar, or [] when unusable."""
+    if not index_path.exists():
         return []
     try:
         with sqlite3.connect(index_path) as connection:
@@ -296,9 +292,35 @@ def route_sections(
             metadata = dict(connection.execute("SELECT key, value FROM metadata"))
             if source_generation is not None and metadata.get("source_digest") != source_generation:
                 return []
-            rows = connection.execute("SELECT * FROM routes").fetchall()
+            return connection.execute("SELECT * FROM routes").fetchall()
     except sqlite3.Error:
         return []
+
+
+def section_sketches(path: str | Path, *, source_generation: str | None = None) -> dict[str, dict[str, Any]]:
+    """Precomputed per-section sketches and read costs, keyed by block id.
+
+    Lets overview tools attach a one-glance summary per section without any
+    block-body reads; the sketches were paid for once at ingest time.
+    """
+    return {
+        row["block_id"]: {"sketch": row["sketch"], "subtree_cost": row["subtree_cost"]}
+        for row in _valid_route_rows(Path(path), source_generation)
+        if row["sketch"]
+    }
+
+
+def route_sections(
+    path: str | Path,
+    query_terms: list[str],
+    *,
+    source_generation: str | None = None,
+    scope_block_id: str | None = None,
+    limit: int = 5,
+) -> list[dict[str, Any]]:
+    if not query_terms:
+        return []
+    rows = _valid_route_rows(Path(path), source_generation)
     folded_terms = [term.casefold() for term in query_terms]
     ranked = []
     for row in rows:

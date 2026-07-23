@@ -36,13 +36,17 @@ from documa.pipeline import (
     run_default_pipeline,
 )
 from documa.pipeline.block_tree import document_block_text
-from documa.pipeline.page_refs import ensure_page_citation_map, page_citation_metadata
+from documa.pipeline.page_refs import PAGE_REF_KIND, ensure_page_citation_map, page_citation_metadata
 from documa.viewer import VIEWER_FORMATS, ViewerOptions, build_universal_viewer, render_viewer
 from documa.quality import BenchmarkOptions, DoctorOptions, run_doctor, run_fixture_benchmark
-from documa.search.sidecar import build_search_sidecar, route_sections, sidecar_path, source_digest
+from documa.search.sidecar import build_search_sidecar, route_sections, section_sketches, sidecar_path, source_digest
 
 
 ToolPayload = dict[str, Any]
+# Applied to search responses when the caller sets no explicit ceiling and a
+# real token counter is configured; oversized responses degrade gracefully
+# instead of flooding the calling agent's context.
+_AUTO_RESPONSE_TOKEN_BUDGET = 2000
 _DEFAULT_SEARCH_FIELDS = ["title", "preview", "search_terms", "keywords", "new_words"]
 _DEFAULT_SNIPPET_FIELDS = {"body", "title", "preview"}
 _SEARCH_VERBOSITIES = {"compact", "standard", "debug"}
@@ -525,10 +529,54 @@ def _block_path(block_id: str, by_id: dict[str, Any]) -> list[str]:
     path = []
     current = by_id.get(block_id)
     while current is not None:
-        if current.title:
+        # The document root title is the source name (often a filesystem
+        # path); the envelope already identifies the document, so repeating
+        # it at the head of every heading path is waste.
+        if current.title and current.type != DocumentBlockType.DOCUMENT:
             path.append(current.title)
         current = by_id.get(current.parent_id) if current.parent_id else None
     return list(reversed(path))
+
+
+def _block_id_prefix(document: DocumentIR) -> str:
+    """Document-scoped prefix every generated document-block id carries.
+
+    Responses declare it once as ``block_id_prefix`` and emit prefix-stripped
+    short ids per item; tool inputs accept both forms.
+    """
+    return f"db_{document.id}_"
+
+
+def _short_block_id(block_id: str | None, prefix: str) -> str | None:
+    if isinstance(block_id, str) and block_id.startswith(prefix) and len(block_id) > len(prefix):
+        return block_id[len(prefix) :]
+    return block_id
+
+
+def _emitted_block_id_prefix(document: DocumentIR) -> str | None:
+    """The prefix to declare in the envelope, or None when no id carries it.
+
+    IR files written by external fixtures may use bare block ids; declaring an
+    unused prefix would only add envelope tokens.
+    """
+    prefix = _block_id_prefix(document)
+    for block in document.document_blocks:
+        if block.id.startswith(prefix):
+            return prefix
+    return None
+
+
+def _canonical_block_id(block_id: str, prefix: str, by_id: dict[str, Any]) -> str:
+    """Accept canonical or short (prefix-stripped) block ids on input."""
+    if block_id in by_id:
+        return block_id
+    prefixed = prefix + block_id
+    return prefixed if prefixed in by_id else block_id
+
+
+def _drop_empty_fields(item: dict[str, Any]) -> dict[str, Any]:
+    """Omit null/empty-string/empty-collection values; absent means empty."""
+    return {key: value for key, value in item.items() if value is not None and value != "" and value != [] and value != {}}
 
 
 def _children_by_parent(document: DocumentIR) -> dict[str | None, list[Any]]:
@@ -565,12 +613,12 @@ def _result_budget_ref(row: dict[str, Any]) -> dict[str, Any]:
     keys = (
         "block_id",
         "registry_document_id",
+        "document_id",
         "source_name",
         "kind",
         "score",
         "page",
         "read_chars",
-        "read_ref",
     )
     compact = {key: row[key] for key in keys if row.get(key) is not None}
     if not compact and row.get("top_blocks"):
@@ -578,7 +626,7 @@ def _result_budget_ref(row: dict[str, Any]) -> dict[str, Any]:
         compact = {
             "registry_document_id": row.get("registry_document_id"),
             "source_name": row.get("source_name"),
-            "top_ref": top.get("read_ref"),
+            "top_block_id": top.get("block_id"),
         }
     compact["overflow"] = True
     return compact
@@ -613,18 +661,19 @@ def _prune_next_actions(payload: ToolPayload) -> None:
         return
     allowed: set[tuple[str | None, str]] = set()
     for row in payload.get("results") or []:
+        row_doc = row.get("registry_document_id") or row.get("document_id")
         if row.get("block_id"):
             allowed.add((None, row["block_id"]))
-        read_ref = row.get("read_ref") or {}
-        if read_ref.get("block_id"):
-            allowed.add((read_ref.get("ir_path"), read_ref["block_id"]))
+            if row_doc:
+                allowed.add((row_doc, row["block_id"]))
         for top in row.get("top_blocks") or []:
-            ref = top.get("read_ref") or {}
-            if ref.get("block_id"):
-                allowed.add((ref.get("ir_path"), ref["block_id"]))
+            if top.get("block_id"):
+                allowed.add((row_doc, top["block_id"]))
         for top in row.get("top_refs") or []:
             if top.get("block_id"):
                 allowed.add((None, top["block_id"]))
+                if row_doc:
+                    allowed.add((row_doc, top["block_id"]))
     actions = []
     for action in next_action.get("actions") or []:
         arguments = action.get("arguments") or {}
@@ -746,20 +795,13 @@ def _normalized_response_profile(response_profile: str | None, verbosity: str | 
 
 
 def _block_doc_region(block: DocumentBlockIR, by_id: dict[str, DocumentBlockIR]) -> str:
-    title = " ".join(_block_path(block.id, by_id) + [block.title or ""]).casefold()
-    source_type = str(block.metadata.get("source_block_type") or "").casefold()
-    role = str(block.metadata.get("role") or "").casefold()
-    if block.type == DocumentBlockType.TOC or "table of contents" in title or "contents" == title.strip():
-        return "toc"
-    if block.type == DocumentBlockType.METADATA:
-        return "metadata"
-    if "page_header" in {source_type, role} or "page_footer" in {source_type, role}:
-        return "header_footer"
-    if any(term in title for term in ("references", "bibliography", "works cited")):
-        return "references"
-    if "appendix" in title or "annex" in title:
-        return "appendix"
-    return "body"
+    return search_ranking.infer_doc_region(
+        _block_path(block.id, by_id),
+        block.title,
+        block.type.value,
+        source_type=str(block.metadata.get("source_block_type") or ""),
+        role=str(block.metadata.get("role") or ""),
+    )
 
 
 def _ordered_block_positions(document: DocumentIR) -> tuple[list[DocumentBlockIR], dict[str, int]]:
@@ -848,22 +890,27 @@ def _format_search_row(
     block_positions: dict[str, int],
     legacy_verbosity: str | None,
     term_count: int,
+    id_prefix: str,
 ) -> dict[str, Any]:
     """Expose only profile-appropriate fields after ranking and pagination."""
     selection = row["selection"]
     citation_meta = page_citation_metadata(block.page_refs, page_citations)
     if profile == "nav":
         snippets = row.get("snippets") or []
-        return {
-            "block_id": block.id,
-            "kind": block.type.value,
-            "path": " > ".join(selection["heading_path"]),
-            "page": citation_meta.get("citation_label"),
-            "score": row["score"],
-            "coverage": f'{row["matched_terms_count"]}/{term_count}',
-            "snippet": snippets[0]["snippet"] if snippets else "",
-            "read_chars": selection["recommended_read_chars"],
-        }
+        return _drop_empty_fields(
+            {
+                "block_id": _short_block_id(block.id, id_prefix),
+                "kind": block.type.value,
+                "path": " > ".join(selection["heading_path"]),
+                "page": citation_meta.get("citation_label"),
+                "score": row["score"],
+                "coverage": f'{row["matched_terms_count"]}/{term_count}',
+                "snippet": snippets[0]["snippet"] if snippets else "",
+                "read_chars": selection["recommended_read_chars"],
+                # Only worth tokens when it changes the next action.
+                "needs_next": selection["neighbors"]["needs_next"] or None,
+            }
+        )
 
     selection = _selection_metadata(
         block,
@@ -874,19 +921,22 @@ def _format_search_row(
         selection["doc_region"],
         count_exact_tokens=True,
     )
+    neighbors = dict(selection["neighbors"])
+    neighbors["prev"] = _short_block_id(neighbors.get("prev"), id_prefix)
+    neighbors["next"] = _short_block_id(neighbors.get("next"), id_prefix)
     output = {
-        "block_id": block.id,
+        "block_id": _short_block_id(block.id, id_prefix),
         "block_type": block.type.value,
         "title": block.title,
         "heading_path": selection["heading_path"],
         "score": row["score"],
         "page_refs": block.page_refs,
+        "page": citation_meta.get("citation_label"),
         "coverage_score": row.get("coverage_score"),
         "proximity_score": row.get("proximity_score"),
         "intent_fit": row.get("intent_fit"),
         "utility": row.get("utility"),
         "branch_id": row.get("branch_id"),
-        **citation_meta,
         "children_count": len(block.child_ids),
         "matched_terms": row["matched_terms"],
         "matched_terms_count": row["matched_terms_count"],
@@ -895,13 +945,12 @@ def _format_search_row(
         "answer_tags": selection["answer_tags"],
         "token_estimate": selection["token_estimate"],
         "recommended_read_chars": selection["recommended_read_chars"],
-        "neighbors": selection["neighbors"],
+        "neighbors": neighbors,
         "flags": selection["flags"],
     }
     if profile == "debug" or legacy_verbosity in {"standard", "debug"}:
         output.update(
             {
-                "block_path": selection["heading_path"],
                 "selection_metadata": selection,
                 "text_preview": block.text_preview,
                 "keywords": block.metadata.get("keyword_terms", [])[:5],
@@ -926,7 +975,7 @@ def _format_search_row(
                 "dedupe_key": selection["dedupe_key"],
             }
         )
-    return output
+    return _drop_empty_fields(output)
 
 
 def list_blocks_tool(
@@ -942,7 +991,9 @@ def list_blocks_tool(
     except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
         return {"status": "error", "message": str(exc)}
     _ensure_document_blocks(document)
-    page_citations = ensure_page_citation_map(document)
+    prefix = _block_id_prefix(document)
+    if parent_id is not None:
+        parent_id = _canonical_block_id(parent_id, prefix, _block_index(document))
 
     blocks = []
     for block in sorted(document.document_blocks, key=lambda item: (item.order_index is None, item.order_index or 0)):
@@ -951,25 +1002,26 @@ def list_blocks_tool(
         if parent_id is not None and block.parent_id != parent_id:
             continue
         item = {
-            "id": block.id,
+            "id": _short_block_id(block.id, prefix),
             "type": block.type.value,
             "title": block.title,
-            "parent_id": block.parent_id,
+            "parent_id": _short_block_id(block.parent_id, prefix),
             "depth": block.depth,
             "children_count": len(block.child_ids),
             "page_refs": block.page_refs,
             "text_preview": block.text_preview,
             "source_range": block.metadata.get("source_range"),
-            **page_citation_metadata(block.page_refs, page_citations),
         }
         if include_metadata_summary:
-            item["metadata_summary"] = {
-                "keywords": block.metadata.get("keyword_terms", [])[:8],
-                "new_words": [entry.get("term") for entry in block.metadata.get("new_word_terms", [])[:8]],
-                "confidence": block.confidence.value,
-                "role": block.metadata.get("role"),
-            }
-        blocks.append(item)
+            item["metadata_summary"] = _drop_empty_fields(
+                {
+                    "keywords": block.metadata.get("keyword_terms", [])[:8],
+                    "new_words": [entry.get("term") for entry in block.metadata.get("new_word_terms", [])[:8]],
+                    "confidence": block.confidence.value,
+                    "role": block.metadata.get("role"),
+                }
+            )
+        blocks.append(_drop_empty_fields(item))
 
     total_blocks = len(blocks)
     offset = max(0, int(offset))
@@ -978,6 +1030,8 @@ def list_blocks_tool(
     return {
         "status": "ok",
         "document_id": document.id,
+        **({"block_id_prefix": emitted_prefix} if (emitted_prefix := _emitted_block_id_prefix(document)) else {}),
+        "page_ref_kind": PAGE_REF_KIND,
         "block_count": len(blocks),
         "total_blocks": total_blocks,
         "offset": offset,
@@ -994,16 +1048,33 @@ def inspect_block_tool(ir_path: str, block_id: str) -> ToolPayload:
     _ensure_document_blocks(document)
     page_citations = ensure_page_citation_map(document)
     by_id = _block_index(document)
-    block = by_id.get(block_id)
+    prefix = _block_id_prefix(document)
+    block = by_id.get(_canonical_block_id(block_id, prefix, by_id))
     if block is None:
         return {"status": "error", "message": f"Unknown block_id: {block_id}"}
     block_payload = to_plain_data(block)
-    block_payload.setdefault("metadata", {}).update(page_citation_metadata(block.page_refs, page_citations))
+    block_payload["id"] = _short_block_id(block.id, prefix)
+    block_payload["parent_id"] = _short_block_id(block.parent_id, prefix)
+    block_payload["child_ids"] = [_short_block_id(child_id, prefix) for child_id in block.child_ids]
+    # Bounded metadata view: keyword statistics and thresholds are pipeline
+    # internals; search_terms duplicates title + keywords + new words.
+    metadata = block_payload.get("metadata") or {}
+    block_payload["metadata"] = _drop_empty_fields(
+        {
+            "role": metadata.get("role"),
+            "source_range": metadata.get("source_range"),
+            "source_block_type": metadata.get("source_block_type"),
+            "keyword_terms": (metadata.get("keyword_terms") or [])[:8],
+            "new_word_terms": [entry.get("term") for entry in (metadata.get("new_word_terms") or [])[:8]],
+        }
+    )
     return {
         "status": "ok",
         "document_id": document.id,
-        "block": block_payload,
-        **page_citation_metadata(block.page_refs, page_citations),
+        **({"block_id_prefix": emitted_prefix} if (emitted_prefix := _emitted_block_id_prefix(document)) else {}),
+        "page_ref_kind": PAGE_REF_KIND,
+        "block": _drop_empty_fields(block_payload),
+        "page": page_citation_metadata(block.page_refs, page_citations).get("citation_label") or None,
         "block_path": _block_path(block.id, by_id),
     }
 
@@ -1023,7 +1094,8 @@ def read_block_tool(
     _ensure_document_blocks(document)
     page_citations = ensure_page_citation_map(document)
     by_id = _block_index(document)
-    block = by_id.get(block_id)
+    prefix = _block_id_prefix(document)
+    block = by_id.get(_canonical_block_id(block_id, prefix, by_id))
     if block is None:
         return {"status": "error", "message": f"Unknown block_id: {block_id}"}
 
@@ -1056,22 +1128,26 @@ def read_block_tool(
         kind=kind,
     )
     page_refs = sorted({page for item in selected for page in item.page_refs})
-    return {
-        "status": "ok",
-        "document_id": document.id,
-        "block_id": block.id,
-        "block_path": _block_path(block.id, by_id),
-        "content": content,
-        "truncated": truncated,
-        "returned_range": {"start": max(0, min(int(start), len(text))), "end": end},
-        "continuation": {"block_id": block.id, "start": end} if truncated else None,
-        "complete_unit": complete_unit_for_kind(kind),
-        "token_estimate": counter.count(content) if counter else None,
-        "token_counter": counter.name if counter else None,
-        "source_block_ids": [source_id for item in selected for source_id in item.source_block_ids],
-        "page_refs": page_refs,
-        **page_citation_metadata(page_refs, page_citations),
-    }
+    short_id = _short_block_id(block.id, prefix)
+    return _drop_empty_fields(
+        {
+            "status": "ok",
+            "document_id": document.id,
+            "block_id_prefix": _emitted_block_id_prefix(document),
+            "page_ref_kind": PAGE_REF_KIND,
+            "block_id": short_id,
+            "block_path": _block_path(block.id, by_id),
+            "content": content,
+            "truncated": truncated,
+            "returned_range": {"start": max(0, min(int(start), len(text))), "end": end},
+            "continuation": {"block_id": short_id, "start": end} if truncated else None,
+            "complete_unit": complete_unit_for_kind(kind),
+            "token_estimate": counter.count(content) if counter else None,
+            "token_counter": counter.name if counter else None,
+            "page_refs": page_refs,
+            "page": page_citation_metadata(page_refs, page_citations).get("citation_label") or None,
+        }
+    )
 
 
 def read_blocks_tool(
@@ -1099,6 +1175,7 @@ def read_blocks_tool(
         return {"status": "error", "message": str(exc)}
     _ensure_document_blocks(document)
     by_id = _block_index(document)
+    prefix = _block_id_prefix(document)
     ordered, positions = _ordered_block_positions(document)
     expanded: list[str] = []
 
@@ -1107,10 +1184,10 @@ def read_blocks_tool(
             expanded.append(candidate_id)
 
     for block_id in block_ids:
-        block = by_id.get(block_id)
+        block = by_id.get(_canonical_block_id(block_id, prefix, by_id))
         if block is None:
             return {"status": "error", "code": "UNKNOWN_BLOCK_ID", "message": f"Unknown block_id: {block_id}"}
-        add(block_id)
+        add(block.id)
         use_children = mode == "children" or (mode == "auto" and block.type == DocumentBlockType.SECTION)
         use_neighbors = mode == "neighbors" or (
             mode == "auto" and _block_neighbor_metadata(block, ordered, positions)["needs_next"]
@@ -1143,12 +1220,15 @@ def read_blocks_tool(
         if item.get("status") != "ok":
             return item
         remaining -= int(item.get("token_estimate") or 0)
+        # Envelope-level fields; repeating them per contained block is waste.
+        for repeated_key in ("status", "document_id", "block_id_prefix", "page_ref_kind", "token_counter"):
+            item.pop(repeated_key, None)
         items.append(item)
     return {
         "status": "ok",
         "document_id": document.id,
-        "requested_block_ids": block_ids,
-        "context_mode": mode,
+        **({"block_id_prefix": emitted_prefix} if (emitted_prefix := _emitted_block_id_prefix(document)) else {}),
+        "page_ref_kind": PAGE_REF_KIND,
         "results": items,
         "budget": {"total_max_tokens": budget, "spent_tokens": budget - remaining, "remaining_tokens": remaining, "token_counter": counter.name},
         "has_more": len(items) < len(expanded) or any(item.get("truncated") for item in items),
@@ -1184,11 +1264,14 @@ def search_blocks_tool(
     _ensure_document_blocks(document)
     page_citations = ensure_page_citation_map(document)
     by_id = _block_index(document)
+    id_prefix = _block_id_prefix(document)
     requested_granularity = granularity.casefold()
     if requested_granularity not in {"auto", "section", "leaf", "mixed"}:
         return {"status": "error", "code": "INVALID_GRANULARITY", "message": f"Unknown granularity: {granularity}"}
-    if scope_block_id is not None and scope_block_id not in by_id:
-        return {"status": "error", "code": "UNKNOWN_SCOPE_BLOCK", "message": f"Unknown scope_block_id: {scope_block_id}"}
+    if scope_block_id is not None:
+        scope_block_id = _canonical_block_id(scope_block_id, id_prefix, by_id)
+        if scope_block_id not in by_id:
+            return {"status": "error", "code": "UNKNOWN_SCOPE_BLOCK", "message": f"Unknown scope_block_id: {scope_block_id}"}
     intents = retrieval_policy.query_intents(query)
     effective_granularity = requested_granularity
     if effective_granularity == "auto":
@@ -1447,33 +1530,47 @@ def search_blocks_tool(
             ordered_blocks=ordered_blocks,
             block_positions=block_positions,
             term_count=len(raw_terms),
+            id_prefix=id_prefix,
         )
         for row in internal_page
     ]
     payload: ToolPayload = {
         "status": "ok",
         "document_id": document.id,
+        **({"block_id_prefix": emitted_prefix} if (emitted_prefix := _emitted_block_id_prefix(document)) else {}),
         "response_profile": profile,
         "total_matches": total_matches,
         "offset": offset,
         "results": page,
     }
-    if profile != "nav" or legacy_verbosity is not None:
+    if profile == "evidence":
         payload.update(
             {
+                "page_ref_kind": PAGE_REF_KIND,
+                "retrieval": {
+                    "effective_granularity": effective_granularity,
+                    "selected_evidence_tokens": sum(int(row.get("evidence_tokens") or 0) for row in internal_page),
+                },
+            }
+        )
+    if profile == "debug" or legacy_verbosity is not None:
+        # Full diagnostics are a debugging surface, not agent guidance.
+        payload.update(
+            {
+                "page_ref_kind": PAGE_REF_KIND,
                 "query": query,
                 "terms": raw_terms,
                 "searched_fields": selected_fields,
                 "retrieval": {
                     "requested_granularity": requested_granularity,
                     "effective_granularity": effective_granularity,
-                    "scope_block_id": scope_block_id,
+                    "scope_block_id": _short_block_id(scope_block_id, id_prefix),
                     "intents": intents,
                     "adaptive_top_k": adaptive_top_k,
                     "max_evidence_tokens": max_evidence_tokens,
                     "selected_evidence_tokens": sum(int(row.get("evidence_tokens") or 0) for row in internal_page),
                     "route_index_path": route_index_path,
-                    "route_block_ids": [row["block_id"] for row in route_rows],
+                    "route_block_ids": [_short_block_id(row["block_id"], id_prefix) for row in route_rows],
                     "route_count": len(route_rows),
                 },
                 "snippet_policy": {
@@ -1500,11 +1597,24 @@ def search_blocks_tool(
         payload["hints"] = hints
     recommended = search_ranking.recommended_next_action(ir_path, internal_page)
     if recommended is not None:
+        for action in recommended.get("actions") or []:
+            arguments = action.get("arguments") or {}
+            for key in ("block_id", "parent_id"):
+                if key in arguments:
+                    arguments[key] = _short_block_id(arguments[key], id_prefix)
         payload["recommended_next"] = recommended
-    if max_response_tokens is not None:
-        payload, budget_error = _apply_response_token_budget(payload, max_response_tokens)
+    auto_budget = max_response_tokens is None and token_counting.get_token_counter() is not None
+    effective_response_budget = _AUTO_RESPONSE_TOKEN_BUDGET if auto_budget else max_response_tokens
+    if effective_response_budget is not None and effective_response_budget <= 0:
+        # Explicit 0 opts out of both the caller ceiling and the auto budget.
+        effective_response_budget = None
+    if effective_response_budget is not None:
+        payload, budget_error = _apply_response_token_budget(payload, effective_response_budget)
         if budget_error is not None:
             return budget_error
+        if auto_budget and not (payload.get("budget") or {}).get("dropped_results"):
+            # The implicit ceiling did not bite; budget accounting is noise.
+            payload.pop("budget", None)
     return payload
 
 
@@ -1512,7 +1622,8 @@ def block_tree_tool(
     ir_path: str,
     max_depth: int | None = None,
     max_nodes: int = 500,
-    include_citations: bool = True,
+    include_citations: bool = False,
+    include_sketches: bool = False,
 ) -> ToolPayload:
     try:
         document = load_document(ir_path)
@@ -1521,6 +1632,17 @@ def block_tree_tool(
     _ensure_document_blocks(document)
     page_citations = ensure_page_citation_map(document)
     by_parent = _children_by_parent(document)
+    prefix = _block_id_prefix(document)
+    sketches: dict[str, dict[str, Any]] = {}
+    if include_sketches:
+        # Ingest-time section sketches from the search sidecar: a one-glance
+        # summary plus read cost per section, with zero block-body reads now.
+        try:
+            sketches = section_sketches(
+                sidecar_path(_resolve_document_path(ir_path)), source_generation=source_digest(document)
+            )
+        except OSError:
+            sketches = {}
 
     emitted = 0
     truncated = False
@@ -1529,33 +1651,38 @@ def block_tree_tool(
         nonlocal emitted, truncated
         emitted += 1
         item = {
-            "id": block.id,
+            "id": _short_block_id(block.id, prefix),
             "type": block.type.value,
             "title": block.title,
             "depth": block.depth,
             "page_refs": block.page_refs,
             "source_range": block.metadata.get("source_range"),
         }
+        sketch_row = sketches.get(block.id)
+        if sketch_row:
+            item["sketch"] = sketch_row["sketch"]
+            item["read_cost_chars"] = sketch_row["subtree_cost"] * 4
         if include_citations:
-            item.update(page_citation_metadata(block.page_refs, page_citations))
+            item["page"] = page_citation_metadata(block.page_refs, page_citations).get("citation_label")
         children = by_parent.get(block.id, [])
         if max_depth is not None and depth >= max_depth:
             # Collapse the subtree to a count so the outline stays cheap;
             # callers descend via parent_id in documa_list_blocks when needed.
-            item["children_count"] = len(children)
             if children:
+                item["children_count"] = len(children)
                 truncated = True
-            return item
+            return _drop_empty_fields(item)
         rendered_children = []
         for child in children:
             if emitted >= max_nodes:
                 truncated = True
                 break
             rendered_children.append(node(child, depth + 1))
-        item["children"] = rendered_children
+        if rendered_children:
+            item["children"] = rendered_children
         if len(rendered_children) < len(children):
             item["children_count"] = len(children)
-        return item
+        return _drop_empty_fields(item)
 
     roots = []
     for block in by_parent.get(None, []):
@@ -1563,7 +1690,14 @@ def block_tree_tool(
             truncated = True
             break
         roots.append(node(block, 0))
-    return {"status": "ok", "document_id": document.id, "truncated": truncated, "tree": roots}
+    return {
+        "status": "ok",
+        "document_id": document.id,
+        **({"block_id_prefix": emitted_prefix} if (emitted_prefix := _emitted_block_id_prefix(document)) else {}),
+        "page_ref_kind": PAGE_REF_KIND,
+        "truncated": truncated,
+        "tree": roots,
+    }
 
 
 def block_xref_tool(ir_path: str, block_id: str) -> ToolPayload:
@@ -1574,7 +1708,8 @@ def block_xref_tool(ir_path: str, block_id: str) -> ToolPayload:
     _ensure_document_blocks(document)
     page_citations = ensure_page_citation_map(document)
     by_id = _block_index(document)
-    block = by_id.get(block_id)
+    prefix = _block_id_prefix(document)
+    block = by_id.get(_canonical_block_id(block_id, prefix, by_id))
     if block is None:
         return {"status": "error", "message": f"Unknown block_id: {block_id}"}
 
@@ -1583,40 +1718,46 @@ def block_xref_tool(ir_path: str, block_id: str) -> ToolPayload:
             return None
         target = by_id.get(target_id)
         if target is None:
-            return {"id": target_id, "found": False}
-        return {
-            "id": target.id,
-            "found": True,
-            "type": target.type.value,
-            "title": target.title,
-            "page_refs": target.page_refs,
-            **page_citation_metadata(target.page_refs, page_citations),
-            "source_range": target.metadata.get("source_range"),
-        }
+            return {"id": _short_block_id(target_id, prefix), "found": False}
+        return _drop_empty_fields(
+            {
+                "id": _short_block_id(target.id, prefix),
+                "found": True,
+                "type": target.type.value,
+                "title": target.title,
+                "page_refs": target.page_refs,
+                "page": page_citation_metadata(target.page_refs, page_citations).get("citation_label"),
+                "source_range": target.metadata.get("source_range"),
+            }
+        )
 
     relation_refs = [
         {
             "id": relation.id,
             "type": relation.type.value,
-            "from_id": relation.from_id,
-            "to_id": relation.to_id,
+            "from_id": _short_block_id(relation.from_id, prefix),
+            "to_id": _short_block_id(relation.to_id, prefix),
             "state": relation.state.value,
         }
         for relation in document.relations
-        if relation.from_id == block_id or relation.to_id == block_id
+        if relation.from_id == block.id or relation.to_id == block.id
     ]
-    return {
-        "status": "ok",
-        "document_id": document.id,
-        "id": block.id,
-        "page_refs": block.page_refs,
-        **page_citation_metadata(block.page_refs, page_citations),
-        "parent": ref(block.parent_id),
-        "children": [ref(child_id) for child_id in block.child_ids],
-        "source_block_ids": block.source_block_ids,
-        "source_chunk_ids": block.source_chunk_ids,
-        "relations": relation_refs,
-    }
+    return _drop_empty_fields(
+        {
+            "status": "ok",
+            "document_id": document.id,
+            "block_id_prefix": _emitted_block_id_prefix(document),
+            "page_ref_kind": PAGE_REF_KIND,
+            "id": _short_block_id(block.id, prefix),
+            "page_refs": block.page_refs,
+            "page": page_citation_metadata(block.page_refs, page_citations).get("citation_label"),
+            "parent": ref(block.parent_id),
+            "children": [ref(child_id) for child_id in block.child_ids],
+            "source_block_ids": block.source_block_ids,
+            "source_chunk_ids": block.source_chunk_ids,
+            "relations": relation_refs,
+        }
+    )
 
 
 def benchmark_tool(
@@ -1756,7 +1897,7 @@ def search_collection_tool(
     limit: int = 20,
     offset: int = 0,
     per_document_limit: int | None = None,
-    response_profile: str = "evidence",
+    response_profile: str = "nav",
     document_ids: list[str] | None = None,
     group_by_document: bool = False,
     max_response_tokens: int | None = None,
@@ -1780,7 +1921,7 @@ def search_collection_tool(
     results = payload.get("results", [])
     if payload.get("match_mode") is None:
         payload["hints"] = ["Empty query; provide search terms (quote adjacent words for phrases)."]
-        if max_response_tokens is not None:
+        if max_response_tokens is not None and max_response_tokens > 0:
             payload, budget_error = _apply_response_token_budget(payload, max_response_tokens)
             if budget_error is not None:
                 return budget_error
@@ -1788,7 +1929,7 @@ def search_collection_tool(
     if group_by_document:
         distinct_documents = len(results)
     else:
-        distinct_documents = len({row["read_ref"]["ir_path"] for row in results})
+        distinct_documents = len({row["registry_document_id"] for row in results})
     hints = search_ranking.collection_search_hints(
         result_count=len(results),
         has_more=bool(payload.get("has_more")),
@@ -1800,29 +1941,52 @@ def search_collection_tool(
     )
     if hints:
         payload["hints"] = hints
-    if group_by_document and collection_profile == "nav":
-        payload["results"] = [
-            {
-                "document_id": row["registry_document_id"],
-                "source": row["source_name"],
-                "hits": row["hit_count"],
-                "pages": row["page_count"],
-                "best_score": row["best_score"],
-                "best_snippet": row["top_snippet"],
-                "top_refs": [
-                    {"block_id": top["block_id"], "score": top["score"]}
-                    for top in row.get("top_blocks", [])
-                ],
-            }
-            for row in results
-        ]
+    # Build read actions from the full rows before any nav slimming.
     recommended = search_ranking.collection_recommended_next_action(results, grouped=group_by_document)
+    if collection_profile == "nav":
+        if group_by_document:
+            payload["results"] = [
+                {
+                    "document_id": row["registry_document_id"],
+                    "source": row["source_name"],
+                    "hits": row["hit_count"],
+                    "pages": row["page_count"],
+                    "best_score": row["best_score"],
+                    "best_snippet": row["top_snippet"],
+                    "top_refs": [
+                        {"block_id": top["block_id"], "score": top["score"]}
+                        for top in row.get("top_blocks", [])
+                    ],
+                }
+                for row in results
+            ]
+        else:
+            payload["results"] = [
+                _drop_empty_fields(
+                    {
+                        "document_id": row["registry_document_id"],
+                        "source": row["source_name"],
+                        "block_id": row["block_id"],
+                        "path": " > ".join(row.get("heading_path") or []),
+                        "page_refs": row.get("page_refs"),
+                        "score": row["score"],
+                        "snippet": row.get("snippet"),
+                    }
+                )
+                for row in results
+            ]
     if recommended is not None:
         payload["recommended_next"] = recommended
-    if max_response_tokens is not None:
-        payload, budget_error = _apply_response_token_budget(payload, max_response_tokens)
+    auto_budget = max_response_tokens is None and token_counting.get_token_counter() is not None
+    effective_response_budget = _AUTO_RESPONSE_TOKEN_BUDGET if auto_budget else max_response_tokens
+    if effective_response_budget is not None and effective_response_budget <= 0:
+        effective_response_budget = None
+    if effective_response_budget is not None:
+        payload, budget_error = _apply_response_token_budget(payload, effective_response_budget)
         if budget_error is not None:
             return budget_error
+        if auto_budget and not (payload.get("budget") or {}).get("dropped_results"):
+            payload.pop("budget", None)
         payload["result_count"] = len(payload.get("results") or [])
         if group_by_document:
             payload["document_count"] = payload["result_count"]

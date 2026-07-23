@@ -11,7 +11,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from documa.collections import registry as registry_store
-from documa.core import snippet_windows
+from documa.core import doc_regions, snippet_windows
 from documa.core.query import parse_query
 from documa.core.serialization import document_from_plain_data
 from documa.pipeline.block_tree import document_block_text
@@ -22,7 +22,9 @@ from documa.pipeline.page_refs import ensure_page_citation_map, page_citation_me
 # Version 3: documents rows carry block_count/page_count aggregates that feed
 # grouped search rollups. Outdated indexes are reported stale by
 # store_collection_health and must be rebuilt via build_collection_index.
-INDEX_VERSION = "3"
+# Version 4: heading_path no longer repeats the document root title (the
+# source name, often a filesystem path) at the head of every stored path.
+INDEX_VERSION = "4"
 DEFAULT_COLLECTION_ID = "default"
 INDEX_FILENAME = "collection_index.sqlite3"
 
@@ -144,7 +146,9 @@ def _block_path(block_id: str, by_id: dict[str, Any]) -> list[str]:
     path: list[str] = []
     current = by_id.get(block_id)
     while current is not None:
-        if current.title:
+        # Skip the document root title (the source name): every result row
+        # already carries source_name, so repeating it per path is waste.
+        if current.title and getattr(current.type, "value", "") != "document":
             path.append(current.title)
         current = by_id.get(current.parent_id) if current.parent_id else None
     return list(reversed(path))
@@ -432,9 +436,11 @@ def _snippet(row: sqlite3.Row, units: list[str]) -> str:
 
 
 def _row_to_result(row: sqlite3.Row, score: float, units: list[str]) -> dict[str, Any]:
+    # Lean citation-ready hit: bbox coordinates stay with the citation tools,
+    # ir_document_id/dedupe_key are internal, and read_ref would repeat the
+    # (registry_document_id, block_id) pair the row already carries.
     return {
         "registry_document_id": row["registry_document_id"],
-        "ir_document_id": row["ir_document_id"],
         "source_name": row["source_name"],
         "block_id": row["block_id"],
         "block_type": row["block_type"],
@@ -442,10 +448,7 @@ def _row_to_result(row: sqlite3.Row, score: float, units: list[str]) -> dict[str
         "score": score,
         "snippet": _snippet(row, units),
         "page_refs": json.loads(row["page_refs_json"]),
-        "bbox_refs": json.loads(row["bbox_refs_json"]),
         "citation_string": row["citation_string"],
-        "dedupe_key": row["dedupe_key"],
-        "read_ref": {"ir_path": row["registry_document_id"], "block_id": row["block_id"]},
     }
 
 
@@ -541,6 +544,17 @@ _BM25_RANK = "bm25(blocks_fts, 0.0, 0.0, 0.0, 4.0, 2.0, 1.5, 1.0, 3.0)"
 _MAX_DOCUMENT_IDS = 100
 _UNLIMITED_DOC_RANK = 2**31
 _GROUP_TOP_REFS = 3
+_FLAT_RERANK_SLACK = 16
+
+
+def _row_region_score(row: sqlite3.Row) -> float:
+    """BM25 score with the shared doc-region demotion applied."""
+    region = doc_regions.infer_doc_region(
+        json.loads(row["heading_path_json"]),
+        row["title"],
+        str(row["block_type"] or ""),
+    )
+    return round(float(-row["rank"]) * doc_regions.doc_region_multiplier(region), 6)
 
 
 def _match_sql(document_id_count: int) -> str:
@@ -613,7 +627,6 @@ def search_collection(
         return {
             "status": "ok",
             "collection_id": collection_id,
-            "query": query,
             "match_mode": None,
             "result_count": 0,
             "offset": offset,
@@ -639,7 +652,9 @@ def search_collection(
         fetch_limit = fetch_budget * doc_rank_cap
     else:
         doc_rank_cap = max(1, int(per_document_limit)) if per_document_limit is not None else _UNLIMITED_DOC_RANK
-        fetch_limit = fetch_budget
+        # Slack beyond the page so exact-duplicate suppression and doc-region
+        # demotion can drop or reorder rows without starving the page.
+        fetch_limit = fetch_budget + _FLAT_RERANK_SLACK
     match_sql = _match_sql(len(scoped_ids))
     try:
         active_entries = _active_registry_entry_map(store)
@@ -670,13 +685,12 @@ def search_collection(
             if active_entry is None or active_entry.get("content_hash") != row["indexed_content_hash"]:
                 continue
             rollup = by_doc.get(doc_id)
-            block_result = _row_to_result(row, score=round(float(-row["rank"]), 6), units=units)
+            block_result = _row_to_result(row, score=_row_region_score(row), units=units)
             if rollup is None:
                 if len(rollups) >= fetch_budget:
                     continue
                 rollup = {
                     "registry_document_id": doc_id,
-                    "ir_document_id": row["ir_document_id"],
                     "source_name": row["source_name"],
                     # Exact: the window COUNT runs before the doc_rank cut.
                     "hit_count": int(row["doc_hit_count"]),
@@ -688,12 +702,15 @@ def search_collection(
                 }
                 by_doc[doc_id] = rollup
                 rollups.append(rollup)
+            # The rollup already identifies the document; nested top blocks
+            # only need block-level routing fields.
+            for repeated_key in ("registry_document_id", "source_name", "citation_string"):
+                block_result.pop(repeated_key, None)
             rollup["top_blocks"].append(block_result)
         results = rollups[offset : offset + limit]
         return {
             "status": "ok",
             "collection_id": collection_id,
-            "query": query,
             "match_mode": match_mode,
             "group_by_document": True,
             "result_count": len(results),
@@ -703,25 +720,32 @@ def search_collection(
             "results": results,
         }
 
-    filtered = []
+    # Flat hits share the single-document ranking discipline: exact duplicates
+    # (same content hash) are suppressed and navigation/boilerplate regions are
+    # demoted before the page is cut.
+    scored: list[dict[str, Any]] = []
+    seen_hashes: set[str] = set()
     for row in rows:
         doc_id = row["registry_document_id"]
         active_entry = active_entries.get(doc_id)
         if active_entry is None or active_entry.get("content_hash") != row["indexed_content_hash"]:
             continue
-        filtered.append(_row_to_result(row, score=round(float(-row["rank"]), 6), units=units))
-        if len(filtered) >= fetch_budget:
-            break
+        dedupe_key = str(row["dedupe_key"] or "")
+        if dedupe_key and dedupe_key in seen_hashes:
+            continue
+        if dedupe_key:
+            seen_hashes.add(dedupe_key)
+        scored.append(_row_to_result(row, score=_row_region_score(row), units=units))
+    scored.sort(key=lambda item: (-item["score"], item["registry_document_id"], item["block_id"]))
 
-    results = filtered[offset : offset + limit]
+    results = scored[offset : offset + limit]
     return {
         "status": "ok",
         "collection_id": collection_id,
-        "query": query,
         "match_mode": match_mode,
         "result_count": len(results),
         "offset": offset,
-        "has_more": len(filtered) > offset + limit,
+        "has_more": len(scored) > offset + limit,
         "results": results,
     }
 

@@ -206,9 +206,10 @@ class TokenBudgetTests(unittest.TestCase):
                 "documa_search_blocks", {"ir_path": str(ir_path), "query": "cache-probe", "response_profile": "evidence"}
             )
 
-            self.assertIsNone(read["structuredContent"]["token_estimate"])
-            self.assertIsNone(read["structuredContent"]["token_counter"])
-            self.assertIsNone(searched["structuredContent"]["results"][0]["token_estimate"])
+            # Null token fields are omitted entirely by the lean serializer.
+            self.assertIsNone(read["structuredContent"].get("token_estimate"))
+            self.assertIsNone(read["structuredContent"].get("token_counter"))
+            self.assertIsNone(searched["structuredContent"]["results"][0].get("token_estimate"))
 
     def test_token_budget_params_error_without_a_counter(self):
         token_counting.set_token_counter(None)
@@ -271,12 +272,16 @@ class TokenBudgetTests(unittest.TestCase):
             )["structuredContent"]
 
             self.assertEqual(payload["response_profile"], "nav")
-            self.assertEqual(
+            # needs_next appears only when True; empty snippets are omitted.
+            self.assertLessEqual(
                 set(payload["results"][0]),
-                {"block_id", "kind", "path", "page", "score", "coverage", "snippet", "read_chars"},
+                {"block_id", "kind", "path", "page", "score", "coverage", "snippet", "read_chars", "needs_next"},
             )
+            self.assertIn("block_id", payload["results"][0])
+            self.assertIn("read_chars", payload["results"][0])
             self.assertNotIn("searched_fields", payload)
             self.assertNotIn("snippet_policy", payload)
+            self.assertNotIn("retrieval", payload)
 
     def test_single_document_quoted_phrase_search(self):
         document = DocumentIR(
@@ -299,13 +304,23 @@ class TokenBudgetTests(unittest.TestCase):
             ir_path = _write_ir(tmp, document)
             payload = call_documa_tool(
                 "documa_search_blocks",
-                {"ir_path": str(ir_path), "query": '"capital buffer"', "response_profile": "evidence"},
+                {
+                    "ir_path": str(ir_path),
+                    "query": '"capital buffer"',
+                    "response_profile": "debug",
+                    # Opt out of the auto response budget; this test asserts
+                    # the full phrase-search shape, not budget degradation.
+                    "max_response_tokens": 0,
+                },
             )["structuredContent"]
 
             self.assertEqual(payload["terms"], ["capital buffer"])
             self.assertGreaterEqual(len(payload["results"]), 1)
             self.assertTrue(all(row["matched_terms"] == ["capital buffer"] for row in payload["results"]))
-            snippets = [snippet["snippet"].casefold() for row in payload["results"] for snippet in row["snippets"]]
+            snippets = [
+                snippet["snippet"].casefold() for row in payload["results"] for snippet in row.get("snippets") or []
+            ]
+            self.assertTrue(snippets)
             self.assertTrue(all("capital buffer" in snippet for snippet in snippets))
 
     def test_exact_token_counts_only_run_after_pagination(self):
@@ -418,10 +433,13 @@ class TokenBudgetTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             ir_path = _write_ir(tmp, self._multi_block_document())
 
-            full = call_documa_tool("documa_block_tree", {"ir_path": str(ir_path)})["structuredContent"]
+            full = call_documa_tool(
+                "documa_block_tree",
+                {"ir_path": str(ir_path), "include_citations": True},
+            )["structuredContent"]
             bounded = call_documa_tool(
                 "documa_block_tree",
-                {"ir_path": str(ir_path), "max_depth": 1, "include_citations": False},
+                {"ir_path": str(ir_path), "max_depth": 1},
             )["structuredContent"]
             capped = call_documa_tool(
                 "documa_block_tree",
@@ -430,11 +448,13 @@ class TokenBudgetTests(unittest.TestCase):
 
             self.assertFalse(full["truncated"])
             root = full["tree"][0]
-            self.assertIn("citation_label", root)
+            self.assertIn("page", root)
             self.assertTrue(root["children"])
 
             bounded_root = bounded["tree"][0]
-            self.assertNotIn("citation_label", bounded_root)
+            # Lean default: no per-node citation labels, constants hoisted.
+            self.assertNotIn("page", bounded_root)
+            self.assertEqual(bounded["page_ref_kind"], "physical_page_number_1_based")
             # Depth-1 children collapse their own subtrees into counts.
             page_node = bounded_root["children"][0]
             self.assertNotIn("children", page_node)
@@ -552,7 +572,7 @@ class CollectionSearchGuidanceTests(unittest.TestCase):
         action = recommended["actions"][0]
         self.assertEqual(action["tool"], "documa_read_block")
         self.assertTrue(action["arguments"]["ir_path"].startswith("doc-"))
-        self.assertEqual(action["arguments"]["block_id"], result["results"][0]["read_ref"]["block_id"])
+        self.assertEqual(action["arguments"]["block_id"], result["results"][0]["block_id"])
         # Hits spread across >=4 documents without grouping -> group-mode hint.
         self.assertTrue(any("group_by_document" in hint for hint in result["hints"]))
 
@@ -560,10 +580,10 @@ class CollectionSearchGuidanceTests(unittest.TestCase):
         result = self._search(limit=10, group_by_document=True)
 
         recommended = result["recommended_next"]
-        top_ref = result["results"][0]["top_blocks"][0]["read_ref"]
+        top_rollup = result["results"][0]
         action = recommended["actions"][0]
-        self.assertEqual(action["arguments"]["ir_path"], top_ref["ir_path"])
-        self.assertEqual(action["arguments"]["block_id"], top_ref["block_id"])
+        self.assertEqual(action["arguments"]["ir_path"], top_rollup["document_id"])
+        self.assertEqual(action["arguments"]["block_id"], top_rollup["top_refs"][0]["block_id"])
         self.assertFalse(any("group_by_document" in hint for hint in result.get("hints", [])))
 
     def test_zero_results_hint_mentions_doctor(self):

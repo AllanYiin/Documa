@@ -139,7 +139,7 @@ class UniversalViewerTests(unittest.TestCase):
             def __init__(self, *args, **kwargs):
                 self.tools = {}
 
-            def tool(self):
+            def tool(self, **kwargs):
                 def decorator(func):
                     self.tools[func.__name__] = func
                     return func

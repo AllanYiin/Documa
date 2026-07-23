@@ -7,15 +7,22 @@ must still enforce the same allow-list used for discovery.
 from __future__ import annotations
 
 
+# The agent profile must cover the full evidence workflow in the documa-evidence
+# skill: overview (block_tree/list_blocks), search, read, neighbor escalation
+# (source_window/block_xref), and citation close-out.
 AGENT_TOOLS = {
     "documa_parse",
     "documa_process",
     "documa_ingest",
     "documa_list_documents",
+    "documa_block_tree",
+    "documa_list_blocks",
     "documa_search_blocks",
     "documa_search_collection",
     "documa_read_block",
     "documa_read_blocks",
+    "documa_source_window",
+    "documa_block_xref",
     "documa_cite_block",
     "documa_cite_chunk",
     "documa_render_citation",
@@ -25,11 +32,7 @@ AGENT_TOOLS = {
 ADVANCED_TOOLS = AGENT_TOOLS | {
     "documa_inspect",
     "documa_view",
-    "documa_list_blocks",
     "documa_inspect_block",
-    "documa_block_tree",
-    "documa_block_xref",
-    "documa_source_window",
     "documa_index_collection",
 }
 

@@ -128,9 +128,11 @@ class CollectionIndexTests(unittest.TestCase):
             hit = result["results"][0]
 
             self.assertEqual(hit["registry_document_id"], "doc-active-a")
-            self.assertEqual(hit["ir_document_id"], "ir-a")
             self.assertEqual(hit["block_id"], "target-block")
-            self.assertEqual(hit["read_ref"], {"ir_path": "doc-active-a", "block_id": "target-block"})
+            # Lean rows: the read pair is (registry_document_id, block_id);
+            # ir_document_id/bbox_refs/read_ref duplication was removed.
+            self.assertNotIn("ir_document_id", hit)
+            self.assertNotIn("read_ref", hit)
             self.assertEqual(hit["page_refs"], [1])
             self.assertEqual(hit["citation_string"], "[alpha.md, PDF p.1]")
             self.assertIn("unique", hit["snippet"])
@@ -247,7 +249,8 @@ class CollectionIndexTests(unittest.TestCase):
             self.assertEqual(len(many["top_blocks"]), 3)
             self.assertEqual(many["total_blocks"], 5)
             self.assertEqual(many["page_count"], 1)
-            self.assertIn("read_ref", many["top_blocks"][0])
+            self.assertIn("block_id", many["top_blocks"][0])
+            self.assertNotIn("registry_document_id", many["top_blocks"][0])
             self.assertEqual(by_id["doc-one"]["hit_count"], 1)
 
     def test_group_by_document_pages_over_documents(self):
@@ -467,7 +470,7 @@ class CollectionIndexTests(unittest.TestCase):
             self.assertFalse(searched["isError"])
             self.assertIn("documa_index_collection", schemas)
             self.assertIn("documa_search_collection", schemas)
-            self.assertEqual(searched["structuredContent"]["results"][0]["registry_document_id"], "doc-active-a")
+            self.assertEqual(searched["structuredContent"]["results"][0]["document_id"], "doc-active-a")
 
             old_stdout = sys.stdout
             sys.stdout = StringIO()

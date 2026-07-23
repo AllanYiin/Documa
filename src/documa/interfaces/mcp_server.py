@@ -1,5 +1,8 @@
 """Optional MCP server wrapper for Documa tools."""
 
+import functools
+import inspect
+import json
 import os
 import sys
 import threading
@@ -80,13 +83,25 @@ def create_mcp_server(profile: str | None = None) -> Any:
         ),
     )
 
-    @mcp.tool()
+    def _documa_tool(fn):
+        # Ship each payload exactly once: compact JSON text, no structuredContent
+        # mirror. FastMCP would otherwise serialize the dict twice (structured +
+        # indent=2 text), doubling the tokens every response costs the host.
+        @functools.wraps(fn)
+        def wrapper(**kwargs: Any) -> str:
+            return json.dumps(fn(**kwargs), ensure_ascii=False, separators=(",", ":"))
+
+        wrapper.__signature__ = inspect.signature(fn).replace(return_annotation=str)
+        wrapper.__annotations__ = {**getattr(fn, "__annotations__", {}), "return": str}
+        return mcp.tool(structured_output=False)(wrapper)
+
+    @_documa_tool
     def documa_parse(source: str, out: str | None = None, lang: str = "auto") -> dict[str, Any]:
         """Parse a document into Documa IR."""
 
         return parse_document_tool(source=source, out=out, lang=lang)
 
-    @mcp.tool()
+    @_documa_tool
     def documa_process(
         source: str,
         out: str | None = None,
@@ -110,7 +125,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
             export_formats=export_formats,
         )
 
-    @mcp.tool()
+    @_documa_tool
     def documa_ingest_mailbox(
         source: str,
         out: str,
@@ -134,7 +149,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
             progress=progress,
         )
 
-    @mcp.tool()
+    @_documa_tool
     def documa_export(
         ir_path: str,
         format: str = "json",
@@ -145,13 +160,13 @@ def create_mcp_server(profile: str | None = None) -> Any:
 
         return export_document_tool(ir_path=ir_path, format=format, out=out, max_chars=max_chars)
 
-    @mcp.tool()
+    @_documa_tool
     def documa_inspect(ir_path: str) -> dict[str, Any]:
         """Inspect a Documa IR file."""
 
         return inspect_document_tool(ir_path=ir_path)
 
-    @mcp.tool()
+    @_documa_tool
     def documa_view(
         source: str | None = None,
         ir_path: str | None = None,
@@ -181,7 +196,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
             result_limit=result_limit,
         )
 
-    @mcp.tool()
+    @_documa_tool
     def documa_list_blocks(
         ir_path: str,
         depth: int | None = None,
@@ -201,13 +216,13 @@ def create_mcp_server(profile: str | None = None) -> Any:
             offset=offset,
         )
 
-    @mcp.tool()
+    @_documa_tool
     def documa_inspect_block(ir_path: str, block_id: str) -> dict[str, Any]:
         """Inspect metadata for one progressive document block."""
 
         return inspect_block_tool(ir_path=ir_path, block_id=block_id)
 
-    @mcp.tool()
+    @_documa_tool
     def documa_read_block(
         ir_path: str,
         block_id: str,
@@ -227,7 +242,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
             start=start,
         )
 
-    @mcp.tool()
+    @_documa_tool
     def documa_read_blocks(
         ir_path: str,
         block_ids: list[str],
@@ -246,7 +261,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
         )
 
 
-    @mcp.tool()
+    @_documa_tool
     def documa_search_blocks(
         ir_path: str,
         query: str = "",
@@ -294,7 +309,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
             max_results_per_branch=max_results_per_branch,
         )
 
-    @mcp.tool()
+    @_documa_tool
     def documa_ingest(
         source: str,
         store_dir: str = ".documa",
@@ -314,13 +329,13 @@ def create_mcp_server(profile: str | None = None) -> Any:
             update_index=update_index,
         )
 
-    @mcp.tool()
+    @_documa_tool
     def documa_index_collection(store_dir: str = ".documa", collection_id: str = "default") -> dict[str, Any]:
         """Rebuild the local collection search index (repair path; ingest maintains it incrementally)."""
 
         return index_collection_tool(store_dir=store_dir, collection_id=collection_id)
 
-    @mcp.tool()
+    @_documa_tool
     def documa_search_collection(
         query: str,
         store_dir: str = ".documa",
@@ -330,7 +345,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
         per_document_limit: int | None = None,
         document_ids: list[str] | None = None,
         group_by_document: bool = False,
-        response_profile: str = "evidence",
+        response_profile: str = "nav",
         max_response_tokens: int | None = None,
     ) -> dict[str, Any]:
         """Search active registry documents through the local collection index."""
@@ -348,59 +363,65 @@ def create_mcp_server(profile: str | None = None) -> Any:
             max_response_tokens=max_response_tokens,
         )
 
-    @mcp.tool()
+    @_documa_tool
     def documa_block_tree(
         ir_path: str,
         max_depth: int | None = None,
         max_nodes: int = 500,
-        include_citations: bool = True,
+        include_citations: bool = False,
+        include_sketches: bool = False,
     ) -> dict[str, Any]:
-        """Return the progressive document block hierarchy (the document outline)."""
+        """Return the progressive document block hierarchy (the document outline).
+
+        include_sketches=true attaches a precomputed one-glance summary and
+        read cost per section — the cheapest way to get a document overview.
+        """
 
         return block_tree_tool(
             ir_path=ir_path,
             max_depth=max_depth,
             max_nodes=max_nodes,
             include_citations=include_citations,
+            include_sketches=include_sketches,
         )
 
-    @mcp.tool()
+    @_documa_tool
     def documa_block_xref(ir_path: str, block_id: str) -> dict[str, Any]:
         """Return references around one progressive document block."""
 
         return block_xref_tool(ir_path=ir_path, block_id=block_id)
 
-    @mcp.tool()
+    @_documa_tool
     def documa_cite_block(ir_path: str, block_id: str, style: str = "page-bbox") -> dict[str, Any]:
         """Build a stable citation record with a bounded excerpt for one block."""
 
         return cite_block_tool(ir_path=ir_path, block_id=block_id, style=style)
 
-    @mcp.tool()
+    @_documa_tool
     def documa_render_citation(ir_path: str, ref_id: str, style: str = "page-bbox") -> dict[str, Any]:
         """Render a citation string for a block or chunk reference."""
 
         return render_citation_tool(ir_path=ir_path, ref_id=ref_id, style=style)
 
-    @mcp.tool()
+    @_documa_tool
     def documa_source_window(ir_path: str, block_id: str, before: int = 1, after: int = 1) -> dict[str, Any]:
         """Read neighbor blocks around a hit in reading order, without another search."""
 
         return source_window_tool(ir_path=ir_path, block_id=block_id, before=before, after=after)
 
-    @mcp.tool()
+    @_documa_tool
     def documa_verify_citations(ir_path: str, block_ids: list[str] | str) -> dict[str, Any]:
         """Verify that cited block ids exist and their excerpts match source text."""
 
         return verify_citations_tool(ir_path=ir_path, block_ids=block_ids)
 
-    @mcp.tool()
+    @_documa_tool
     def documa_list_documents(store_dir: str = ".documa") -> dict[str, Any]:
         """List registry documents so collection read_refs can be resolved."""
 
         return list_documents_tool(store_dir=store_dir)
 
-    @mcp.tool()
+    @_documa_tool
     def documa_benchmark(
         manifest_path: str = "fixtures/pdf/manifest.json",
         fixtures_dir: str = "fixtures/pdf",
@@ -416,7 +437,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
             require_files=require_files,
         )
 
-    @mcp.tool()
+    @_documa_tool
     def documa_doctor(
         project_root: str = ".",
         include_benchmark: bool = True,

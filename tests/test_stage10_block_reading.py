@@ -271,8 +271,8 @@ class Stage10BlockReadingTests(unittest.TestCase):
             self.assertFalse(read["isError"])
             self.assertEqual(read["structuredContent"]["content"], "工具查詢內容")
             self.assertEqual(listed["structuredContent"]["blocks"][-1]["page_refs"], [12])
-            self.assertEqual(read["structuredContent"]["printed_page_labels"], ["6"])
-            self.assertEqual(read["structuredContent"]["citation_label"], "PDF p.12 (printed p.6)")
+            self.assertEqual(read["structuredContent"]["page"], "PDF p.12 (printed p.6)")
+            self.assertEqual(read["structuredContent"]["page_ref_kind"], "physical_page_number_1_based")
 
     def test_search_blocks_uses_body_snippets_without_returning_full_body(self):
         doc = DocumentIR(
@@ -313,7 +313,7 @@ class Stage10BlockReadingTests(unittest.TestCase):
 
             self.assertFalse(body_search["isError"])
             self.assertEqual(body_search["structuredContent"]["results"][0]["id"], "db1")
-            self.assertEqual(body_search["structuredContent"]["results"][0]["citation_label"], "PDF p.1")
+            self.assertEqual(body_search["structuredContent"]["results"][0]["page"], "PDF p.1")
             self.assertEqual(body_search["structuredContent"]["results"][0]["snippets"][0]["field"], "body")
             self.assertIn("hidden-needle", body_search["structuredContent"]["results"][0]["snippets"][0]["snippet"])
             self.assertNotIn("content", body_search["structuredContent"]["results"][0])
@@ -333,7 +333,9 @@ class Stage10BlockReadingTests(unittest.TestCase):
                 "documa_search_blocks",
                 {"ir_path": str(ir_path), "query": "hidden-needle", "verbosity": "debug"},
             )
-            self.assertIn("keywords", debug["structuredContent"]["results"][0])
+            # keywords are omitted when the block carries no keyword metadata;
+            # debug diagnostics like searched_fields/matches must be present.
+            self.assertIn("searched_fields", debug["structuredContent"]["results"][0])
             self.assertIn("matches", debug["structuredContent"]["results"][0])
 
     def test_cli_blocks_command_lists_blocks(self):
@@ -464,7 +466,7 @@ class Stage10BlockReadingTests(unittest.TestCase):
                 self.instructions = instructions
                 self.tools = {}
 
-            def tool(self):
+            def tool(self, **kwargs):
                 def register(func):
                     self.tools[func.__name__] = func
                     return func

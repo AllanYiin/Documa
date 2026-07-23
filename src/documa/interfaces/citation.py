@@ -11,7 +11,6 @@ at page-level blocks.
 
 from __future__ import annotations
 
-import time
 from typing import Any
 
 from documa.core.ir import BlockIR, ChunkIR, DocumentBlockIR, DocumentIR, PageIR
@@ -45,9 +44,14 @@ def _page_citations(document: DocumentIR) -> dict[str, dict[str, Any]]:
 
 
 def _resolve_block(document: DocumentIR, block_id: str):
-    """Return ("document_block", DocumentBlockIR) or ("page_block", (PageIR, BlockIR)) or None."""
+    """Return ("document_block", DocumentBlockIR) or ("page_block", (PageIR, BlockIR)) or None.
+
+    Accepts canonical document-block ids and the short (document-prefix
+    stripped) form that block-reading tool responses emit.
+    """
+    candidates = {block_id, f"db_{document.id}_{block_id}"}
     for block in document.document_blocks:
-        if block.id == block_id:
+        if block.id in candidates:
             return ("document_block", block)
     for page in document.pages:
         for block in page.blocks:
@@ -122,7 +126,6 @@ def _validate_style(style: str) -> ToolPayload | None:
 
 
 def cite_block(document: DocumentIR, block_id: str, style: str = "page-bbox") -> ToolPayload:
-    started = time.perf_counter()
     style_error = _validate_style(style)
     if style_error:
         return style_error
@@ -145,12 +148,10 @@ def cite_block(document: DocumentIR, block_id: str, style: str = "page-bbox") ->
         "excerpt": facts["excerpt"],
         "title": facts["title"],
         "citation_string": _citation_string(style, label, facts, block_id),
-        "timing_ms": round((time.perf_counter() - started) * 1000, 3),
     }
 
 
 def cite_chunk(document: DocumentIR, chunk_id: str, style: str = "page-bbox") -> ToolPayload:
-    started = time.perf_counter()
     style_error = _validate_style(style)
     if style_error:
         return style_error
@@ -198,7 +199,6 @@ def cite_chunk(document: DocumentIR, chunk_id: str, style: str = "page-bbox") ->
         "heading_path": list(chunk.heading_path),
         "source_blocks": sources,
         "citation_string": _citation_string(style, label, facts, chunk_id),
-        "timing_ms": round((time.perf_counter() - started) * 1000, 3),
     }
 
 
@@ -226,12 +226,10 @@ def render_citation(document: DocumentIR, ref_id: str, style: str = "page-bbox")
         "citation_string": payload["citation_string"],
         "page_label": payload["page_label"],
         "grounding": payload["grounding"],
-        "timing_ms": payload["timing_ms"],
     }
 
 
 def source_window(document: DocumentIR, block_id: str, before: int = 1, after: int = 1) -> ToolPayload:
-    started = time.perf_counter()
     before = max(0, int(before))
     after = max(0, int(after))
     hit = _resolve_block(document, block_id)
@@ -278,11 +276,8 @@ def source_window(document: DocumentIR, block_id: str, before: int = 1, after: i
         "status": "ok",
         "block_id": block_id,
         "kind": kind,
-        "before": before,
-        "after": after,
         "window": window,
         "warnings": warnings,
-        "timing_ms": round((time.perf_counter() - started) * 1000, 3),
     }
 
 
@@ -292,7 +287,6 @@ def verify_citations(document: DocumentIR, block_ids: list[str]) -> ToolPayload:
     This is deliberately NOT semantic answer verification (which would need an
     LLM); it only guarantees the cited ids exist and carry page references.
     """
-    started = time.perf_counter()
     items = []
     for block_id in block_ids:
         hit = _resolve_block(document, str(block_id))
@@ -313,5 +307,4 @@ def verify_citations(document: DocumentIR, block_ids: list[str]) -> ToolPayload:
         "status": "ok",
         "items": items,
         "overall_valid": bool(items) and all(item["exists"] and item["has_page_ref"] for item in items),
-        "timing_ms": round((time.perf_counter() - started) * 1000, 3),
     }

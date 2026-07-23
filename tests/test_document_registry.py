@@ -125,7 +125,6 @@ class TestDocumentIdResolution:
 
         by_id = cite_block_tool(ir_path=ingested["document_id"], block_id=block_id)
         by_path = cite_block_tool(ir_path=ingested["ir_path"], block_id=block_id)
-        by_id.pop("timing_ms"), by_path.pop("timing_ms")
         assert by_id == by_path
 
     def test_unknown_document_id_reports_not_found(self, store, monkeypatch):

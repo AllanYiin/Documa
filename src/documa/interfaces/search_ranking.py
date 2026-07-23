@@ -12,15 +12,22 @@ from __future__ import annotations
 import math
 from typing import Any
 
-# Score multipliers by document region: navigation and boilerplate regions are
-# demoted — never excluded — so body evidence outranks TOC/header noise while
-# region hits stay reachable for explicitly structural queries.
-DOC_REGION_MULTIPLIERS = {
-    "toc": 0.3,
-    "header_footer": 0.3,
-    "references": 0.6,
-    "metadata": 0.6,
-}
+# Region rules are shared with collection search; re-exported here so existing
+# call sites keep importing them from the ranking module.
+from documa.core.doc_regions import DOC_REGION_MULTIPLIERS, doc_region_multiplier, infer_doc_region
+
+__all__ = [
+    "DOC_REGION_MULTIPLIERS",
+    "doc_region_multiplier",
+    "infer_doc_region",
+    "inverse_block_frequency",
+    "saturated_term_frequency",
+    "body_length_normalization",
+    "recommended_next_action",
+    "search_hints",
+    "collection_recommended_next_action",
+    "collection_search_hints",
+]
 
 
 def inverse_block_frequency(block_count: int, matching_block_count: int) -> float:
@@ -41,10 +48,6 @@ def body_length_normalization(body_char_count: int, average_body_char_count: flo
         return 1.0
     ratio = body_char_count / average_body_char_count
     return 1.0 / (0.75 + 0.25 * ratio)
-
-
-def doc_region_multiplier(doc_region: str) -> float:
-    return DOC_REGION_MULTIPLIERS.get(doc_region, 1.0)
 
 
 # Confidence rule for recommending an immediate read: the top hit either
@@ -110,6 +113,12 @@ def search_hints(
     return hints[:2]
 
 
+def _collection_read_ref(row: dict[str, Any], parent: dict[str, Any] | None = None) -> tuple[str, str]:
+    """(ir_path, block_id) for a flat hit or a rollup's nested top block."""
+    document_id = row.get("registry_document_id") or (parent or {}).get("registry_document_id")
+    return str(document_id), str(row["block_id"])
+
+
 def collection_recommended_next_action(results: list[dict[str, Any]], *, grouped: bool) -> dict[str, Any] | None:
     """Return schema-valid cross-document read calls."""
     if not results:
@@ -118,32 +127,31 @@ def collection_recommended_next_action(results: list[dict[str, Any]], *, grouped
         top_blocks = results[0].get("top_blocks") or []
         if not top_blocks:
             return None
-        read_ref = top_blocks[0]["read_ref"]
+        ir_path, block_id = _collection_read_ref(top_blocks[0], results[0])
         return {
             "actions": [
                 {
                     "tool": "documa_read_block",
-                    "arguments": {"ir_path": read_ref["ir_path"], "block_id": read_ref["block_id"]},
+                    "arguments": {"ir_path": ir_path, "block_id": block_id},
                 }
             ]
         }
     top = results[0]
-    read_ref = top["read_ref"]
-    read_refs = [read_ref]
+    read_refs = [_collection_read_ref(top)]
     runner_up = results[1] if len(results) > 1 else None
     if (
         runner_up is not None
-        and runner_up["read_ref"]["ir_path"] == read_ref["ir_path"]
+        and runner_up.get("registry_document_id") == top.get("registry_document_id")
         and top["score"] < _CONFIDENT_SCORE_LEAD * max(runner_up["score"], 1e-9)
     ):
-        read_refs.append(runner_up["read_ref"])
+        read_refs.append(_collection_read_ref(runner_up))
     return {
         "actions": [
             {
                 "tool": "documa_read_block",
-                "arguments": {"ir_path": ref["ir_path"], "block_id": ref["block_id"]},
+                "arguments": {"ir_path": ir_path, "block_id": block_id},
             }
-            for ref in read_refs
+            for ir_path, block_id in read_refs
         ]
     }
 

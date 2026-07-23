@@ -230,8 +230,9 @@ class TestToolLayer:
         assert result["structuredContent"]["status"] == "invalid"
         assert result["structuredContent"]["valid"] is False
 
-    def test_citation_payloads_include_timing(self, processed_ir_path, processed_document):
+    def test_citation_payloads_exclude_timing_diagnostics(self, processed_ir_path, processed_document):
         result = cite_block_tool(
             ir_path=str(processed_ir_path), block_id=processed_document.document_blocks[0].id
         )
-        assert "timing_ms" in result
+        assert result["status"] == "ok"
+        assert "timing_ms" not in result

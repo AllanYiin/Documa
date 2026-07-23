@@ -142,7 +142,7 @@ class P1P2RetrievalTests(unittest.TestCase):
                     "query": "capital buffer ratio 多少",
                     "scope_block_id": "sec-1",
                     "granularity": "leaf",
-                    "response_profile": "evidence",
+                    "response_profile": "debug",
                 },
             )["structuredContent"]
 
@@ -206,7 +206,7 @@ class P1P2RetrievalTests(unittest.TestCase):
                     "ir_path": str(ir_path),
                     "query": "policy 5 capital buffer",
                     "granularity": "leaf",
-                    "response_profile": "evidence",
+                    "response_profile": "debug",
                 },
             )["structuredContent"]
 
