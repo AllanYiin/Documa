@@ -1,7 +1,7 @@
 # Documa
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/AllanYiin/Documa/main/assets/documa-logo.png" alt="Documa logo" width="320">
+  <img src="documa_logo.png" alt="Documa logo" width="320">
 </p>
 
 Documa 是給 agent 用的 **document evidence runtime**：讓 agent 用一小部分的 token 讀懂大文件、回答時指得出出處，而且引用可以被機器驗證。
