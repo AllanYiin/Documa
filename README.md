@@ -4,643 +4,194 @@
   <img src="https://raw.githubusercontent.com/AllanYiin/Documa/main/assets/documa-logo.png" alt="Documa logo" width="320">
 </p>
 
-Documa 是給 agent 用的 **document evidence runtime**：讓 agent 讀懂文件、只讀需要的部分、回答時指得出出處，而且引用可以被驗證。
+Documa 是給 agent 用的 **document evidence runtime**：讓 agent 用一小部分的 token 讀懂大文件、回答時指得出出處，而且引用可以被機器驗證。
 
-核心流程只有四步：
+如果你正在評估「有沒有比把整份文件塞進 context 更省、比 grep 原始文字更準」的文件讀取機制，這份 README 就是為你寫的。
 
-1. **Ingest** — `documa ingest report.pdf` 把文件處理進本地儲存庫，拿到一個穩定的 `document_id`（同內容自動去重）。
-2. **Block reading** — `documa search-blocks` 找相關區塊、`documa block --read` 只讀需要的內容，不用整份塞進 prompt。
-3. **Citation** — `documa cite-block` 把任何區塊回溯到「第幾頁、頁面上哪個位置」，附原文摘錄與引用字串。
-4. **Verifiable answer** — `documa_verify_citations` 檢查答案引用的區塊真實存在，`build_evidence_bundle` 把證據整包交給你選擇的驗證器逐條核對。
+## 問題：agent 讀文件的三種常見方式，各有一筆 token 帳
 
-每一步都是確定性的（無 ML 依賴、可離線、同輸入同輸出），品質由 `documa benchmark --mode quality` 的 gold 標準答案持續量測。支援 PDF、Markdown、Office 文件、HTML、email 與 notebook——但格式支援是地基，不是賣點；賣點是**可稽核的答案**。
+以一份 69 頁的 PDF（Basel III 流動性架構，全文 **49,570 tokens**）為例：
 
-Documa 不是 UI 產品，也不是新的 PDF parser。
+| 方式 | Token 成本（同一文件、10 題查詢實測） | 痛點 |
+| --- | --- | --- |
+| 整份塞進 context | 49,570（每輪對話都攤提） | 貴；長文件超過 context；模型在中段迷路（lost in the middle） |
+| grep / 逐行搜尋原始文字 | 每題路徑（grep 全部命中行＋前 3 命中點各擴窗 60 行）**中位數 8,593，範圍 0–15,323**——散文的「一行」是整段，一次 grep 動輒 8k+ | 沒有結構、沒有頁碼出處；跨頁表格、雙欄版面在文字流裡直接斷裂；CJK 無詞界，命中全憑子字串運氣 |
+| 向量 RAG | 檢索本身便宜 | 需要 embedding 前置成本與基礎設施；chunk 邊界破壞表格與章節；引用難以回溯到頁面座標 |
+| **Documa 漸進式區塊讀取** | 每題完整路徑（搜尋 → 照發 `recommended_next` → 有界讀取 top hit → 產生引用）**中位數 2,035，範圍 97–2,703（約全文的 4%）**，且答案帶頁碼級引用 | 前置一次 `documa process`（確定性、離線、無 ML 依賴）；總覽型問題另需大綱 2,813 tokens |
 
-## Overview / 概覽
+> 量測方式：同一份 69 頁 PDF，10 題涵蓋事實、數值、定義、中文詞、英文縮寫的查詢，o200k tokenizer。grep 對象是匯出的 Markdown（1,988 行），模擬 coding agent 的典型路徑：`grep -n` 全部命中行（含 `檔名:行號:` 前綴）＋對前 3 個命中點各讀一個 60 行視窗，複合詞逐詞退避。Documa 是 v0.5.0 工具實際呼叫序列的 compact JSON 回應加總，第二步完全照搜尋回應的 `recommended_next.actions[]` 執行、未人工挑選。有一題兩條路徑都零命中：grep 零輸出，Documa 花 97 tokens 回報零結果並附改寫提示。中位數比 4.2×；逐題數據可用 `python benchmarks/token_economy/compare_grep_vs_documa.py --ir <documa.ir.json> --markdown <documa.md>` 對任何文件重現。
 
-Documa 的最小成功路徑是：安裝套件，`documa ingest` 一份文件拿到 document_id，用 block search / read 讓 agent 只讀需要的內容，回答時用 citation 工具附出處。
+Documa 的核心主張：**讓 LLM 的每一次工具呼叫都只換回「做下一步決策所需」的最小資訊**，並在收尾時給出可驗證的頁碼級引用。
 
-這份 README 先帶你完成一次成功流程，再說明支援格式、email mailbox、Python API、tool-calling、MCP 與開發方式。
+## 機制：四步漸進式揭露
 
-## 你什麼時候需要 Documa
+```
+process/ingest ──► block tree（大綱+梗概）──► search（排序過的候選）──► read（有界讀取）──► cite/verify
+     一次性              ~2.8k tokens              ~1.2k tokens            每塊數百 tokens        出處可機器驗證
+```
 
-適合使用 Documa 的情境：
+1. **Ingest** — `documa ingest report.pdf` 把文件處理成 parser-neutral 的 IR 與 block tree，拿到穩定的 `document_id`（同內容自動去重）。支援 PDF、Word、PowerPoint、HTML、email、notebook、Markdown。
+2. **Overview** — `documa_block_tree` 回傳章節大綱；`include_sketches=true` 直接附上 ingest 時算好的每節梗概（sketch）與讀取成本，總覽類問題常常**零讀取**就能回答。
+3. **Search + Read** — `documa_search_blocks` 用 BM25-lite + coverage/proximity/intent 排序（TOC 與頁眉頁腳自動降權、近似重複去除），每個 hit 附帶結構路徑、頁碼、建議讀取量與**可直接照發的下一步工具呼叫**（`recommended_next.actions[]`）；`documa_read_block` 以 `max_chars`/`max_tokens` 有界讀取，讀不完給續讀 cursor。
+4. **Cite + Verify** — `documa_cite_block` 回溯到「第幾頁、頁面上哪個 bbox」，`documa_verify_citations` 機器檢查引用的區塊真實存在——答案不只便宜，還可稽核。
 
-- 你要讓 agent 或 RAG 系統讀文件，但不想一次把整份文件塞進 prompt。
-- 你需要知道回答來自哪一頁、哪個 block、哪個來源檔案。
-- 你有不同格式的文件，例如 `.pdf`、`.docx`、`.pptx`、`.html`、`.eml`、`.msg`、`.ipynb`，但想統一成同一種資料結構。
-- 你要透過 CLI、Python function、OpenAI function tools 或 MCP host 使用同一套文件理解能力。
-- 你要批次處理一個 email 資料夾，而不是只讀單封 email。
+跨文件同理：`documa_search_collection`（SQLite FTS5，含 CJK 逐字索引）一次回答「哪幾份文件提到 X」，每份文件一列精確命中數 rollup。
 
-不適合使用 Documa 的情境：
+### 回應層的 token 工程（v0.5.0）
 
-- 你只需要最底層 PDF 文字抽取，而且已經滿意 PyMuPDF / pdfplumber 等 parser 的結果。
-- 你要完整 UI、雲端文件管理系統或 email client。
-- 你要生產級的完整 OCR 產品。Documa 提供選配的 `documa[ocr]` extra（RapidOCR）處理掃描與 image-only PDF，但 core 不內建 OCR，也不是 OCR 專用工具。
+省 token 不只靠「少讀」，也靠**每個回應本身就瘦**：
 
-## Documa 會產生什麼
+- 回應只傳一份 compact JSON（不重複傳 structuredContent + pretty text）。
+- Block id 去掉重複的文件 GUID 前綴，envelope 宣告一次 `block_id_prefix`；空欄位一律不序列化；常數（如 `page_ref_kind`）上提到 envelope。
+- 搜尋預設 `nav` profile：每個 hit 只回路由決策需要的欄位；citation/selection 細節留給 `evidence`，診斷留給 `debug`。
+- 有 token counter 時，搜尋回應自動套 2,000 token 上限，超出時按「可有可無 → 低排名結果」順序優雅裁減並回報 `dropped_results`。
+- Token 一律由真實 tokenizer 計算（tiktoken 自動偵測；Claude 可走 Anthropic count-tokens API），**禁止 chars/4 估算**。
 
-對一份文件執行 `documa process` 後，常見輸出是：
+同一份 69 頁 PDF 的實測（compact JSON tokens，v0.4.0 → v0.5.0）：
 
-| 輸出 | 用途 |
-| --- | --- |
-| `documa.ir.json` | 完整的 Documa intermediate representation，是 parser-neutral 的主要資料。 |
-| `documa.rag.json` | 給 RAG / retrieval 用的 chunks。 |
-| `documa.blocks.json` | 給 agent 漸進式讀取的 block tree。 |
-| `assets/` | 文件圖片、page preview、email attachments 或 notebook attachments。 |
+| 回應 | v0.4.0 | v0.5.0 |
+| --- | --- | --- |
+| `block_tree max_depth=2` | 9,756 | **2,813（-71%）** |
+| `list_blocks depth=1` | 3,476 | **1,092（-69%）** |
+| `search_blocks` 5 hits | 1,344 | 1,181 |
+| MCP wire（傳輸層） | 每回應兩份 | **單份（再省一半）** |
 
-最常用的 agent 讀取流程是：
+固定成本也可控：MCP 工具面分 `agent`（16 工具，schema 約 3.3k tokens，涵蓋完整 evidence 工作流）/`advanced`/`admin` 三個 profile，plugin 預設最小的 `agent`。
 
-1. `documa process` 產生 IR 與 blocks。
-2. `documa search-blocks` 先找可能相關的區塊。
-3. `documa block --read` 只讀需要的 block body。
-4. 下游模型根據 block 內容與 metadata 回答。
+可重現的量測入口：`python benchmarks/token_economy/run_agent_benchmark.py`（真實 tokenizer 計分：Tokens-to-Supported-Answer、Evidence Recall、Search Path Length、Budget Correctness）。
 
-## 快速開始：處理第一份文件
+## 15 分鐘評估路徑
 
-以下指令以 PowerShell 為例。macOS / Linux 使用者可把路徑分隔符號改成 `/`，並視環境把 `python` 改成 `python3`。
-
-### 1. Prerequisites / Requirements / 準備 Python 環境
-
-Documa 需要 Python 3.10 以上。
+需要 Python 3.10+。以下以 PowerShell 為例（macOS/Linux 改路徑分隔符即可）：
 
 ```powershell
-python --version
-python -m pip --version
+python -m pip install -e ".[documents,mcp]"   # documents = PDF/DOCX/PPTX/HTML/MSG/IPYNB 依賴
 ```
 
-建議使用 virtual environment：
+**1. 處理一份你自己的 PDF**（挑一份你熟悉內容的長文件，才能評估答案品質）：
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
+documa process .\your.pdf --out .\out\eval --export-format block-json
 ```
 
-Python Packaging User Guide 也建議先確認 Python 與 pip 可從命令列執行，必要時建立 virtual environment。
-
-### 2. 安裝 Documa
-
-如果你正在這個 repo checkout 內開發或試用：
+**2. 看大綱與梗概**（評估點：不讀內文能否掌握文件結構）：
 
 ```powershell
-python -m pip install -e ".[dev,documents,mcp]"
+documa block-tree .\out\eval\documa.ir.json --max-depth 2
 ```
 
-如果你只想安裝最小核心能力，可先用：
+**3. 問一個具體問題**（評估點：hit 的排序品質與每 hit 的 token 成本）：
 
 ```powershell
-python -m pip install -e .
+documa search-blocks .\out\eval\documa.ir.json --query "你關心的主題"
 ```
 
-不同文件格式需要不同 optional extras。最省事的文件格式組合是 `documents`，它包含 PDF、DOCX、PPTX、HTML、MSG 與 notebook 相關依賴。
-
-| Extra | 需要時機 |
-| --- | --- |
-| `pdf` | 讀 `.pdf`，安裝 PyMuPDF。 |
-| `docx` | 讀 `.docx`。 |
-| `pptx` | 讀 `.pptx`。 |
-| `html` | 讀 `.html` / `.htm` / `.xhtml`。 |
-| `msg` | 讀 Outlook `.msg`。 |
-| `ipynb` | 讀 Jupyter `.ipynb`。 |
-| `documents` | 一次安裝常見文件格式依賴。 |
-| `mcp` | 啟動 `documa-mcp`。 |
-| `demo` | 執行 demo 整合，例如 OpenAI / tiktoken 相關範例。 |
-
-### 3. 準備一份 PDF
-
-快速開始建議直接用 PDF，因為它最能展示 Documa 的核心價值：從 parser adapter 取得頁面、文字 block、座標與 metadata，再輸出 Markdown、RAG chunks 與 agent 可分段讀取的 blocks。
-
-請準備一份「可抽取文字」的 PDF，例如技術報告、合約、研究摘要或產品規格。OCR-only 掃描 PDF 可能需要先經過 OCR，否則底層 parser 可能讀不到文字。
-
-以下命令假設你的範例 PDF 放在 `.\tmp\sample.pdf`：
+**4. 只讀命中的區塊**（評估點：有界讀取 + 續讀 cursor）：
 
 ```powershell
-New-Item -ItemType Directory -Force -Path .\tmp | Out-Null
-$env:DOCUMA_SAMPLE_PDF=".\tmp\sample.pdf"
-Test-Path -LiteralPath $env:DOCUMA_SAMPLE_PDF
+documa block .\out\eval\documa.ir.json --id "<搜尋結果的 block id>" --read --max-chars 1500
 ```
 
-最後一行應回傳 `True`。如果是 `False`，請把 `$env:DOCUMA_SAMPLE_PDF` 改成你的 PDF 路徑。
-
-### 4. 執行處理
+**5. 產生可驗證引用**：
 
 ```powershell
-documa process $env:DOCUMA_SAMPLE_PDF `
-  --out .\out\sample `
-  --lang zh-Hant,en `
-  --export-format markdown `
-  --export-format rag-json `
-  --export-format block-json
+documa cite-block .\out\eval\documa.ir.json --id "<block id>"
 ```
 
-預期會看到 JSON 結果，其中 `status` 應該是 `ok`。
-
-### 5. 檢查輸出
-
-```powershell
-Get-ChildItem -LiteralPath .\out\sample
-```
-
-你應該至少看到：
-
-- `documa.ir.json`
-- `documa.md`
-- `documa.rag.json`
-- `documa.blocks.json`
-
-這三種輸出各有用途：
-
-| 輸出 | 你可以拿來做什麼 |
-| --- | --- |
-| `documa.md` | 給人類快速閱讀、diff，或放進只吃 Markdown 的工具。 |
-| `documa.rag.json` | 丟給 retrieval / vector store ingestion。 |
-| `documa.blocks.json` | 讓 LLM / agent 先搜尋 metadata，再只讀相關 block。 |
-
-### 6. 像 agent 一樣搜尋與讀取
-
-先搜尋 block：
-
-```powershell
-documa search-blocks .\out\sample\documa.ir.json --query "風險" --limit 5
-```
-
-再讀取某個 block：
-
-```powershell
-documa block .\out\sample\documa.ir.json --id "<block-id>" --read
-```
-
-`<block-id>` 請替換成上一個搜尋結果中的 block id。
-
-如果你想看完整的 LLM 分塊查詢流程，可以跑 PDF 專用 demo。這個 demo 不呼叫外部 LLM；它會寫出一份 trace，展示「載入 PDF、建立 blocks、搜尋候選 blocks、只讀選中 blocks、根據 evidence 合成回答」的流程。
-
-```powershell
-documa block-demo $env:DOCUMA_SAMPLE_PDF `
-  --question "這份文件的主要風險是什麼？" `
-  --out .\out\sample-demo `
-  --lang zh-Hant,en
-```
-
-完成後檢查：
-
-```powershell
-Get-ChildItem -LiteralPath .\out\sample-demo
-```
-
-你應該看到 `documa.ir.json`、`documa.blocks.json` 與 `documa.block_demo.trace.json`。
-
-### 7. 查詢策略階梯（低 token 查詢）
-
-agent（或你）查一份文件時，依問題形狀選路徑，再逐級收斂：
-
-1. **結構／總覽問題**（「有哪些章節」）：`documa block-tree --max-depth 2 --no-citations` 取得便宜的大綱，需要更深再用 `documa blocks --parent-id <id>` 下鑽。
-2. **特定事實**：`documa search-blocks --query "..." --limit 5` 預設使用 `response_profile=nav`，每筆只回傳 routing 所需的 `block_id/kind/path/page/score/coverage/snippet/read_chars`；要完整 citation/selection metadata 時改用 `--response-profile evidence`，舊 `--verbosity` 僅作相容入口。單文件與 collection 共用 quote-aware parser，`--query '\"capital buffer\"'` 會保留為相鄰片語。`recommended_next.actions[]` 中每一項都是可直接照發、符合實際 tool schema 的 `{tool, arguments}`；`hints` 提供零結果補救、`offset=N` 分頁與拆題建議。
-3. **讀取證據**：`documa block --id <id> --read --max-chars 1500`（或 `--max-tokens`，兩者取較嚴者）。token 一律由真實 counter 計算，不用 chars/4 之類的估算：裝了 `documa[tokens]`（tiktoken）會自動啟用；針對 Claude 可設 `DOCUMA_TOKEN_COUNTER=anthropic:<model>` 走 Anthropic count-tokens API（需 `anthropic` 套件與 `ANTHROPIC_API_KEY`）。沒有 counter 時 token 欄位為 null、`--max-tokens` 會回報 `TOKEN_COUNTER_UNAVAILABLE`。證據不足時先用 `documa source-window --id <id>` 取相鄰 block、`documa block-xref --id <id>` 看父子關係，最後才整節讀取。
-4. **跨文件問題**：廣度問題（「哪幾份文件提到 X」）用 `documa search-collection --query "..." --group-by-document`——每份文件一列 rollup（精確命中數、最佳 snippet、至多 3 個可直接讀取的 top_blocks），再用 `--document-id doc-XXXX --per-document-limit 2` 鎖定候選文件深挖。事實問題直接 `documa search-collection --query '"資本適足率"'`——查詢詞預設全部必須命中（AND）、引號片語比對相鄰 token、snippet 以命中詞置中；全無命中時自動降級為任一詞命中並在 `match_mode` 標示。回應同樣內建 executable `recommended_next.actions` 與 `hints`；`--max-response-tokens` 對包含 results、guidance、budget metadata 的最終 compact-serialized structured payload 設硬上限。命中的 `read_ref` 直接餵給 `documa block` 讀取。`documa ingest`／`delete-document` 預設會增量維護集合索引（ingest 完立即可搜）；`index-collection` 全量重建只在 `doctor` 回報索引陳舊或版本過期時作為修復手段。注意：`ingest-mailbox` 的信件**不會**進集合索引，要跨文件搜尋 email 請對 `.eml`/`.msg` 逐檔 `documa ingest`。
-5. **收尾**：`documa cite-block` 產生穩定引用；agent 端另有 `documa_verify_citations` 工具（MCP／tool-calling 層）可在宣稱已驗證前做核對。
-
-### P1/P2：批次證據、分層路由與 retrieval sidecar
-
-- `documa read-blocks documa.ir.json --id <block-id> --id <block-id> --total-max-tokens 800` 會在一個精確共享預算下批次讀取；單筆 `block --read` 回傳 `returned_range`、完整單位類型與可直接續讀的 `continuation.start`。
-- `search-blocks` 支援 `--granularity auto|section|leaf|mixed`、`--scope-block-id`、`--max-evidence-tokens` 與 branch cap。排序同時考慮 BM25-lite、coverage、term proximity、question intent、MMR novelty 與 read cost；含不同數值的近似段落不會被誤當重複。
-- 有輸出目錄的 `process`/`ingest` 會在 IR 旁建立 `documa.search.idx`。這是有 `PRAGMA user_version`、source digest、feature/tokenizer version 的可重建 SQLite 衍生物，保存 document DF、block terms/features、hierarchical routes 與 deterministic section sketches；引用與原文真相仍只在 IR。
-- MCP/tool schemas 提供 `agent`、`advanced`、`admin` 三個累進 profile。`documa tools --profile agent` 可預覽最小 evidence surface；`DOCUMA_MCP_PROFILE=agent` 可縮減 MCP `tools/list`。
-- collection 的相容預設仍是 `response_profile=evidence`；`--response-profile nav --group-by-document` 會改回傳精簡的 `document_id/source/hits/pages/best_score/best_snippet/top_refs` rollup。
-
-可重現 token gate：
-
-```bash
-python benchmarks/token_economy/run_agent_benchmark.py --check --out token-economy.json
-```
-
-## 處理真實文件
-
-Documa 目前支援這些輸入格式：
-
-| 格式 | 副檔名 |
-| --- | --- |
-| PDF | `.pdf` |
-| Markdown / text | `.md`, `.markdown`, `.mdp`, `.txt` |
-| Word | `.docx` |
-| PowerPoint | `.pptx` |
-| HTML | `.html`, `.htm`, `.xhtml` |
-| Email | `.eml`, `.msg` |
-| Jupyter Notebook | `.ipynb` |
-
-單一文件使用：
-
-```powershell
-documa process "<path-to-file>" --out ".\out\document" --export-format block-json
-```
-
-如果只想測試 adapter boundary，不跑完整 pipeline：
-
-```powershell
-documa parse "<path-to-file>" --out ".\out\parsed"
-```
-
-## 批次處理 email 資料夾
-
-實務上 email 常常不是單封處理，而是讀取某個收件夾匯出的多個 `.eml` / `.msg` 檔案。這種情境請使用 collection-oriented CLI：
-
-```powershell
-documa ingest-mailbox ".\mailbox" `
-  --out ".\out\mailbox" `
-  --recursive `
-  --progress jsonl
-```
-
-輸出會包含：
-
-| 輸出 | 用途 |
-| --- | --- |
-| `documa.mailbox.manifest.json` | mailbox manifest，列出每封 email 的來源、輸出路徑與錯誤。 |
-| `messages\...\documa.ir.json` | 每封 email 各自的 Documa IR。 |
-| `messages\...\documa.rag.json` | 每封 email 的 retrieval chunks。 |
-| `messages\...\documa.blocks.json` | 每封 email 的 block tree。 |
-| `messages\...\assets\...` | 每封 email 的附件。 |
-| `documa.mailbox.progress.jsonl` | 使用 `--progress jsonl` 時的逐封處理事件。 |
-
-預設行為是：某一封 email 失敗時繼續處理其他信件，並把錯誤寫入 manifest。
-
-如果你希望第一個錯誤就停止：
-
-```powershell
-documa ingest-mailbox ".\mailbox" --out ".\out\mailbox" --fail-fast
-```
-
-## 文件識別、引用與品質評測
-
-以下能力讓 Documa 從「能處理文件」進一步支援「可稽核的 agent 回答」：穩定的 document_id、可回溯頁碼與座標的 citation、IR 格式契約，以及可量測的品質分數。
-
-### ingest：取得穩定的 document_id
-
-`documa ingest` 一次完成 parse + pipeline + 登錄，回傳 content-addressed 的 `document_id`（同內容重複 ingest 會去重）：
-
-```powershell
-documa ingest fixtures\pdf\real\annual-report.pdf
-```
+回傳類似：
 
 ```json
 {
-  "status": "ok",
-  "document_id": "doc-590798d84418a2a9",
-  "deduplicated": false,
-  "ir_path": ".documa\\documents\\doc-590798d84418a2a9\\documa.ir.json",
-  "page_count": 3,
-  "chunk_count": 7,
-  "parser": "pymupdf"
-}
-```
-
-之後所有吃 `ir_path` 的指令與工具都同時接受 document_id（規則：路徑存在優先，否則查 `./.documa` registry）。管理指令：`documa list-documents`、`documa delete-document <id> --yes`、`documa ingest --rebuild-index`（registry 損毀時從 `documents/` 重建索引）。
-
-### collection search：跨 active 文件搜尋
-
-多份文件 ingest 進同一個本地 store 後，可以建立 default collection index，再跨 active 文件搜尋 block。第一版使用 Python 標準庫 SQLite FTS5，索引是可重建的衍生資料；IR 與 registry 仍是 source of truth。
-
-```powershell
-documa index-collection --store-dir .\.documa
-documa search-collection --store-dir .\.documa --query "Revenue" --limit 20
-```
-
-`search-collection` 的每筆結果會同時回傳 registry 的 `document_id`、IR 內部 `document_id`、`block_id`、heading path、score、snippet、page refs、bbox refs 與 citation string。`read_ref` 可直接餵給 `documa_read_block` / `documa cite-block` 類工具繼續讀取與引用；預設只索引 registry 中 `active` 文件，`superseded` 版本不會出現在搜尋結果中。
-
-### citation：把 block / chunk 回溯到頁碼與座標
-
-```powershell
-documa search-blocks doc-590798d84418a2a9 --query "Revenue"
-documa cite-block doc-590798d84418a2a9 --id <block_id>
-```
-
-```json
-{
-  "status": "ok",
   "page_label": "PDF p.2",
   "grounding": "visual",
   "bboxes": [{ "page": 2, "x0": 56.0, "y0": 240.0, "x1": 486.0, "y1": 328.0 }],
-  "excerpt": "Region | Revenue (M) | Growth | Share Asia-Pacific | 412.5 | 18% | 41% ...",
   "citation_string": "[PDF p.2, bbox(56,240,486,328)]"
 }
 ```
 
-沒有座標的來源（例如 Markdown）會降級為 `grounding: "logical"`，仍給出頁碼 / 章節層級的 citation。相關指令與工具：`cite-chunk`、`source-window`（讀 block 前後文）、`documa_render_citation`（`page-bbox` / `markdown` / `inline` 三種格式）、`documa_verify_citations`（檢查引用的 block id 存在且帶頁碼——這是 id 存在性檢查，不是語義驗證）。
-
-### OCR：掃描與 image-only 文件（選配）
+**6.（選配）看完整離線 demo**——不呼叫任何 LLM，輸出一份 trace 展示「搜尋→選塊→讀取→合成答案」全程與逐步 token 用量：
 
 ```powershell
-python -m pip install -e ".[ocr]"   # RapidOCR（ONNX、免 GPU、支援中英文）
-documa process scan.pdf --out out --ocr
-documa ingest scan.pdf --ocr
+documa block-demo .\your.pdf --question "這份文件的主要風險是什麼？" --out .\out\eval-demo
 ```
 
-OCR 為明確 opt-in：低文字密度頁會整頁辨識，一般頁只辨識內嵌圖片。所有 OCR 產物都標記 `origin: "ocr"`、`ocr_engine`、`ocr_confidence`，不會混入 parser 原生文字；頁面平均信心低於 0.3 會標 `ocr_low_confidence`。未安裝 extra 時指令不會失敗，只在 payload `warnings` 中回報。第一次執行會下載辨識模型（需網路），之後使用本機快取。
-
-### IR 契約：schema 與 validate-ir
-
-`ir_version` 採 semver 語意（minor 只允許 additive 欄位），完整契約見 [docs/spec/ir-compatibility.md](docs/spec/ir-compatibility.md)。`schema/documa.schema.json` 由 `scripts/generate_schema.py` 從 dataclass 生成（CI 檢查同步，禁止手改）。
+**多文件評估**：把幾份文件 `documa ingest` 進同一個 store，然後：
 
 ```powershell
-documa validate-ir out\documa.ir.json   # exit code 0/1，violations 帶 JSON pointer
+documa search-collection --query "違約金" --group-by-document
 ```
 
-### 品質評測：benchmark --mode quality 與 diff
+## 接進你的 agent
 
-```powershell
-documa benchmark --mode quality    # 對 gold 標註計分：table TEDS/TEDS-S、reading-order NED
-documa diff actual.ir.json expected.ir.json   # 結構化差異：block 新增/缺失/易位、表格 cell
-```
+同一套能力有四個入口，行為一致：
 
-Gold 標註放在 `fixtures/pdf/gold/<case_id>/expected.partial.json`（格式見該目錄 README，支援表格 HTML（含 colspan/rowspan）、閱讀順序錨點、關係連結、頁首頁尾角色與 OCR 期望文字，並可逐 case 覆寫門檻）。目前 13 個 gold case 的實測：11 passed（含雙欄/三欄/sidebar 閱讀順序 1.0、五類表格 1.0、中英混排、TOC 連結、頁首頁尾分類），2 個為**蓄意保留的 failed**——footnote 與 caption 連結缺口，已在 gold 註記中標明「不得調低門檻掩蓋」，是下一輪的修復標的。
-
-每個 block 都帶 reading-order trace（`metadata.reading_order`：zone/欄/規則/套用的 Gestalt 原則），benchmark 失敗時可直接定位排錯的區域；CI 的 quality job 會把逐 case 分數表顯示在每次 run 的 summary 頁。
-
-## 產生 human viewer
-
-Documa core 不是 UI 產品，但可以產生一份可檢視的 viewer artifact，方便人類檢查 parsing / block 結果。
-
-```powershell
-documa view .\out\sample\documa.ir.json `
-  --from-ir `
-  --format html `
-  --out .\out\sample\viewer.html `
-  --include-body
-```
-
-也可以直接從來源文件建立 viewer：
-
-```powershell
-documa view $env:DOCUMA_SAMPLE_PDF --format markdown --query "風險"
-```
-
-## 匯出給下游系統
-
-如果你已經有 `documa.ir.json`，可以再匯出成其他格式：
-
-```powershell
-documa export .\out\sample\documa.ir.json --format markdown --out .\out\sample\documa.md
-documa export .\out\sample\documa.ir.json --format rag-json --out .\out\sample\documa.rag.json
-documa export .\out\sample\documa.ir.json --format block-json --out .\out\sample\documa.blocks.json
-```
-
-| Export format | 適合用途 |
+| 入口 | 使用方式 |
 | --- | --- |
-| `json` | 完整 IR。 |
-| `markdown` | 人類閱讀或簡單 diff。 |
-| `rag-json` | Retrieval / RAG pipeline。 |
-| `block-json` | Agent progressive reading。 |
+| **MCP** | `documa-mcp`（需 `[mcp]` extra）。`DOCUMA_MCP_PROFILE=agent` 只暴露 evidence 工作流的 16 個工具。repo 內附三個現成 plugin：Claude Code（`plugins/claude-code-documa`）、Codex（`plugins/codex-documa`）、OpenClaw（`plugins/openclaw-documa`），各含引導 LLM 走短搜尋路徑的 `documa-evidence` skill。 |
+| **OpenAI function calling** | `from documa.interfaces import openai_tool_schemas, call_documa_tool` |
+| **CLI** | 上面評估路徑用的指令；適合 shell-based agent 或人工檢查。 |
+| **Python API** | `documa.adapters` + `documa.pipeline.run_default_pipeline`，或直接 `call_documa_tool(name, args)`。 |
 
-## Python 用法
-
-最小範例：
+Python 最小範例：
 
 ```python
-from documa.adapters import PyMuPDFAdapter
-from documa.adapters.base import ParseOptions
-from documa.pipeline import PipelineContext, run_default_pipeline
-
-document = PyMuPDFAdapter().parse(
-    "tmp/sample.pdf",
-    ParseOptions(languages=["zh-Hant", "en"]),
-)
-
-pipeline_run = run_default_pipeline(
-    document,
-    PipelineContext(settings={"max_chars": 1200}),
-    include_chunking=True,
-)
-
-processed = pipeline_run.document
-print(processed.id)
-print(len(processed.document_blocks))
-```
-
-如果你要把 Documa 接到 agent runtime，通常會從 `documa.interfaces` 開始：
-
-```python
-from documa.interfaces import call_documa_tool, openai_tool_schemas
-
-tools = openai_tool_schemas(strict=True)
+from documa.interfaces import call_documa_tool
 
 result = call_documa_tool(
     "documa_search_blocks",
-    {
-        "ir_path": "out/sample/documa.ir.json",
-        "query": "回滾",
-        "limit": 5,
-    },
+    {"ir_path": "out/eval/documa.ir.json", "query": "資本適足率", "limit": 5},
 )
+# result["structuredContent"]["results"] 每筆含 block_id/path/page/score/snippet/read_chars，
+# recommended_next.actions[] 是可直接照發的下一步呼叫
 ```
 
-## Tool-calling 與 MCP
+給 LLM 的回應約定（plugin skill 已內建教學）：回應在 envelope 宣告一次 `block_id_prefix` 後發短 block id，回傳工具時原樣帶回即可；空欄位不出現＝空值；`page` 是引用標籤、`page_refs` 是實體頁碼。
 
-列出 Documa tools：
+## 設計性質（評估 checklist）
 
-```powershell
-documa tools
-```
+- **確定性、可離線**：core 無 ML/LLM 依賴、無網路呼叫，同輸入同輸出；適合放進 CI 與資安敏感環境。
+- **出處可驗證**：每個 block 帶頁碼與 bbox 來源鏈；`documa_verify_citations` 做引用存在性檢查（明確不是語義驗證——語義驗證的 `AnswerSupportChecker` 介面在 core、實作在 examples）。
+- **CJK 完整支援**：關鍵詞抽取用 CJK n-gram + 邊界熵新詞發現；collection FTS 逐字索引讓中文子詞查詢可用；snippet 視 CJK/ASCII 分別以字元/詞窗置中。
+- **格式統一**：PDF（`.pdf`）、Word（`.docx`）、PowerPoint（`.pptx`）、HTML、email（`.eml`/`.msg`，含 mailbox 批次 `documa ingest-mailbox`）、Jupyter（`.ipynb`）、Markdown/text 全部進同一種 IR，下游只依賴 IR。
+- **IR 是 semver 契約**：`ir_version` minor 只允許 additive 欄位；schema 由 dataclass 生成並有 CI 同步閘門（`documa validate-ir` 可驗檔）。
+- **品質有 gold 基準**：`documa benchmark --mode quality` 對 13 個 gold case 計分（表格 TEDS、閱讀順序 NED、關係連結 F1）；雙欄/三欄/sidebar 閱讀順序 1.0。兩個已知缺口（footnote 與 caption 連結）**蓄意保留為 failed**，不調門檻掩蓋。
+- **OCR 選配不混料**：`documa[ocr]`（RapidOCR，CPU）處理掃描件；所有 OCR 產物標記 `origin: "ocr"` 與信心值，永不冒充原生文字。
+- **索引皆可拋棄重建**：collection index（SQLite FTS5）與 retrieval sidecar 都是版本化衍生物，來源真相只在 IR + registry。
 
-啟動 MCP server：
+## 什麼時候不該用 Documa
 
-```powershell
-documa-mcp
-```
+- 文件很短（幾頁以內）而且只問一次——直接塞 context 更簡單，前置處理不划算。
+- 你需要**語義**相似檢索（同義改寫、跨語言概念對齊）——Documa 檢索是 lexical/statistical 的；它預留了 hybrid/vector adapter 邊界，但目前不內建 embeddings。
+- 你要的是視覺／版面渲染判斷（「第 3 頁有沒有蓋章」）、完整 UI 文件管理系統，或生產級 OCR 產品。
+- 你只要最底層的 PDF 文字抽取，且已滿意 PyMuPDF / pdfplumber。
 
-常用 tools：
+## 升級注意（v0.5.0）
 
-| Tool | 用途 |
+- v0.5.0 前建立的 collection index 與 search sidecar 會被 `documa doctor --store-dir` 標為 stale，首次搜尋前請 `documa index-collection` 重建（或重跑 `process`）。
+- 工具回應形狀有 breaking 變更：搜尋列移除 `read_ref`/`ir_document_id`/`bbox_refs`（讀取對＝`document_id` + `block_id`）、`block_tree` 預設不含 per-node citation、空欄位不再序列化。細節見 [CHANGELOG](CHANGELOG.md)。
+
+## 深入閱讀
+
+| 主題 | 位置 |
 | --- | --- |
-| `documa_parse` | 將單一來源文件 parse 成 Documa IR。 |
-| `documa_process` | Parse 後執行預設理解 pipeline。 |
-| `documa_ingest_mailbox` | 批次 ingest `.eml` / `.msg` email 資料夾。 |
-| `documa_view` | 建立 universal viewer payload 或輸出檔。 |
-| `documa_list_blocks` | 列出文件 blocks，不展開全文。 |
-| `documa_search_blocks` | 搜尋單一文件的 block metadata、preview 與 body snippets。 |
-| `documa_index_collection` | 從本地 registry 的 active documents 重建 collection search index。 |
-| `documa_search_collection` | 跨 active documents 搜尋 citation-ready block results。 |
-| `documa_read_block` | 讀取指定 block body。 |
-| `documa_block_tree` | 回傳完整 block hierarchy。 |
-| `documa_block_xref` | 查 block 的 parent、children、來源與 relation refs。 |
-| `documa_doctor` | 檢查環境與 optional dependencies。 |
-
-## 核心概念
-
-新手可以先記住四個名詞：
-
-| 名詞 | 白話說明 |
-| --- | --- |
-| Adapter | 負責讀某種格式，例如 PDF、DOCX、EML。Adapter 會把 parser-specific 結果轉成 Documa 的通用資料。 |
-| DocumentIR | Documa 的主要資料結構。下游不要直接依賴 PyMuPDF 或 extract-msg 的原生物件。 |
-| Pipeline | 在 IR 上做整理，例如 reading order、table normalization、block tree、chunking、provenance。 |
-| Block | Agent 最常讀的單位。先 search/list blocks，再只讀相關 block，可以避免一次載入整份文件。 |
-
-Documa 的設計原則：
-
-- Core 不直接依賴特定 parser object。
-- 不靜默覆蓋原文；保留 raw text 與 normalized text。
-- JSON 輸出使用 UTF-8，並保留非 ASCII 文字。
-- CLI、Python tool layer、OpenAI tool schema 與 MCP wrapper 回傳結構化結果。
-- 新增格式或 public tool 時，同步考慮測試、schema、CLI 與 MCP 入口。
-
-## 專案結構
-
-| 路徑 | 用途 |
-| --- | --- |
-| `src/documa/core/` | IR models、serialization、encoding、language 與 text normalization。 |
-| `src/documa/adapters/` | 各格式 parser adapter。 |
-| `src/documa/collections/` | 多文件 ingestion、registry 與 SQLite collection search index。 |
-| `src/documa/pipeline/` | Parser-neutral understanding stages。 |
-| `src/documa/exporters/` | JSON、Markdown、RAG JSON、block JSON exporters。 |
-| `src/documa/interfaces/` | CLI / MCP / tool-calling 共用工具函式與 schemas。 |
-| `src/documa/viewer.py` | Universal viewer payload 與 renderer。 |
-| `examples/` | 範例 workflow。 |
-| `tests/` | Unit / regression tests。 |
+| 架構分層與各 stage 演進 | [docs/documa/architecture.md](docs/documa/architecture.md) |
+| IR 相容性契約 | [docs/spec/ir-compatibility.md](docs/spec/ir-compatibility.md) |
+| Gold 標註格式與品質門檻 | [fixtures/pdf/gold/README.md](fixtures/pdf/gold/README.md) |
+| Token 經濟 benchmark | [benchmarks/token_economy/](benchmarks/token_economy/run_agent_benchmark.py) |
+| Plugin 安裝與 skill | [plugins/README.md](plugins/README.md) |
 
 ## 開發與測試
 
-安裝開發依賴：
-
 ```powershell
 python -m pip install -e ".[dev,documents,mcp]"
+python -m pytest                      # 全套（含 snapshot 回歸）
+documa doctor                         # 環境診斷
+documa benchmark --mode quality       # gold 品質計分
 ```
 
-跑全部 unittest：
+Snapshot 回歸測試把 3 份真實 PDF 的完整 pipeline 輸出與 golden files 比對；只有「預期內的輸出變更」才能 `pytest --force-regen` 重建，且 commit 訊息必須說明原因。
 
-```powershell
-$env:PYTHONPATH="src"
-python -m unittest discover -s tests
-```
-
-若已經 editable install，也可以直接：
-
-```powershell
-python -m unittest discover -s tests
-```
-
-部分測試（snapshot 回歸）需要 pytest：
-
-```powershell
-python -m pytest
-```
-
-Snapshot 回歸測試（`tests/test_ir_snapshot_regression.py`）把 3 份真實 PDF 的完整 pipeline 輸出與 golden files 比對。只有在「預期內的輸出變更」時才能用 `python -m pytest --force-regen` 重建 golden files，且 commit 訊息必須說明變更原因；重建前先確認 diff 只包含預期欄位。
-
-環境診斷：
-
-```powershell
-documa doctor
-```
-
-benchmark fixture 檢查（readiness 驗檔案，quality 對 gold 計分）：
-
-```powershell
-documa benchmark
-documa benchmark --mode quality
-```
-
-CI 預期在 Python 3.10、3.11、3.12 上安裝 `.[dev,documents]`，執行 `python scripts/generate_schema.py --check`（schema 與 dataclass 同步閘門）、測試與 `documa doctor`。
-
-## 新增格式或 public tool
-
-新增 parser adapter 時：
-
-1. 在 `src/documa/adapters/` 新增 adapter。
-2. Adapter 只回傳 Documa IR objects，不把 parser-native object 洩漏到 core。
-3. 在 `src/documa/adapters/registry.py` 註冊副檔名。
-4. 補 unit / integration tests。
-5. 更新 README 的支援格式表。
-
-新增 public tool 時，至少同步更新：
-
-- `src/documa/interfaces/tools.py`
-- `src/documa/interfaces/tool_schemas.py`
-- `src/documa/interfaces/mcp_server.py`
-- `src/documa/cli.py`，如果需要 CLI command
-- `tests/`
-- README 使用說明
-
-## 常見問題
-
-### `documa` 指令找不到
-
-先確認 virtual environment 已啟用，並重新安裝：
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev,documents]"
-```
-
-如果 console script 還不能用，可以改用 module 入口：
-
-```powershell
-$env:PYTHONPATH="src"
-python -m documa.cli --help
-```
-
-### PDF 讀不到或出現 PyMuPDF 錯誤
-
-安裝 PDF extra：
-
-```powershell
-python -m pip install -e ".[pdf]"
-```
-
-或安裝常見文件格式組合：
-
-```powershell
-python -m pip install -e ".[documents]"
-```
-
-### `.msg` 讀取失敗
-
-Outlook `.msg` 需要 `extract-msg`：
-
-```powershell
-python -m pip install -e ".[msg]"
-```
-
-### `documa-mcp` 無法啟動
-
-安裝 MCP extra：
-
-```powershell
-python -m pip install -e ".[mcp]"
-```
-
-### block 搜尋結果不符合預期
-
-先檢查 `documa.ir.json` 與 `documa.blocks.json`，確認文件是否真的被 parse 到正確文字。PDF 的 natural reading order 取決於來源 PDF 的產生方式；在改 pipeline heuristics 前，請先補 fixture coverage。
-
-### OCR-only PDF 沒有文字
-
-Documa core 不內建 OCR pipeline。你需要先用 OCR 工具產出可抽取文字的 PDF，或新增 OCR-aware adapter。
-
-## 已知限制
-
-- Documa core 不是 UI product。UI code 應放在 examples 或 downstream applications。
-- Documa 不從零實作底層 parser。PDF、DOCX、PPTX、HTML、MSG 與 IPYNB extraction 透過 adapters 委派給專門 library；EML 使用 Python 標準庫 MIME parser。
-- 目前 pipeline stages 是保守 baseline，不是完美的 document understanding model。`documa benchmark --mode quality`（13 gold cases）持續量測：雙欄/三欄/sidebar 閱讀順序已達 1.0；**兩個已知連結缺口蓄意保留為 failed**——footnote marker 連不到註腳本文、圖片 caption 連不到內嵌圖片，詳見對應 gold 檔的註記。
-- 閱讀順序 v2 對「欄中還有欄」的巢狀版面不遞迴切割，退為保守排序並在 trace 標記 `fallback_row_major`。
-- OCR 為選配（`documa[ocr]`，RapidOCR/CPU）：無 GPU 加速路徑；第一次執行需下載模型；render zoom 2 下引擎會漏掃部分行（ocr-scanned gold case 門檻因此暫定 0.6，附註記）。
-- Registry 以 filelock 保護跨程序寫入（單機語意）；store 目錄請放本機磁碟，網路磁碟（NFS/SMB）上的鎖語意較弱。
-- DOCX 與 HTML 目前使用 logical flow / DOM order；PPTX 使用 slide order；EML / MSG 使用 logical email page；IPYNB 使用 cell order。
-- 選用 LLM usage 只出現在 demos 或 downstream integrations。Core parsing 與 processing 是 deterministic，可離線執行。
-
-## 背景與延伸閱讀
-
-這些外部文件是 Documa README 與設計邊界的參考：
-
-- GitHub 說 README 應回答專案做什麼、為什麼有用、如何開始、去哪裡求助：[About READMEs](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes)。
-- Diataxis 將技術文件分成 tutorial、how-to、reference、explanation，有助於避免 README 同時塞太多不同任務：[Diataxis](https://diataxis.fr/)。
-- Python Packaging User Guide 說明如何確認 Python / pip 與安裝套件：[Installing Packages](https://packaging.python.org/en/latest/tutorials/installing-packages/)。
-- PyMuPDF 文件說明 PDF text extraction 不一定保留 natural reading order，但 block / word extraction 可提供 layout repair 線索：[PyMuPDF text recipes](https://pymupdf.readthedocs.io/en/latest/recipes-text.html)。
-- PyMuPDF 也把 Markdown extraction 明確放在 RAG / LLM 情境下討論，這也是 Documa README 用 PDF 作為第一個範例的原因之一：[PyMuPDF4LLM](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/)。
-- Python `email.parser` 提供 MIME message parser，可從 serialized email bytes 建立 `EmailMessage` 並遍歷 body 與 attachments：[Python email.parser](https://docs.python.org/3/library/email.parser.html)。
-- Python `mailbox` 提供 Maildir、mbox、MH、Babyl 與 MMDF 等 mailbox collection 介面；Documa 因此把 email folder ingestion 放在 collection layer：[Python mailbox](https://docs.python.org/3/library/mailbox.html)。
-- `extract-msg` 提供 Outlook `.msg` 解析入口，Documa 只在 adapter boundary 內使用該 parser：[extract-msg documentation](https://msg-extractor.readthedocs.io/en/latest/extract_msg/index.html)。
-- MCP tools 使用 structured results 與 tool schemas，Documa 的 MCP wrapper 依此暴露工具：[MCP tools specification](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)。
+新增 parser adapter：在 `src/documa/adapters/` 實作並於 `registry.py` 註冊副檔名，adapter 只回傳 IR、不外洩 parser 原生物件。新增 public tool：同步更新 `interfaces/tools.py`、`tool_schemas.py`、`mcp_server.py`、`cli.py` 與測試。
 
 ## License
 
