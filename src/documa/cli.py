@@ -177,14 +177,20 @@ def build_parser() -> argparse.ArgumentParser:
     search_collection_cmd.add_argument("--per-document-limit", type=int, default=None, help="Maximum results per document.")
     search_collection_cmd.add_argument("--document-id", action="append", dest="document_ids", help="Restrict to this registry document id. Repeatable.")
     search_collection_cmd.add_argument("--group-by-document", action="store_true", help="Return document-level rollups instead of a flat block list.")
-    search_collection_cmd.add_argument("--response-profile", choices=["nav", "evidence"], default="evidence")
+    search_collection_cmd.add_argument("--response-profile", choices=["nav", "evidence"], default="nav")
     search_collection_cmd.add_argument("--max-response-tokens", type=int, default=None, help="Hard ceiling on counted response tokens; lowest-ranked rows drop first.")
 
     block_tree_cmd = subparsers.add_parser("block-tree", help="Return the Documa document block tree (outline).")
     block_tree_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
     block_tree_cmd.add_argument("--max-depth", type=int, default=None, help="Collapse subtrees below this depth to children_count.")
     block_tree_cmd.add_argument("--max-nodes", type=int, default=500, help="Maximum nodes emitted before truncation.")
-    block_tree_cmd.add_argument("--no-citations", action="store_true", help="Omit per-node page citation metadata.")
+    block_tree_cmd.add_argument("--citations", action="store_true", help="Add per-node page citation labels (omitted by default).")
+    block_tree_cmd.add_argument("--no-citations", action="store_true", help=argparse.SUPPRESS)  # deprecated: lean default
+    block_tree_cmd.add_argument(
+        "--include-sketches",
+        action="store_true",
+        help="Attach precomputed per-section sketches and read costs from the search sidecar.",
+    )
 
     block_xref_cmd = subparsers.add_parser("block-xref", help="Return parent, children, source, and relation refs.")
     block_xref_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
@@ -419,7 +425,8 @@ def main(argv: list[str] | None = None) -> int:
             ir_path=args.ir_path,
             max_depth=args.max_depth,
             max_nodes=args.max_nodes,
-            include_citations=not args.no_citations,
+            include_citations=args.citations,
+            include_sketches=args.include_sketches,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
