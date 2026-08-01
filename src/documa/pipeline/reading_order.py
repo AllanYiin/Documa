@@ -317,6 +317,33 @@ class ReadingOrderStage(PipelineStage):
             sortable = [block for block in page.blocks if block.bbox is not None]
             unsortable = [block for block in page.blocks if block.bbox is None]
             original_ids = [block.id for block in page.blocks]
+            if page.metadata.get("reading_order_locked") is True:
+                provider = str(page.metadata.get("reading_order_provider") or "adapter")
+                for index, block in enumerate(page.blocks, start=1):
+                    if block.metadata.get("original_order_index") is None:
+                        block.metadata["original_order_index"] = block.order_index
+                    block.order_index = index
+                    block.metadata.setdefault(
+                        "reading_order",
+                        {"strategy": provider, "rule": "adapter_locked"},
+                    )
+                page.metadata["reading_order_trace"] = {
+                    "provider": provider,
+                    "locked": True,
+                    "zones": [],
+                    "gutters": [],
+                }
+                report_pages.append(
+                    {
+                        "page_number": page.page_number,
+                        "block_count": len(page.blocks),
+                        "zone_count": 0,
+                        "column_count_max": 0,
+                        "provider": provider,
+                        "locked": True,
+                    }
+                )
+                continue
 
             zones: list[dict[str, Any]] = []
             gutters: list[dict[str, Any]] = []

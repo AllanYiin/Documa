@@ -70,8 +70,8 @@ def create_mcp_server(profile: str | None = None) -> Any:
 
     try:
         from mcp.server.fastmcp import FastMCP
-    except ImportError as exc:  # pragma: no cover - depends on optional package
-        raise RuntimeError("Install Documa with the 'mcp' extra to run the MCP server.") from exc
+    except ImportError as exc:  # pragma: no cover - broken or incomplete installation
+        raise RuntimeError("Install or repair Documa to run the MCP server: pip install --upgrade documa") from exc
 
     mcp = FastMCP(
         "Documa",
@@ -96,10 +96,15 @@ def create_mcp_server(profile: str | None = None) -> Any:
         return mcp.tool(structured_output=False)(wrapper)
 
     @_documa_tool
-    def documa_parse(source: str, out: str | None = None, lang: str = "auto") -> dict[str, Any]:
+    def documa_parse(
+        source: str,
+        out: str | None = None,
+        lang: str = "auto",
+        pdf_provider: str = "auto",
+    ) -> dict[str, Any]:
         """Parse a document into Documa IR."""
 
-        return parse_document_tool(source=source, out=out, lang=lang)
+        return parse_document_tool(source=source, out=out, lang=lang, pdf_provider=pdf_provider)
 
     @_documa_tool
     def documa_process(
@@ -108,6 +113,8 @@ def create_mcp_server(profile: str | None = None) -> Any:
         lang: str = "auto",
         max_chars: int = 1200,
         export_formats: list[str] | None = None,
+        pdf_provider: str = "auto",
+        keyword_provider: str = "lingxi",
     ) -> dict[str, Any]:
         """Parse and process a document.
 
@@ -123,6 +130,8 @@ def create_mcp_server(profile: str | None = None) -> Any:
             lang=lang,
             max_chars=max_chars,
             export_formats=export_formats,
+            pdf_provider=pdf_provider,
+            keyword_provider=keyword_provider,
         )
 
     @_documa_tool
@@ -179,6 +188,8 @@ def create_mcp_server(profile: str | None = None) -> Any:
         include_body: bool = False,
         body_chars: int = 1200,
         result_limit: int = 10,
+        pdf_provider: str = "auto",
+        keyword_provider: str = "lingxi",
     ) -> dict[str, Any]:
         """Build a universal hierarchical human viewer for any Documa-supported document."""
 
@@ -194,6 +205,8 @@ def create_mcp_server(profile: str | None = None) -> Any:
             include_body=include_body,
             body_chars=body_chars,
             result_limit=result_limit,
+            pdf_provider=pdf_provider,
+            keyword_provider=keyword_provider,
         )
 
     @_documa_tool
@@ -317,6 +330,8 @@ def create_mcp_server(profile: str | None = None) -> Any:
         max_chars: int = 1200,
         ocr: bool = False,
         update_index: bool = True,
+        pdf_provider: str = "auto",
+        keyword_provider: str = "lingxi",
     ) -> dict[str, Any]:
         """Ingest a document into the local store; returns a stable doc- registry id and keeps the collection index fresh."""
 
@@ -327,6 +342,8 @@ def create_mcp_server(profile: str | None = None) -> Any:
             max_chars=max_chars,
             ocr=ocr,
             update_index=update_index,
+            pdf_provider=pdf_provider,
+            keyword_provider=keyword_provider,
         )
 
     @_documa_tool
@@ -427,6 +444,11 @@ def create_mcp_server(profile: str | None = None) -> Any:
         fixtures_dir: str = "fixtures/pdf",
         out: str | None = None,
         require_files: bool = False,
+        mode: str = "readiness",
+        gold_dir: str = "fixtures/pdf/gold",
+        quality_threshold: float = 0.85,
+        pdf_provider: str = "auto",
+        keyword_provider: str = "lingxi",
     ) -> dict[str, Any]:
         """Run the Documa fixture benchmark."""
 
@@ -435,6 +457,11 @@ def create_mcp_server(profile: str | None = None) -> Any:
             fixtures_dir=fixtures_dir,
             out=out,
             require_files=require_files,
+            mode=mode,
+            gold_dir=gold_dir,
+            quality_threshold=quality_threshold,
+            pdf_provider=pdf_provider,
+            keyword_provider=keyword_provider,
         )
 
     @_documa_tool

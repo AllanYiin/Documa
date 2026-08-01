@@ -45,7 +45,7 @@ def _load_extract_msg():
                 code="MSG_DEPENDENCY_NOT_INSTALLED",
                 message="extract-msg is required for Outlook MSG parsing.",
                 recoverable=True,
-                suggested_action="Install the optional dependency: pip install documa[msg]",
+                suggested_action="Install or repair the standard runtime: pip install --upgrade documa",
             )
         ) from exc
 

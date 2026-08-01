@@ -26,7 +26,7 @@ def _load_bs4():
                 code="HTML_DEPENDENCY_NOT_INSTALLED",
                 message="beautifulsoup4 is required for HtmlAdapter.",
                 recoverable=True,
-                suggested_action="Install the optional dependency: pip install documa[html]",
+                suggested_action="Install or repair the standard runtime: pip install --upgrade documa",
             )
         ) from exc
 

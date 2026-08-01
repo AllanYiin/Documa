@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import re
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from documa.adapters.base import ParseOptions, ParserAdapter
 from documa.core.errors import DocumaError, DocumaErrorDetail
@@ -30,7 +30,7 @@ def _load_docx():
                 code="DOCX_DEPENDENCY_NOT_INSTALLED",
                 message="python-docx is required for DocxAdapter.",
                 recoverable=True,
-                suggested_action="Install the optional dependency: pip install documa[docx]",
+                suggested_action="Install or repair the standard runtime: pip install --upgrade documa",
             )
         ) from exc
 

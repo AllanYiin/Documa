@@ -33,6 +33,16 @@ def require_documa_version(data: dict[str, Any], key: str, path: Path) -> str:
     return version
 
 
+def require_documa_install_pin(path: Path) -> None:
+    expected = expected_documa_version()
+    needle = f"documa=={expected}"
+    text = path.read_text(encoding="utf-8")
+    if needle not in text:
+        raise ValidationError(
+            f"{path.relative_to(ROOT)} must pin the matching runtime in its install command: {needle}"
+        )
+
+
 class ValidationError(Exception):
     pass
 
@@ -94,6 +104,7 @@ def validate_skill(plugin_root: Path, plugin_name: str) -> None:
 
 def validate_codex_plugin() -> None:
     plugin_root = PLUGINS / "codex-documa"
+    require_documa_install_pin(plugin_root / "README.md")
     manifest_path = plugin_root / ".codex-plugin" / "plugin.json"
     manifest = read_json(manifest_path)
     for key in ("name", "description"):
@@ -115,6 +126,7 @@ def validate_codex_plugin() -> None:
 
 def validate_claude_plugin() -> None:
     plugin_root = PLUGINS / "claude-code-documa"
+    require_documa_install_pin(plugin_root / "README.md")
     manifest_path = plugin_root / ".claude-plugin" / "plugin.json"
     manifest = read_json(manifest_path)
     if require_string(manifest, "name", manifest_path) != "claude-code-documa":
@@ -134,6 +146,7 @@ def validate_claude_plugin() -> None:
 
 def validate_openclaw_plugin() -> None:
     plugin_root = PLUGINS / "openclaw-documa"
+    require_documa_install_pin(plugin_root / "README.md")
     manifest_path = plugin_root / "openclaw.plugin.json"
     manifest = read_json(manifest_path)
     require_string(manifest, "id", manifest_path)
@@ -150,6 +163,7 @@ def validate_openclaw_plugin() -> None:
 
 def main() -> int:
     try:
+        require_documa_install_pin(PLUGINS / "README.md")
         validate_codex_plugin()
         validate_claude_plugin()
         validate_openclaw_plugin()

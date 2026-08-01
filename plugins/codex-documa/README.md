@@ -10,7 +10,7 @@ Plugin 內含兩個邊界清楚的 skills：`documa-evidence` 負責日常文件
 
 
 ```powershell
-python -m pip install -e ".[documents,mcp]"
+python -m pip install "documa==0.6.1"
 ```
 
 使用 Codex local plugin flow 載入 `plugins/codex-documa`。啟用後，在 Codex 內用以下指令確認 MCP server：

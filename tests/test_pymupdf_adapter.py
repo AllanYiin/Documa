@@ -2,10 +2,14 @@ import base64
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from documa.adapters.base import ParseOptions
 from documa.adapters.pymupdf_adapter import PyMuPDFAdapter
-from documa.core.ir import BlockType
+from documa.core.ir import BlockIR, BlockType, DocumentIR, PageIR, TextContent
+from documa.pipeline import PipelineContext, run_default_pipeline
+from documa.search.sidecar import build_search_sidecar
 
 
 PNG_1X1 = base64.b64decode(
@@ -167,6 +171,68 @@ class PyMuPDFAdapterTests(unittest.TestCase):
                 if block.type != BlockType.TABLE and block.text
             )
             self.assertNotIn("Stable deposits", non_table_text)
+
+    def test_table_ids_stay_unique_when_a_detected_candidate_is_skipped(self):
+        page = PageIR(
+            id="page_1",
+            page_number=1,
+            width=300,
+            height=220,
+            blocks=[
+                BlockIR(
+                    id="p1_b1",
+                    type=BlockType.TEXT,
+                    page_number=1,
+                    text=TextContent("detected table"),
+                    bbox=(20, 20, 120, 80),
+                    order_index=1,
+                ),
+                BlockIR(
+                    id="p1_b2",
+                    type=BlockType.TEXT,
+                    page_number=1,
+                    text=TextContent("borderless table"),
+                    bbox=(140, 100, 280, 180),
+                    order_index=2,
+                ),
+            ],
+        )
+        skipped = SimpleNamespace(extract=lambda: [], bbox=(0, 0, 10, 10))
+        detected = SimpleNamespace(
+            extract=lambda: [["Metric", "Value"], ["Revenue", "42"]],
+            bbox=(20, 20, 120, 80),
+        )
+        borderless = {
+            "rows": [["Metric", "Value"], ["Adoption", "9%"]],
+            "bbox": (140, 100, 280, 180),
+            "strategy": "borderless_column_table",
+            "profile": "test_profile",
+            "synthetic_header": False,
+        }
+
+        with (
+            patch(
+                "documa.adapters.pymupdf_adapter._find_page_tables", return_value=[skipped, detected]
+            ),
+            patch(
+                "documa.adapters.pymupdf_adapter._borderless_column_tables", return_value=[borderless]
+            ),
+        ):
+            PyMuPDFAdapter()._parse_tables(object(), page)
+
+        table_ids = [block.id for block in page.blocks if block.type == BlockType.TABLE]
+        self.assertEqual(table_ids, ["p1_table2", "p1_table3"])
+        self.assertEqual(len(table_ids), len(set(table_ids)))
+
+        document = DocumentIR(
+            id="doc-unique-tables", source_name="tables.pdf", parser="pymupdf", pages=[page]
+        )
+        pipeline_run = run_default_pipeline(document, PipelineContext(), include_chunking=True)
+        document_block_ids = [block.id for block in pipeline_run.document.document_blocks]
+        self.assertEqual(len(document_block_ids), len(set(document_block_ids)))
+        with tempfile.TemporaryDirectory() as tmp:
+            result = build_search_sidecar(pipeline_run.document, Path(tmp) / "documa.search.idx")
+        self.assertEqual(result["block_count"], len(document_block_ids))
 
     def test_parse_pdf_reconstructs_borderless_glossary_table(self):
         with tempfile.TemporaryDirectory() as tmp:

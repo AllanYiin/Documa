@@ -6,6 +6,8 @@ import math
 import re
 from collections import Counter
 from dataclasses import dataclass
+from functools import lru_cache
+from importlib.metadata import PackageNotFoundError, version as distribution_version
 from typing import Any
 
 from documa.core.ir import DocumentBlockIR, DocumentBlockType, DocumentIR
@@ -16,6 +18,8 @@ from documa.pipeline.block_tree import document_block_text
 _EN_TOKEN = re.compile(r"[A-Za-z][A-Za-z0-9_+\-]{1,}")
 _MIXED_TOKEN = re.compile(r"(?:[A-Za-z0-9]+[\u4e00-\u9fff]+|[\u4e00-\u9fff]+[A-Za-z0-9]+)[A-Za-z0-9\u4e00-\u9fff]*")
 _SENTENCE_SPLIT = re.compile(r"[，。！？；：、,.!?;:\n\r\t ]+")
+DEFAULT_KEYWORD_PROVIDER = "lingxi"
+REQUIRED_LINGXI_VERSION = "0.2.0"
 
 
 def _is_cjk(ch: str) -> bool:
@@ -127,6 +131,36 @@ def _rank_terms(
     return [term for _, _, _, term in ranked[:top_k]]
 
 
+def _rank_weighted_terms(
+    scores: Counter[str],
+    support: Counter[str],
+    *,
+    top_k: int,
+) -> list[str]:
+    ranked = [
+        (float(score) * max(1, support.get(term, 1)), support.get(term, 1), term)
+        for term, score in scores.items()
+        if term
+    ]
+    ranked.sort(key=lambda item: (-item[0], -item[1], item[2]))
+    return [term for _, _, term in ranked[:top_k]]
+
+
+@lru_cache(maxsize=1)
+def _load_lingxi_segmenter():
+    try:
+        installed_version = distribution_version("lingxi")
+    except PackageNotFoundError as exc:
+        raise ImportError("LingXi 0.2.0 is not installed") from exc
+    if installed_version != REQUIRED_LINGXI_VERSION:
+        raise ImportError(
+            f"LingXi {REQUIRED_LINGXI_VERSION} is required; found {installed_version}"
+        )
+    import lingxi
+
+    return lingxi.load()
+
+
 def _rank_new_words(
     term_freq: Counter[str],
     child_support: Counter[str],
@@ -186,6 +220,16 @@ class BlockKeywordExtractionStage(PipelineStage):
 
         settings = context.settings if context else {}
         top_k = int(settings.get("keyword_top_k", self.default_top_k))
+        requested_provider = str(settings.get("keyword_provider", DEFAULT_KEYWORD_PROVIDER)).casefold()
+        if requested_provider not in {"lingxi", "ngram"}:
+            raise ValueError(f"Unsupported keyword_provider: {requested_provider}")
+        segmenter = None
+        provider_fallback_reason = None
+        if requested_provider == "lingxi":
+            try:
+                segmenter = _load_lingxi_segmenter()
+            except Exception as exc:
+                provider_fallback_reason = f"{type(exc).__name__}: {exc}"
         by_id = {block.id: block for block in document.document_blocks}
         children = _children_by_parent(document.document_blocks)
         roots = [block for block in document.document_blocks if block.parent_id is None]
@@ -195,12 +239,15 @@ class BlockKeywordExtractionStage(PipelineStage):
 
         aggregate: dict[str, dict[str, Any]] = {}
         changed = 0
+        provider_counts: Counter[str] = Counter()
 
         for block in ordered:
             child_blocks = [by_id[child_id] for child_id in block.child_ids if child_id in by_id]
             if child_blocks:
                 term_freq = Counter()
                 child_support = Counter()
+                keyword_scores: Counter[str] = Counter()
+                keyword_support: Counter[str] = Counter()
                 left_sources = []
                 right_sources = []
                 leaf_count = 0
@@ -210,6 +257,9 @@ class BlockKeywordExtractionStage(PipelineStage):
                     child_terms = Counter(stats.get("term_freq", {}))
                     term_freq.update(child_terms)
                     child_support.update(Counter(stats.get("child_support", {})) or Counter(child_terms.keys()))
+                    child_scores = Counter(stats.get("keyword_scores", {}))
+                    keyword_scores.update(child_scores)
+                    keyword_support.update(Counter(stats.get("keyword_support", {})) or Counter(child_scores.keys()))
                     left_sources.append(stats.get("left_neighbors", {}))
                     right_sources.append(stats.get("right_neighbors", {}))
                     leaf_count += int(stats.get("leaf_count", 0))
@@ -220,18 +270,35 @@ class BlockKeywordExtractionStage(PipelineStage):
                 text = document_block_text(document, block)
                 term_freq = _text_terms(text)
                 child_support = Counter({term: 1 for term in term_freq})
+                keyword_scores = Counter()
+                keyword_support = Counter()
+                if segmenter is not None and text.strip():
+                    try:
+                        for term, weight in segmenter.extract_keywords(text, max(top_k * 2, top_k), None):
+                            keyword_scores[str(term)] += float(weight)
+                            keyword_support[str(term)] = 1
+                    except Exception as exc:
+                        provider_fallback_reason = f"{type(exc).__name__}: {exc}"
                 left_neighbors, right_neighbors = _neighbor_counters(text)
                 leaf_count = 1 if text.strip() else 0
                 text_length = len(text)
 
             min_support, min_freq = _thresholds(block, leaf_count, text_length)
-            keyword_terms = _rank_terms(
-                term_freq,
-                child_support,
-                min_support=min_support,
-                min_freq=min_freq,
-                top_k=top_k,
-            )
+            # LingXi selects keywords for text-bearing leaves. Ancestors retain
+            # the established n-gram/support aggregation so the same evidence
+            # is not published as duplicate hits at every hierarchy level.
+            block_provider = "lingxi" if not child_blocks and keyword_scores else "ngram"
+            if block_provider == "lingxi":
+                keyword_terms = _rank_weighted_terms(keyword_scores, keyword_support, top_k=top_k)
+            else:
+                keyword_terms = _rank_terms(
+                    term_freq,
+                    child_support,
+                    min_support=min_support,
+                    min_freq=min_freq,
+                    top_k=top_k,
+                )
+            provider_counts[block_provider] += 1
             new_words = _rank_new_words(
                 term_freq,
                 child_support,
@@ -249,6 +316,10 @@ class BlockKeywordExtractionStage(PipelineStage):
             block.metadata["keyword_terms"] = keyword_terms
             block.metadata["new_word_terms"] = new_words
             block.metadata["search_terms"] = search_terms
+            block.metadata["keyword_provider"] = block_provider
+            block.metadata["keyword_provider_requested"] = requested_provider
+            if requested_provider == "lingxi" and block_provider != "lingxi":
+                block.metadata["keyword_provider_fallback"] = provider_fallback_reason or "no_lingxi_candidates"
             block.metadata["keyword_thresholds"] = {
                 "min_support": min_support,
                 "min_freq": min_freq,
@@ -256,14 +327,20 @@ class BlockKeywordExtractionStage(PipelineStage):
                 "text_length": text_length,
                 "strategy": "bottom_up_aggregation",
             }
-            block.metadata["keyword_stats"] = {
+            keyword_stats = {
                 "term_freq": dict(term_freq.most_common(self.max_stats_terms)),
                 "child_support": dict(child_support.most_common(self.max_stats_terms)),
             }
+            if keyword_scores:
+                keyword_stats["keyword_scores"] = dict(keyword_scores.most_common(self.max_stats_terms))
+                keyword_stats["keyword_support"] = dict(keyword_support.most_common(self.max_stats_terms))
+            block.metadata["keyword_stats"] = keyword_stats
 
             aggregate[block.id] = {
                 "term_freq": dict(term_freq.most_common(self.max_stats_terms)),
                 "child_support": dict(child_support.most_common(self.max_stats_terms)),
+                "keyword_scores": dict(keyword_scores.most_common(self.max_stats_terms)),
+                "keyword_support": dict(keyword_support.most_common(self.max_stats_terms)),
                 "left_neighbors": left_neighbors,
                 "right_neighbors": right_neighbors,
                 "leaf_count": leaf_count,
@@ -275,5 +352,12 @@ class BlockKeywordExtractionStage(PipelineStage):
             document=document,
             stage_name=self.name,
             changed=changed > 0,
-            report={"blocks_enriched": changed, "strategy": "bottom_up_aggregation"},
+            report={
+                "blocks_enriched": changed,
+                "strategy": "bottom_up_aggregation",
+                "keyword_provider_requested": requested_provider,
+                "keyword_provider_counts": dict(provider_counts),
+                "keyword_provider_fallback": provider_fallback_reason,
+                "new_word_provider": "ngram_boundary_entropy",
+            },
         )

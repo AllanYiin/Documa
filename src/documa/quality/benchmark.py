@@ -28,6 +28,8 @@ class BenchmarkOptions:
     mode: str = "readiness"
     gold_dir: Path = Path("fixtures/pdf/gold")
     quality_threshold: float = 0.85
+    pdf_provider: str = "auto"
+    keyword_provider: str = "lingxi"
 
 
 @dataclass(slots=True)
@@ -180,7 +182,7 @@ def _quality_case_result(case: FixtureCase, options: BenchmarkOptions, gold_path
     needs_ocr = bool(gold.get("ocr_expected_texts"))
     if needs_ocr and not _ocr_extra_available():
         base.status = "skipped"
-        base.message = "Gold expects OCR output but the documa[ocr] extra is not installed."
+        base.message = "Gold expects OCR output but the documa[all] extra is not installed."
         return base
 
     # Lazy import through the tools layer: the metrics stay pipeline-free, the
@@ -188,7 +190,12 @@ def _quality_case_result(case: FixtureCase, options: BenchmarkOptions, gold_path
     from documa.interfaces.tools import process_document_tool
 
     try:
-        payload = process_document_tool(source=str(fixture_path), ocr=needs_ocr)
+        payload = process_document_tool(
+            source=str(fixture_path),
+            ocr=needs_ocr,
+            pdf_provider=options.pdf_provider,
+            keyword_provider=options.keyword_provider,
+        )
     except Exception as exc:  # pipeline failure is a case error, not a crash
         base.message = f"Pipeline failed: {exc}"
         return base
@@ -287,6 +294,8 @@ def run_fixture_benchmark(options: BenchmarkOptions | None = None) -> dict[str, 
         "manifest_path": str(options.manifest_path),
         "fixtures_dir": str(options.fixtures_dir),
         "require_files": options.require_files,
+        "pdf_provider": options.pdf_provider,
+        "keyword_provider": options.keyword_provider,
         "summary": summary,
         "cases": [item.to_dict() for item in case_results],
     }

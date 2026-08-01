@@ -9,9 +9,21 @@
 ## 📌 SNAPSHOT — 當前狀態
 <!-- 這一整段每次 /devnote 會被覆寫，只反映「到目前為止的最新狀態」 -->
 
-**最後更新**：2026-07-23 23:23
+**最後更新**：2026-08-01
 
 ### 需求狀態
+- [x] v0.6.1 版本、runtime 與三個 plugin metadata 已同步；plugin README 鎖定 `documa==0.6.1`，zip 已重建並驗證
+- [x] `pip install documa` 改為完整非 OCR agent runtime；`documa[all]` 額外加入 OCR；細粒度 extras 保留相容
+- [x] 修正 v0.4 起 `documa_process(out=...)` 同步 sidecar 建置的 O(N²) 文字 map 回歸；真實 423 頁 IR 由約 168s 降至 3.687s
+- [x] 單文件 sidecar v2 新增 local feature-hash HNSW section ANN；只在 lexical coverage 不足時啟動，不呼叫 embedding／LLM／token counter
+- [x] 本機 editable install 的 module/distribution metadata 已刷新為 0.6.1；active MCP server 需重啟才載入新碼
+- [x] PDF 公開預設已改為 `auto` 的 Rust-first provider；`rust` 可嚴格指定、`pymupdf` 可回滾，Rust inferred order 在 pipeline 鎖定
+- [x] Rust Stage 6C2-E 使用真正 lazy `native_events_v2`；頁面即時釋放、finalization 逐頁 drain，舊 wheel fallback 保留
+- [x] Rust Stage 6D 預設 `compact_trace_v1`、verbose 可逆；三次 shadow RSS 1.056367x 通過 1.2x gate，focused 18/18、full 354/354、Ruff pass
+- [x] Rust Stage 6C2-E exact wheel 保持不變：SHA-256 `5ac374d01ec0bfeaea88b1595d8f720237a1adb94d0ae7e5fc7169fa48bf3d61`
+- [ ] Rust 尚未通過完整品質 provider gate：目前 quality gold 9/18 failed（reading order、table、footnote/image relation 等）；memory gate 已通過。預設雖為 Rust-first，品質敏感工作仍須 `pdf_provider="pymupdf"`。
+- [x] 2026-08-01 Rust PDF／LingXi 預設替換與 0.2.0 binding 契約已驗證；保留 provider 回滾、OCR renderer 路由、citation alias 修正、leaf-only LingXi 與 sidecar provider digest。
+- [ ] v0.6.1 尚未 tag 或發布至 PyPI／plugin registry
 - [x] v0.5.0 token economy 改造已 release 並推上 origin/main（`ac7c2e3`→`a479a89`）
 - [x] MCP 回應單份傳輸、短 block id、omit-empty、nav/auto-budget 預設、collection 排序訊號統一
 - [x] 三份 plugin skill 與 zip 已同步重建（package_plugins --check 通過）
@@ -21,27 +33,61 @@
 ### 未解問題
 - **benchmark 指標與真實收益脫節**：`tokens_to_supported_answer` 6,427→6,688（+4%），漲幅來自 agent profile 多 4 個工具的 schema 固定成本（+572t）；但真實文件（basel3）回應層省 69-71%。benchmark gold 需換成帶 GUID id、多層結構的真實文件才有鑑別力。
 - **grep 對照組缺席**：對外主張「比 grep 省 token」尚無同 query 集的 grep+read 模擬路徑對照數據。
+- **替換後能力邊界**：Rust PDF 不提供 renderer/OCR，human-order 與 private table/image gold 尚未完成；LingXi 若直接發布到所有祖先會造成階層重複命中，因此僅替換文字葉節點的關鍵詞選取，並保留 n-gram 邊界熵新詞、`term_freq`/`child_support` bottom-up 統計。仍須保留 `pdf_provider="pymupdf"`、`keyword_provider="ngram"` 回滾，provider/tokenizer 變更時強制重建 sidecar。
 
 ### 關鍵技術決策（當前有效）
 > 歷史上做過的、目前仍然成立的決策摘要。被推翻的決策不列。
 - **回應層 token 慣例**：短 id + `block_id_prefix` 宣告、omit-empty、`page_ref_kind` 上提、citation 四欄收斂為單一 `page` label（詳見 HISTORY `[2026-07-23]`）
 - **MCP wire 單份傳輸**：FastMCP wrapper 回傳 compact JSON 字串 + `structured_output=False`；`call_documa_tool` direct 路徑仍雙保留（詳見 HISTORY `[2026-07-23]`）
 - **預設值就是產品**：skill 裡教 LLM 調的參數一律轉成工具預設值（nav、auto budget 2000、include_citations=False）（詳見 HISTORY `[2026-07-23]`）
+- **安裝預設也是產品**：base install 包含文件 adapters + MCP + tiktoken，只有 RapidOCR 留在 ll extra；plugin manifest 與安裝 pin 必須跟 project version 同步
 - **collection 讀取對 = `(document_id, block_id)`**：`read_ref`/`ir_document_id`/`bbox_refs` 已從搜尋列移除（詳見 HISTORY `[2026-07-23]`）
 - **doc-region 規則共用**：`documa.core.doc_regions` 供單文件與 collection 兩堆疊共用，避免 interfaces↔collections 循環匯入（詳見 HISTORY `[2026-07-23]`）
+- **HNSW 只作低信心 section router**：向量來自本機 lexical feature hash；exact lexical seed 優先，ANN 不直接成為 evidence、也不引入 embedding API／LLM decomposition／PPR
 - **agent profile 涵蓋完整 evidence 工作流**：補入 block_tree/list_blocks/source_window/block_xref；plugin 預設 `DOCUMA_MCP_PROFILE=agent`（詳見 HISTORY `[2026-07-23]`）
+- **decorative image 留在 Rust Layout IR、Documa 預設只記 aggregate**：內容／作者 Figure 才提升為 `ImageIR`；`rust_pdf_include_decorative_images=True` 可逆地保留全部 occurrence
+- **Rust 只替換 parser adapter，不替換 renderer**：OCR/page preview 仍需 PyMuPDF；Rust 座標只接受 `layout_unrotated_top_left`，跨頁/domain/LLM 語意留在 Documa
+- **Rust Documa metadata 預設 compact、verbose opt-in**：`compact_trace_v1` 以共享 schema 保留 ordinal/MCID/text-origin/rule，page object/coordinate space 向上繼承；`rust_pdf_include_verbose_metadata=True` 恢復舊形狀
+- **Rust lazy finalization 是 terminal patch stream**：頁面先映射，metadata 在 exhaustion 原地更新，再以 `draining_stable_id_patches_v1` 逐頁套用 role/main-flow；不得在頁面迴圈前把 capabilities/warnings 當最終值
+- **替換採可逆 provider，不刪舊能力**：Rust 負責 PDF extraction，PyMuPDF 保留 renderer/OCR 與明確回退；LingXi 負責預設 `keyword_terms`，n-gram 保留為缺模型回退與新詞能力補償，直到等價的新詞／gold gate 通過。
 
 ### 已知地雷（仍需注意）
 > 踩過且未來仍可能重踩的坑的一句話提醒。已徹底不可能重現的不列。
 - **FastMCP `structured_output=False` 的 dict 回傳會被 `pydantic_core.to_json(indent=2)` pretty-print**——必須自己序列化成 str 回傳才是 compact（詳見 HISTORY `[2026-07-23]`）
 - **`DocumentBlockType.TOC.value == "table_of_content"` 不是 `"toc"`**——用字串比對 block type 時務必查 `ir.py` enum 值（詳見 HISTORY `[2026-07-23]`）
 - **測試用 `_CharCounter`（一字一 token）會誤觸 search 的 auto response budget**——斷言完整回應形狀的測試要傳 `max_response_tokens=0` 關閉（詳見 HISTORY `[2026-07-23]`）
-- **INDEX_VERSION=4 / sidecar route-path-v2**：v0.5.0 前建的 collection index 與 sidecar 會被 doctor 標 stale，首搜前需重建
+- **INDEX_VERSION=4 / sidecar schema v2**：v0.5.0 前的 collection index，以及未含 `hnsw-route-v1` 的 search sidecar 都是 stale 衍生物；需重建後才使用 indexed routing
+- **`document_block_text()` 每次都重建全文件 source-text map**——大量迴圈不可逐 block 呼叫；sidecar 必須一次建 map 並重用（詳見 HISTORY `[2026-07-24]`）
 - **`test_registry_locking` 在 Windows 全套跑偶發 `PermissionError` flake**，單獨重跑即過
+- **關閉 pytest plugin autoload 會拿掉 snapshot fixtures**：全套需顯式 `-p pytest_datadir.plugin -p pytest_regressions.plugin`
+- **Rust memory gate 已過但不可直接切換**：Stage 6D 完整 Documa 峰值 646,643,712 bytes（1.056367x PyMuPDF）；字元／tagged-order／私有 table-image gold 仍是 NO-GO
+- **readiness 不是 accuracy**：fixture readiness 18/18 只證明檔案與 capability contract 齊備；2026-07-30 Rust quality mode 實測為 9 passed / 9 failed，不得寫成品質全過。
+- **LingXi 完整 stage 目前不是加速項**：保留 n-gram 新詞／support 後，12 份 fixture 暖機中位數 13.9652 ms，較 n-gram 11.0256 ms 慢 26.66%；優勢是 leaf keyword 語意排序，不是整段 pipeline latency。
 
 ---
 
 # 📜 HISTORY
+
+---
+
+## [2026-07-24] 大型文件 `documa_process` 300 秒逾時修正
+
+- 同一份 423 頁、38.7 MB PDF 在 v0.4 前可完成，但 v0.4 將 `documa.search.idx` 納入 `documa_process(out=...)` 同步路徑後出現 MCP host 300 秒 deadline。
+- 產物時間分界：PDF parse/previews 約 116s，IR + pipeline 約再 93s，sidecar 約再 168s；MCP timeout 是 client deadline，server 最終仍完成有效產物。
+- 根因：sidecar 對每個 document block 呼叫 `document_block_text()`；該函式每次重建全文件 `source block id → text` map，section sketch/subtree cost 又重複讀同一批 block，形成大型文件 O(N²) 熱點。
+- 修正：sidecar 一次建立 source-text map 與 document-block text cache；descendant queue 改 `deque.popleft()`。不改 IR、tool schema、sidecar schema 或輸出內容。
+- 真實 IR 實測：sidecar 168s → 3.687s；舊新 SQLite 的 metadata/blocks/term_stats/block_terms/routes 雙向 EXCEPT 全為 0。針對性 28 passed；全套 `pytest -p no:cacheprovider` 348 passed。
+
+---
+
+## [2026-07-24] v0.6.1 batteries-included packaging（待發布）
+
+- v0.6.0 未發布；納入大型文件 sidecar 效能修正後直接推進為 v0.6.1。
+- runtime、三個 plugin metadata、四份 install pin 與兩個 tracked zip 已同步；本機 editable metadata 亦刷新為 0.6.1。
+- 預設 dependencies 納入 PDF/DOCX/PPTX/HTML/MSG/IPYNB adapters、MCP 1.x 與 tiktoken；`all` extra 只新增 RapidOCR。
+- 版本推進至 0.6.1；Claude Code、Codex、OpenClaw manifest/package 同步，plugin README pin `documa==0.6.1`。
+- validator 與 packaging contract test 會阻擋 runtime/plugin version drift；plugin zip 已重建；全套 `pytest` 348 passed。
+- 尚未 commit、tag、push 或發布。
 
 ---
 
@@ -86,3 +132,105 @@
 
 ### 備註
 `token-economy.json`（benchmark 產物）留在 repo 根目錄未追蹤。本次未動 pipeline/IR，snapshot 測試無需 regen。
+
+---
+
+## [2026-07-29] Rust PDF shadow adapter + draining transfer
+
+- 新增 lazy optional `RustPdfAdapter`、registry explicit provider、穩定錯誤、Layout IR schema/座標驗證，以及 text/role/table/image/navigation/provenance mapping；預設 provider 不變。
+- Rust `inferred_order` 成為 adapter block order，`reading_order_locked` 阻止下游再用幾何規則覆寫；四種 Rust order 仍保留 metadata。
+- 正式 7 PDFs / 1,113 pages shadow：Rust complete adapter 20.095623 pages/s，PyMuPDF 6.608120 pages/s，Rust 3.041050x；character F1 0.960813，故 NO-GO。
+- 新 wheel 提供 `extract_layout_stream()`；Documa 逐頁 consume。draining transfer 加 decorative aggregate policy 後，580/423 頁壓力檔 RSS 分別降 61.54%/18.48%，文字 SHA/block/span 不變；全域最大仍為 PyMuPDF 1.449143x，native page-production 尚待開發。
+- Rust adapter/reading-order focused 17 passed；全套在顯式 snapshot plugins 下 353 passed；Ruff 通過。PyMuPDF OCR/page preview renderer 未移除。
+---
+
+## [2026-07-29] Rust Stage 6C2-C/D final integration gate
+
+- Exact wheel SHA-256 `8bfde5151edae46e828aaa27d125073b1e4d94915241da5b7fc874586a6036e1`
+  passed Rust adapter/reading-order focused 17/17 and full Documa 353/353.
+- `documa doctor --project-root .` passed 8/8 with fixture benchmark readiness
+  18/18. Full `ruff check --no-cache .` passed after ten behavior-neutral lint
+  cleanups; no provider mapping or default selection changed.
+- PyMuPDF remains default and remains the OCR/page-preview renderer. Rust native
+  event delivery is not yet lazy, so default-provider cutover remains forbidden.
+
+---
+
+## [2026-07-29] Rust Stage 6C2-E native lazy producer
+
+- `RustPdfAdapter` 已從 `draining_json_v1` complete-page queue 切至
+  `native_events_v2`。Rust 逐頁解析並釋放 Layout page；Python metadata 在
+  `DocumentFinalize` 後原地更新。
+- repeated furniture 的 role/main-flow 不要求保留 raw pages；adapter 以
+  `draining_stable_id_patches_v1` 逐頁套回既有 `BlockIR` / `PageIR`。
+- lazy 期間才發生的 parser error 統一包裝為 `RUST_PDF_PARSE_FAILED`；舊 wheel
+  無 stream/finalization API 時仍可 fallback。
+- exact wheel focused 17/17、full 353/353、Ruff pass。輸出 text SHA、block/span
+  counts 與 Stage 6C2-B 相同。
+- 效能仍是 NO-GO：完整 shadow Rust 20.071995 pages/s、比 PyMuPDF Documa 快
+  3.682255x，但 RSS 946,515,968 bytes（1.553468x）。逐頁 finalization drain 將
+  AI Index probe 降至 900,263,936 bytes，仍未達 1.2x；PyMuPDF 保持 default 與 renderer。
+---
+
+## [2026-07-29] Rust Stage 6D compact metadata + memory gate
+
+- 預設映射改為 `compact_trace_v1`：共享 schema 保留 source ordinal、MCID、text origin、rule ID，page object 與 coordinate space 改由 page/document 繼承；verbose 舊形狀可明確 opt-in。
+- citation 仍使用真實 block id、page/BBox 與 stable source refs；7/7 文件 text SHA、block/span/semantic counts 與 Stage 6C2-E 相同。
+- 正式 1 warm-up + 3 measured shadow：Rust 34.704637 pages/s、PyMuPDF 5.976338，快 5.807007x；Rust RSS 646,643,712 bytes、PyMuPDF 612,139,008，ratio 1.056367x，memory gate PASS。
+- AI Index lifecycle profile：parse peak 356,667,392、canonical serialization peak 564,396,032；canonical IR -37.53%，encoded metadata -67.38%。
+- focused 18/18、full 354/354、Ruff、doctor 8/8 全過。字元 F1 0.960813、tagged order 0.940546、private table/image gold 未過／缺席，PyMuPDF 繼續是 default 與 renderer。
+
+---
+
+## [2026-07-30] 零模型呼叫的 HNSW section routing
+
+- 新增純標準庫 `documa.search.hnsw`：deterministic 192 維 local feature hash、cosine distance、stable geometric levels、bounded-degree multi-layer graph、`ef_construction=32`／`ef_search=32`。
+- sidecar schema 升 v2，新增 `route_ann_nodes`／`route_ann_edges` 與 ANN metadata；atomic rebuild 同時涵蓋 update/delete/state，IR 仍是 citation truth。
+- 查詢先跑原有 lexical route；coverage < 1 才走 HNSW，exact/ANN seeds 融合後只縮小 leaf scope，最終排名仍是 BM25-lite + coverage/proximity/intent + dedupe/MMR/token budget。
+- 明確排除 NodeRAG 的 query embedding API、LLM entity decomposition、全圖 PPR；debug profile 新增 `route_sources`，一般 nav/evidence 回應不增肥。
+- 驗證：focused HNSW/sidecar 9/9、完整 pytest 356/356、Ruff pass、doctor 8/8、fixture readiness 18/18；96-section 測試驗證 HNSW 有執行且未解包全部 vectors。
+
+---
+
+## [2026-07-30] Rust PDF／LingXi 預設替換前能力損失與回滾紀錄
+
+### 已知能力損失
+
+- Rust PDF 只替換 parser extraction；page preview、OCR、掃描件與需要 renderer 的路徑仍依賴 PyMuPDF。
+- Rust parser 不支援 encryption、damaged-xref repair、完整 stream/image codec 與渲染；遇到 unsupported/recoverable error 必須能明確切回 PyMuPDF，不能靜默產生殘缺 IR。
+- Rust raw text character/bigram F1 已達 0.998954/0.996075，但 human reading-order 雙人 gold、table TEDS-S 與 image gold 尚未完成；這些 gate 在完成前保持 BLOCKED。
+- LingXi `extract_keywords()` 只提供 TextRank 詞與權重；直接替換會失去 n-gram 邊界熵新詞、完整 term frequency、child support 與既有 bottom-up metadata 契約。
+- LingXi 冷載入實測約 42 ms、常駐 RSS 約增加 21 MB；目前模型 wheel/資產不可公開再散布，base install 不可硬依賴。
+- 37-block probe 的 LingXi 與 n-gram mean Jaccard@12 僅 0.2164，代表排序語意會大幅改變；5-query synthetic retrieval 無回歸不足以證明真實正確率。
+- 2026-07-30 Rust 預設啟用後，發現 page-block id 可能與 document-block 的短 alias 碰撞；`source_window()` 會錯把 page block 解成 document block，造成中心 id 契約回歸（focused integration 79 passed / 1 failed）。必須先讓 exact page id 優先於衍生 alias，再解除此項。
+- 2026-07-30 驗證 sidecar rebuild 時發現：靜態 feature version 雖已升版，但同一 IR 在 `lingxi`／`ngram` 間切換時，舊 `source_digest()` 不含 provider 與 keyword metadata，可能誤用舊 sidecar。必須把實際 provider 與索引輸入納入 digest／tokenizer metadata。
+- 2026-07-30 安裝 exact Rust wheel 並啟用新預設後，full suite 為 350 passed / 10 failed：3 個 legacy snapshot、OCR image metadata、三欄閱讀順序、table quality、merged-cell table，以及 3 個 collection/search 行為。這批是替換後的實際契約差異；legacy snapshot 應鎖回舊 provider，OCR 必須路由 renderer，Rust table/order 未過時須可觀測回退，其餘 search 差異須先定位後才能解除。
+
+### 實作要求與回滾
+
+- 公開工具、CLI、MCP 都要接受 `pdf_provider`，預設切至 Rust；`pymupdf` 必須保持可明確選擇。
+- Rust 缺 binding 或遇到不支援能力時，回退必須被回應的 parser/warnings/provenance 看見；不得偽裝成 Rust 成功。
+- `keyword_provider` 要有 `lingxi`／`ngram`，預設 LingXi；缺模型時允許可觀測回退，並保留 n-gram 新詞能力直到 LingXi 等價方案通過 gold。
+- sidecar tokenizer/feature version 必須包含 provider；舊 sidecar 視為 disposable 並重建。
+- 最終驗收至少包含 focused/full tests、doctor、fixture readiness、前後 keyword latency/RSS、retrieval Evidence Recall/Citation Precision，以及 Rust PDF 現有 quality/memory gate；任何 human/table/image BLOCKED 仍須明載，不得被局部測試覆蓋。
+
+---
+
+## [2026-07-30] Rust PDF／LingXi 預設替換完成與驗證
+
+- `parse/process/view/ingest` 的 Python tool、CLI、MCP 與 schema 已公開 `pdf_provider`；PDF 預設 `auto` 先用 Rust，recoverable error 可觀測回退 PyMuPDF，嚴格 `rust`／回滾 `pymupdf` 保留。exact wheel `5ac374d0…d61` 已安裝至 Documa 現用 `D:\Python310`。
+- `keyword_provider` 預設 `lingxi`；LingXi 只排序文字 leaf，祖先維持 n-gram child-support 聚合，邊界熵 `new_word_terms`／`term_freq` 契約不刪。缺模型時回退原因寫入 block/stage metadata。
+- OCR `auto` 明確路由 PyMuPDF renderer，metadata 記錄 `OCR_REQUIRES_PYMUPDF_RENDERER`；Rust parser 不偽裝具備 renderer。
+- 修正兩個替換後才暴露的契約問題：exact page-block id 現在優先於 document-block 短 alias；sidecar digest/tokenizer metadata 納入 requested/actual keyword provider 與實際索引詞，provider 切換會重建。
+- 12 fixtures / 21 pages / 124 document blocks：n-gram stage 暖機 median 11.0256 ms；LingXi+補償 median 13.9652 ms（1.2666x），cold sample 55.2654 ms。keyword mean Jaccard@12 0.771917，38/124 blocks 改變。
+- 5-query synthetic retrieval：兩者 Evidence Recall@300/600/1200 都是 1.0、Citation Precision 0.55、Citation Recall 1.0、paraphrase top-k Jaccard 0.8；只能證明此小集合無回歸，不能取代真人 gold。
+- Rust formal shadow 沿用 exact wheel 結果：34.704637 pages/s vs PyMuPDF 5.976338（5.807007x），RSS ratio 1.056367x；raw character/bigram F1 0.998954/0.996075。此次 quality mode 則 Rust 9/18 failed；PyMuPDF legacy baseline 2/18 failed（footnote/image relation），所以 Rust reading-order/table/image gate 仍 BLOCKED。
+- 驗證：full pytest 360 passed；`ruff check --no-cache .` passed；doctor 8/8；fixture readiness 18/18；`git diff --check` passed。default smoke 為 `rust_pdf`，OCR smoke 為 `pymupdf` fallback。
+---
+
+## [2026-08-01] 0.2.0 binding 契約與 LingXi 階層去重驗證
+
+- 作用中 Python 的 `lingxi` distribution 由 0.1.0 換成 `D:\PycharmProjects\rust_Lingxi\target\wheels\lingxi-0.2.0-cp39-abi3-win_amd64.whl`；`rust_pdf.version_info()` 為 `('0.2.0', 'stage-11')`。
+- `_load_lingxi_segmenter()` 與 `_load_rust_pdf()` 新增 exact 0.2.0 contract；版本缺失／不符會進入既有可觀測 fallback，不會把錯版 native binding 當成成功。
+- 曾嘗試把 LingXi leaf scores 向所有祖先發布；full suite 出現 5 個階層重複命中回歸（collection incremental、document cache、budget、group hint），因此收斂為 leaf-only LingXi，祖先維持 n-gram/support 聚合。這是搜尋去重契約，不是效能取巧。
+- 驗證：focused 12/12、full pytest 362/362、Ruff pass、`git diff --check` pass、doctor 8/8、fixture readiness 18/18；真實 smoke 可抽出中文 TextRank keywords。

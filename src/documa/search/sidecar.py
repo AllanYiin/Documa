@@ -10,20 +10,22 @@ import hashlib
 import json
 import math
 import sqlite3
+import struct
 import uuid
-from collections import Counter
+from collections import Counter, deque
 from pathlib import Path
 from typing import Any
 
 from documa.core.block_scope import top_branch_id
 from documa.core.ir import DocumentBlockType, DocumentIR
-from documa.pipeline.block_tree import document_block_text
+from documa.pipeline.block_tree import block_text_by_id
+from documa.search import hnsw
 
 
-SEARCH_INDEX_VERSION = 1
+SEARCH_INDEX_VERSION = 2
 APPLICATION_ID = 0x444F4355  # "DOCU"
 # route-path-v2: heading paths no longer repeat the document root title.
-FEATURE_VERSION = "keyword-v2+simhash64+sketch-v1+route-path-v2"
+FEATURE_VERSION = "keyword-v3-provider-aware+ngram-newword-v2+simhash64+sketch-v1+route-path-v2+hnsw-route-v1"
 
 
 def sidecar_path(ir_path: str | Path) -> Path:
@@ -91,7 +93,37 @@ def source_digest(document: DocumentIR) -> str:
         digest.update(block.id.encode("utf-8"))
         digest.update((block.content_hash or "").encode("ascii", errors="ignore"))
         digest.update("\0".join(block.source_block_ids).encode("utf-8"))
+        keyword_input = {
+            "provider": block.metadata.get("keyword_provider"),
+            "provider_requested": block.metadata.get("keyword_provider_requested"),
+            "keyword_terms": block.metadata.get("keyword_terms") or [],
+            "new_word_terms": block.metadata.get("new_word_terms") or [],
+            "search_terms": block.metadata.get("search_terms") or [],
+        }
+        digest.update(
+            json.dumps(keyword_input, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        )
     return digest.hexdigest()
+
+
+def keyword_provider_signature(document: DocumentIR) -> str:
+    requested = sorted(
+        {
+            str(block.metadata.get("keyword_provider_requested"))
+            for block in document.document_blocks
+            if block.metadata.get("keyword_provider_requested")
+        }
+    )
+    actual = sorted(
+        {
+            str(block.metadata.get("keyword_provider"))
+            for block in document.document_blocks
+            if block.metadata.get("keyword_provider")
+        }
+    )
+    requested_label = "+".join(requested) or "unknown"
+    actual_label = "+".join(actual) or "unknown"
+    return f"requested-{requested_label}__actual-{actual_label}"
 
 
 def _heading_path(block_id: str, by_id: dict[str, Any]) -> list[str]:
@@ -110,9 +142,9 @@ def _heading_path(block_id: str, by_id: dict[str, Any]) -> list[str]:
 
 def _descendants(block: Any, by_id: dict[str, Any]) -> list[Any]:
     output: list[Any] = []
-    pending = list(block.child_ids)
+    pending = deque(block.child_ids)
     while pending:
-        child = by_id.get(pending.pop(0))
+        child = by_id.get(pending.popleft())
         if child is None:
             continue
         output.append(child)
@@ -120,13 +152,30 @@ def _descendants(block: Any, by_id: dict[str, Any]) -> list[Any]:
     return output
 
 
-def deterministic_section_sketch(document: DocumentIR, block: Any, by_id: dict[str, Any], max_chars: int = 360) -> str:
+def deterministic_section_sketch(
+    document: DocumentIR,
+    block: Any,
+    by_id: dict[str, Any],
+    max_chars: int = 360,
+    *,
+    document_block_texts: dict[str, str] | None = None,
+) -> str:
     """Extract one stable leading unit from each descendant leaf."""
+    if document_block_texts is None:
+        source_texts = block_text_by_id(document)
+        document_block_texts = {
+            item.id: "\n\n".join(
+                source_texts[source_id].strip()
+                for source_id in item.source_block_ids
+                if source_texts.get(source_id, "").strip()
+            )
+            for item in document.document_blocks
+        }
     units: list[str] = []
     for child in _descendants(block, by_id):
         if child.child_ids:
             continue
-        text = " ".join(document_block_text(document, child).split())
+        text = " ".join(document_block_texts.get(child.id, "").split())
         if not text:
             continue
         cut = len(text)
@@ -149,6 +198,15 @@ def build_search_sidecar(document: DocumentIR, path: str | Path) -> dict[str, An
     if temporary.exists():
         temporary.unlink()
     by_id = {block.id: block for block in document.document_blocks}
+    source_texts = block_text_by_id(document)
+    document_block_texts = {
+        block.id: "\n\n".join(
+            source_texts[source_id].strip()
+            for source_id in block.source_block_ids
+            if source_texts.get(source_id, "").strip()
+        )
+        for block in document.document_blocks
+    }
     leaf_count = sum(1 for block in document.document_blocks if not block.child_ids)
     document_frequency: Counter[str] = Counter()
     for block in document.document_blocks:
@@ -182,26 +240,41 @@ def build_search_sidecar(document: DocumentIR, path: str | Path) -> dict[str, An
                 page_start INTEGER, page_end INTEGER, subtree_cost INTEGER NOT NULL,
                 terms_json TEXT NOT NULL, sketch TEXT NOT NULL
             );
+            CREATE TABLE route_ann_nodes (
+                block_id TEXT PRIMARY KEY, level INTEGER NOT NULL, vector BLOB NOT NULL
+            );
+            CREATE TABLE route_ann_edges (
+                block_id TEXT NOT NULL, level INTEGER NOT NULL, neighbor_id TEXT NOT NULL,
+                PRIMARY KEY (block_id, level, neighbor_id)
+            );
             CREATE INDEX idx_blocks_branch ON blocks(branch_id);
             CREATE INDEX idx_block_terms_term ON block_terms(term);
+            CREATE INDEX idx_route_ann_edges_node ON route_ann_edges(block_id, level);
             """
         )
+        provider_signature = keyword_provider_signature(document)
         metadata = {
             "source_digest": source_digest(document),
             "document_id": document.id,
             "ir_version": document.ir_version,
             "feature_version": FEATURE_VERSION,
             "normalizer_version": "unicode-str-preserve-original-v1",
-            "tokenizer_version": "documa-cjk-substring-v2",
+            "tokenizer_version": f"documa-{provider_signature}+ngram-newword-v2",
+            "keyword_provider_signature": provider_signature,
             "leaf_count": str(leaf_count),
+            "ann_vector_version": hnsw.VECTOR_VERSION,
+            "ann_dimensions": str(hnsw.DIMENSIONS),
+            "ann_m": str(hnsw.M),
+            "ann_ef_construction": str(hnsw.EF_CONSTRUCTION),
         }
         connection.executemany("INSERT INTO metadata(key, value) VALUES (?, ?)", metadata.items())
         connection.executemany(
             "INSERT INTO term_stats(term, document_frequency) VALUES (?, ?)",
             sorted(document_frequency.items()),
         )
+        ann_parts: dict[str, list[tuple[str, float]]] = {}
         for block in document.document_blocks:
-            text = document_block_text(document, block)
+            text = document_block_texts[block.id]
             stats = block.metadata.get("keyword_stats") or {}
             term_freq = {str(key): int(value) for key, value in (stats.get("term_freq") or {}).items()}
             entropy_by_term = {
@@ -219,7 +292,12 @@ def build_search_sidecar(document: DocumentIR, path: str | Path) -> dict[str, An
             terms = [term for term in terms if term]
             sketch = ""
             if block.type in {DocumentBlockType.DOCUMENT, DocumentBlockType.SECTION}:
-                sketch = deterministic_section_sketch(document, block, by_id)
+                sketch = deterministic_section_sketch(
+                    document,
+                    block,
+                    by_id,
+                    document_block_texts=document_block_texts,
+                )
             pages = sorted(block.page_refs)
             features = {
                 "depth": block.depth,
@@ -252,13 +330,14 @@ def build_search_sidecar(document: DocumentIR, path: str | Path) -> dict[str, An
                 ((block.id, term, frequency) for term, frequency in sorted(term_freq.items())),
             )
             if block.type in {DocumentBlockType.DOCUMENT, DocumentBlockType.SECTION}:
-                subtree_cost = sum(len(document_block_text(document, child)) for child in _descendants(block, by_id))
+                subtree_cost = sum(len(document_block_texts[child.id]) for child in _descendants(block, by_id))
+                heading_path = " > ".join(_heading_path(block.id, by_id))
                 connection.execute(
                     "INSERT INTO routes VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     (
                         block.id,
                         block.parent_id,
-                        " > ".join(_heading_path(block.id, by_id)),
+                        heading_path,
                         pages[0] if pages else None,
                         pages[-1] if pages else None,
                         max(1, subtree_cost // 4),
@@ -266,6 +345,40 @@ def build_search_sidecar(document: DocumentIR, path: str | Path) -> dict[str, An
                         sketch,
                     ),
                 )
+                if block.parent_id is not None:
+                    ann_parts[block.id] = [
+                        (block.title or "", 2.5),
+                        (heading_path, 2.0),
+                        (" ".join(retrieval_terms), 2.0),
+                        (" ".join(str(term) for term in block.metadata.get("search_terms") or []), 1.5),
+                        (sketch, 0.35),
+                    ]
+        ann_vectors = {block_id: hnsw.vectorize(parts) for block_id, parts in ann_parts.items()}
+        ann_vectors = {block_id: vector for block_id, vector in ann_vectors.items() if any(vector)}
+        ann_levels, ann_edges, ann_entry_id, ann_max_level = hnsw.build(ann_vectors)
+        connection.executemany(
+            "INSERT INTO route_ann_nodes(block_id, level, vector) VALUES (?, ?, ?)",
+            (
+                (block_id, ann_levels[block_id], hnsw.pack(vector))
+                for block_id, vector in ann_vectors.items()
+            ),
+        )
+        connection.executemany(
+            "INSERT INTO route_ann_edges(block_id, level, neighbor_id) VALUES (?, ?, ?)",
+            (
+                (block_id, level, neighbor_id)
+                for (block_id, level), neighbor_ids in sorted(ann_edges.items())
+                for neighbor_id in sorted(neighbor_ids)
+            ),
+        )
+        connection.executemany(
+            "INSERT INTO metadata(key, value) VALUES (?, ?)",
+            (
+                ("ann_entry_block_id", ann_entry_id or ""),
+                ("ann_max_level", str(max(0, ann_max_level))),
+                ("ann_node_count", str(len(ann_vectors))),
+            ),
+        )
         connection.commit()
     connection.close()
     temporary.replace(output)
@@ -275,6 +388,7 @@ def build_search_sidecar(document: DocumentIR, path: str | Path) -> dict[str, An
         "source_digest": source_digest(document),
         "block_count": len(document.document_blocks),
         "term_count": len(document_frequency),
+        "ann_node_count": len(ann_vectors),
     }
 
 
@@ -310,6 +424,75 @@ def section_sketches(path: str | Path, *, source_generation: str | None = None) 
     }
 
 
+def _hnsw_route_scores(
+    index_path: Path,
+    query_terms: list[str],
+    *,
+    source_generation: str | None,
+    allowed_ids: set[str],
+    limit: int,
+) -> dict[str, float]:
+    """Query persisted HNSW routing without models or token-counting calls."""
+    query_vector = hnsw.vectorize([(" ".join(query_terms), 1.0)])
+    if not any(query_vector) or not allowed_ids:
+        return {}
+    try:
+        with sqlite3.connect(index_path) as connection:
+            if connection.execute("PRAGMA application_id").fetchone()[0] != APPLICATION_ID:
+                return {}
+            if connection.execute("PRAGMA user_version").fetchone()[0] != SEARCH_INDEX_VERSION:
+                return {}
+            metadata = dict(connection.execute("SELECT key, value FROM metadata"))
+            if source_generation is not None and metadata.get("source_digest") != source_generation:
+                return {}
+            if metadata.get("ann_vector_version") != hnsw.VECTOR_VERSION:
+                return {}
+            entry_id = metadata.get("ann_entry_block_id") or ""
+            if not entry_id:
+                return {}
+            max_level = int(metadata.get("ann_max_level") or 0)
+            vector_cache: dict[str, hnsw.Vector] = {}
+            edge_cache: dict[tuple[str, int], set[str]] = {}
+
+            def vector_for(block_id: str) -> hnsw.Vector:
+                if block_id not in vector_cache:
+                    row = connection.execute(
+                        "SELECT vector FROM route_ann_nodes WHERE block_id = ?", (block_id,)
+                    ).fetchone()
+                    if row is None:
+                        raise KeyError(block_id)
+                    vector_cache[block_id] = hnsw.unpack(row[0])
+                return vector_cache[block_id]
+
+            def edges_for(block_id: str, level: int) -> set[str]:
+                key = (block_id, level)
+                if key not in edge_cache:
+                    edge_cache[key] = {
+                        row[0]
+                        for row in connection.execute(
+                            "SELECT neighbor_id FROM route_ann_edges WHERE block_id = ? AND level = ?",
+                            (block_id, level),
+                        )
+                    }
+                return edge_cache[key]
+
+            nearest = hnsw.search(
+                query_vector,
+                entry_id=entry_id,
+                max_level=max_level,
+                ef=max(hnsw.EF_SEARCH, limit * 4),
+                vector_for=vector_for,
+                edges_for=edges_for,
+            )
+            return {
+                block_id: max(0.0, 1.0 - item_distance)
+                for item_distance, block_id in nearest
+                if block_id in allowed_ids and 1.0 - item_distance >= hnsw.MIN_SIMILARITY
+            }
+    except (KeyError, ValueError, sqlite3.Error, struct.error):
+        return {}
+
+
 def route_sections(
     path: str | Path,
     query_terms: list[str],
@@ -322,23 +505,55 @@ def route_sections(
         return []
     rows = _valid_route_rows(Path(path), source_generation)
     folded_terms = [term.casefold() for term in query_terms]
-    ranked = []
+    eligible_rows = []
+    lexical_scores: dict[str, float] = {}
     for row in rows:
         if row["parent_id"] is None:
             continue
         if scope_block_id and row["block_id"] != scope_block_id and row["parent_id"] != scope_block_id:
             continue
+        eligible_rows.append(row)
         haystack = f'{row["heading_path"]} {row["terms_json"]} {row["sketch"]}'.casefold()
         matched = sum(1 for term in folded_terms if term in haystack)
         if matched:
-            ranked.append(
-                {
-                    "block_id": row["block_id"],
-                    "score": matched / len(folded_terms),
-                    "page_range": [row["page_start"], row["page_end"]],
-                    "subtree_cost": row["subtree_cost"],
-                    "sketch": row["sketch"],
-                }
-            )
-    ranked.sort(key=lambda item: (-item["score"], item["subtree_cost"], item["block_id"]))
+            lexical_scores[row["block_id"]] = matched / len(folded_terms)
+
+    best_lexical = max(lexical_scores.values(), default=0.0)
+    ann_scores: dict[str, float] = {}
+    if best_lexical < 1.0:
+        ann_scores = _hnsw_route_scores(
+            Path(path),
+            folded_terms,
+            source_generation=source_generation,
+            allowed_ids={row["block_id"] for row in eligible_rows},
+            limit=max(1, int(limit)),
+        )
+
+    ranked = []
+    for row in eligible_rows:
+        lexical_score = lexical_scores.get(row["block_id"], 0.0)
+        ann_score = ann_scores.get(row["block_id"], 0.0)
+        if lexical_score <= 0 and ann_score <= 0:
+            continue
+        source = (
+            "lexical+hnsw"
+            if lexical_score > 0 and ann_score > 0
+            else ("lexical" if lexical_score > 0 else "hnsw")
+        )
+        ranked.append(
+            {
+                "block_id": row["block_id"],
+                "score": round(max(lexical_score, ann_score), 6),
+                "lexical_score": round(lexical_score, 6),
+                "ann_score": round(ann_score, 6),
+                "route_source": source,
+                "page_range": [row["page_start"], row["page_end"]],
+                "subtree_cost": row["subtree_cost"],
+                "sketch": row["sketch"],
+                "_rank_score": lexical_score * 2.0 + ann_score * 0.5,
+            }
+        )
+    ranked.sort(key=lambda item: (-item["_rank_score"], item["subtree_cost"], item["block_id"]))
+    for item in ranked:
+        item.pop("_rank_score", None)
     return ranked[: max(1, int(limit))]

@@ -22,7 +22,7 @@ def _load_pptx():
                 code="PPTX_DEPENDENCY_NOT_INSTALLED",
                 message="python-pptx is required for PptxAdapter.",
                 recoverable=True,
-                suggested_action="Install the optional dependency: pip install documa[pptx]",
+                suggested_action="Install or repair the standard runtime: pip install --upgrade documa",
             )
         ) from exc
 

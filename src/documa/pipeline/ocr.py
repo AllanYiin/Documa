@@ -9,7 +9,7 @@ parser text: when a page is fully OCR'd, its native noise blocks move into
 The stage is opt-in (``PipelineContext.settings["ocr"] = True``) because the
 OCR model download and inference are heavyweight and would make snapshot
 benchmarks nondeterministic. It needs ``settings["source_path"]`` to re-open
-the PDF; without it (or without the ``documa[ocr]`` extra) it degrades to a
+the PDF; without it (or without the ``documa[all]`` extra) it degrades to a
 skip with an explicit reason instead of failing the pipeline.
 """
 

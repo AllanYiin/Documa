@@ -17,7 +17,7 @@ import pytest
 from documa.adapters.base import ParseOptions
 from documa.adapters.registry import adapter_for_source
 from documa.core.ir import to_plain_data
-from documa.pipeline import run_default_pipeline
+from documa.pipeline import PipelineContext, run_default_pipeline
 
 REAL_FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures" / "pdf" / "real"
 REAL_FIXTURE_NAMES = ["annual-report", "two-column-article", "mixed-media-brief"]
@@ -80,6 +80,22 @@ def normalize_ir_payload(payload: dict) -> dict:
         return value
 
     data = _replace_source_path(data)
+
+    # These snapshots remain the explicit PyMuPDF/ngram rollback baseline.
+    # Provider observability is covered by dedicated provider tests and is
+    # intentionally omitted here so the historical IR content stays diffable.
+    def _strip_provider_trace(value: object) -> object:
+        if isinstance(value, dict):
+            return {
+                key: _strip_provider_trace(item)
+                for key, item in value.items()
+                if key not in {"keyword_provider", "keyword_provider_requested", "keyword_provider_fallback"}
+            }
+        if isinstance(value, list):
+            return [_strip_provider_trace(item) for item in value]
+        return value
+
+    data = _strip_provider_trace(data)
     data["source_name"] = normalized_source
     return _round_floats(data)
 
@@ -87,10 +103,10 @@ def normalize_ir_payload(payload: dict) -> dict:
 @pytest.mark.parametrize("fixture_name", REAL_FIXTURE_NAMES)
 def test_pipeline_ir_matches_snapshot(fixture_name, tmp_path, data_regression):
     source = REAL_FIXTURES_DIR / f"{fixture_name}.pdf"
-    document = adapter_for_source(str(source)).parse(
+    document = adapter_for_source(str(source), pdf_provider="pymupdf").parse(
         str(source), ParseOptions(asset_dir=tmp_path / "assets")
     )
-    run_default_pipeline(document)
+    run_default_pipeline(document, PipelineContext(settings={"keyword_provider": "ngram"}))
 
     payload = normalize_ir_payload(to_plain_data(document))
     data_regression.check(payload, basename=f"ir_{fixture_name}")

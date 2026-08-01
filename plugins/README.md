@@ -9,7 +9,7 @@
 所有 wrapper 都假設 host 執行環境已經能找到 Documa：
 
 ```powershell
-python -m pip install -e ".[documents,mcp]"
+python -m pip install "documa==0.6.1"
 ```
 
 共用整合契約：

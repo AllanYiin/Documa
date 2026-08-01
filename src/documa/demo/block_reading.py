@@ -12,7 +12,7 @@ from typing import Any
 from documa.adapters.base import ParseOptions
 from documa.adapters.pymupdf_adapter import PyMuPDFAdapter
 from documa.core.errors import DocumaError
-from documa.core.ir import DocumentBlockIR, DocumentBlockType, DocumentIR, to_plain_data
+from documa.core.ir import DocumentBlockIR, DocumentBlockType, DocumentIR
 from documa.exporters import BlockJsonExporter, ExportOptions, JsonExporter
 from documa.interfaces import token_counting
 from documa.interfaces.tools import write_payload
@@ -184,13 +184,13 @@ def _score_block(block: DocumentBlockIR, terms: list[str]) -> tuple[float, dict[
     weights = {"title": 4.0, "keywords": 3.0, "new_words": 3.0, "search_terms": 2.0, "preview": 1.0}
     matches: dict[str, list[str]] = {}
     score = 0.0
-    for field, text in fields.items():
+    for field_name, text in fields.items():
         folded = text.casefold()
         for term in terms:
             count = folded.count(term.casefold())
             if count:
-                matches.setdefault(field, []).append(term)
-                score += weights[field] * count
+                matches.setdefault(field_name, []).append(term)
+                score += weights[field_name] * count
     if block.type in {DocumentBlockType.PARAGRAPH, DocumentBlockType.TABLE, DocumentBlockType.FOOTNOTE}:
         score += 0.25
     return score, {"matches": matches, "field_weights": weights}

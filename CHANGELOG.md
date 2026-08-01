@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **LingXi 0.2.0 中文關鍵詞 provider**：文字葉節點的 `keyword_terms` 預設改由 LingXi TextRank 選取；既有 n-gram 僅保留祖先 support/new-word 補償與明確回滾，避免同一 evidence 在階層中重複命中。binding 嚴格驗證 0.2.0，缺失或版本不符時可觀測回退。
+- **rust-pdf-parser 0.2.0 Rust-first adapter**：PDF extraction 預設走 `pdf_provider=auto` 的 Rust provider，binding 驗證 0.2.0；PyMuPDF 保留為 recoverable fallback、OCR 與 page-preview renderer。
+
+## v0.6.1 — batteries-included agent runtime（2026-07-24）
+
+- **大型文件 sidecar 效能修正**：`documa_process(out=...)` 建索引時只建立一次 source-text map，並快取所有 document-block 文字；423 頁／7,583 blocks 真實 IR 的 sidecar 重建由約 168 秒降至 3.687 秒，資料表逐列等價。
+
+- **零模型呼叫的 HNSW section routing**：search sidecar schema 升至 v2，使用 section title/path/sketch/high-IDF terms 建立 deterministic local feature-hash vectors 與 multi-layer HNSW graph；lexical coverage 不足時才啟動 ANN，與 exact seed 融合後仍交由既有 BM25/intent/MMR/token budget 排名。查詢不呼叫 embedding API、LLM decomposition 或 token counter；IR/page/bbox citation truth 不變。
+
+- **安裝預設改為完整非 OCR agent runtime**：`pip install documa` 現在包含 PDF、DOCX、PPTX、HTML、EML/MSG、IPYNB adapters、MCP server 與 tiktoken；`pip install "documa[all]"` 額外加入 RapidOCR。既有細粒度 extras 保留向前相容，MCP 1.x 設上限避免自動跨入尚未穩定的 v2。
+- **Plugin 版本同步**：Claude Code、Codex 與 OpenClaw plugin metadata 全部對齊 Documa 0.6.1；plugin 安裝文件鎖定 `documa==0.6.1`，避免 plugin 與 runtime 漂移。
+
 ## v0.5.0 — token economy overhaul（回應層瘦身與雙堆疊排序統一）（2026-07-23）
 
 - **MCP 單份傳輸**：FastMCP wrapper 改為單一 compact JSON text（`structured_output=False`），不再同時送 `structuredContent` 與 pretty-printed text——每個回應的 wire 成本約砍半。`call_documa_tool` 的 direct 路徑仍同時保留兩者供程式端取用。

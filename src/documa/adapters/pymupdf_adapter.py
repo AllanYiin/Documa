@@ -49,7 +49,7 @@ def _load_pymupdf():
                     code="PYMUPDF_NOT_INSTALLED",
                     message="PyMuPDF is required for PyMuPDFAdapter.",
                     recoverable=True,
-                    suggested_action="Install the optional pdf dependency: pip install documa[pdf]",
+                    suggested_action="Install or repair the standard runtime: pip install --upgrade documa",
                 )
             ) from exc
 
@@ -572,6 +572,7 @@ class PyMuPDFAdapter(ParserAdapter):
     def _parse_tables(self, page: Any, page_ir: PageIR) -> None:
         table_blocks: list[BlockIR] = []
         remaining_blocks = list(page_ir.blocks)
+        next_table_index = 1
         for table_index, table in enumerate(_find_page_tables(page), start=1):
             rows = _clean_table_rows(table.extract() if hasattr(table, "extract") else [])
             bbox = _bbox(getattr(table, "bbox", None))
@@ -618,11 +619,12 @@ class PyMuPDFAdapter(ParserAdapter):
                     },
                 )
             )
+            next_table_index = max(next_table_index, table_index + 1)
 
         for borderless in _borderless_column_tables(page, page_ir):
             rows = borderless["rows"]
             bbox = borderless["bbox"]
-            table_index = len(table_blocks) + 1
+            table_index = next_table_index
             overlapping = [
                 block
                 for block in remaining_blocks
@@ -666,6 +668,7 @@ class PyMuPDFAdapter(ParserAdapter):
                         },
                     )
                 )
+                next_table_index += 1
 
         if table_blocks:
             page_ir.blocks = sorted(

@@ -6,7 +6,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 
 import documa.quality.benchmark as benchmark_module
 from documa.quality.benchmark import BenchmarkOptions, run_fixture_benchmark
@@ -45,7 +44,11 @@ class TestSpanAwareTeds:
     def test_real_merged_cells_fixture_matches_span_gold(self):
         from documa.interfaces.tools import process_document_tool
 
-        payload = process_document_tool(source=str(REPO_ROOT / "fixtures/pdf/real/merged-cells-report.pdf"))
+        payload = process_document_tool(
+            source=str(REPO_ROOT / "fixtures/pdf/real/merged-cells-report.pdf"),
+            pdf_provider="pymupdf",
+            keyword_provider="ngram",
+        )
         rows = payload["document"]["tables"][0]["rows"]
         html = (
             '<table><tr><td>Zone</td><td colspan="2">Checks (passed / failed)</td><td>Status</td></tr>'

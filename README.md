@@ -32,10 +32,108 @@ process/ingest ──► block tree（大綱+梗概）──► search（排序�
 
 1. **Ingest** — `documa ingest report.pdf` 把文件處理成 parser-neutral 的 IR 與 block tree，拿到穩定的 `document_id`（同內容自動去重）。支援 PDF、Word、PowerPoint、HTML、email、notebook、Markdown。
 2. **Overview** — `documa_block_tree` 回傳章節大綱；`include_sketches=true` 直接附上 ingest 時算好的每節梗概（sketch）與讀取成本，總覽類問題常常**零讀取**就能回答。
-3. **Search + Read** — `documa_search_blocks` 用 BM25-lite + coverage/proximity/intent 排序（TOC 與頁眉頁腳自動降權、近似重複去除），每個 hit 附帶結構路徑、頁碼、建議讀取量與**可直接照發的下一步工具呼叫**（`recommended_next.actions[]`）；`documa_read_block` 以 `max_chars`/`max_tokens` 有界讀取，讀不完給續讀 cursor。
+3. **Search + Read** — `documa_search_blocks` 先以 exact lexical section route 收斂範圍，coverage 不足時才用不呼叫模型的 local feature-hash HNSW 作 ANN section routing，再以 BM25-lite + coverage/proximity/intent 排序（TOC 與頁眉頁腳自動降權、近似重複去除）。每個 hit 附帶結構路徑、頁碼、建議讀取量與**可直接照發的下一步工具呼叫**（`recommended_next.actions[]`）；`documa_read_block` 以 `max_chars`/`max_tokens` 有界讀取，讀不完給續讀 cursor。
 4. **Cite + Verify** — `documa_cite_block` 回溯到「第幾頁、頁面上哪個 bbox」，`documa_verify_citations` 機器檢查引用的區塊真實存在——答案不只便宜，還可稽核。
 
 跨文件同理：`documa_search_collection`（SQLite FTS5，含 CJK 逐字索引）一次回答「哪幾份文件提到 X」，每份文件一列精確命中數 rollup。
+
+## 選擇查詢模式：單文件或多文件
+
+兩種模式使用同一套 IR 與區塊讀取能力，差別在搜尋範圍與前置處理：
+
+| 需求 | 使用入口 | 適合情境 | 回傳重點 |
+| --- | --- | --- | --- |
+| **單文件查詢** | `documa search-blocks <ir_path>` / `documa_search_blocks` | 已知答案位於哪一份文件，要快速定位章節、表格或段落 | 依相關度排序的 block、結構路徑、頁碼、snippet 與下一步讀取建議 |
+| **多文件查詢** | `documa search-collection` / `documa_search_collection` | 不確定答案在哪份文件，或要比較一批合約、報告、郵件 | 跨文件 block 命中；可按文件彙總、限制每份文件命中數，或限定文件範圍 |
+
+> 這裡的「查詢」是 evidence retrieval：回傳可供後續讀取與引用的候選 block／文件，不會自行呼叫 LLM 合成最終答案。
+
+### 查詢單一文件
+
+先處理文件，再搜尋產生的 IR；搜尋只回候選片段，確認候選後再用 `block` 有界讀取原文：
+
+```powershell
+documa process .\report.pdf --out .\out\report --export-format block-json
+documa search-blocks .\out\report\documa.ir.json --query "流動性覆蓋比率" --limit 5
+documa block .\out\report\documa.ir.json --id "<搜尋結果的 block id>" --read --max-chars 1500
+```
+
+適合「這份報告如何定義 X？」或「這份合約的違約金是多少？」。如需頁碼與 bbox 引用，再對選定的 block 執行 `documa cite-block`。
+
+### 查詢多份文件
+
+多文件模式使用本機 store 與 SQLite FTS5 collection index。文件格式可以混用；下例把 Word、PDF 與 Markdown 放入同一個 collection：
+
+```powershell
+documa ingest .\contracts\master.docx --store-dir .\.documa
+documa ingest .\contracts\amendment.pdf --store-dir .\.documa
+documa ingest .\contracts\meeting-notes.md --store-dir .\.documa
+
+# 第一次查詢前建立索引；之後 ingest/delete 會增量維持既有索引
+documa index-collection --store-dir .\.documa
+```
+
+回答「哪些文件提到 X？」時，使用 `--group-by-document` 取得每份文件的精確命中數、最佳 snippet 與最多三個可讀取的 `top_blocks`：
+
+```powershell
+documa search-collection --store-dir .\.documa --query "違約金" --group-by-document
+```
+
+需要直接取得跨文件 block 命中時，省略 `--group-by-document`；可用 `--per-document-limit` 避免單一文件佔滿結果：
+
+```powershell
+documa search-collection --store-dir .\.documa --query "資本要求" --per-document-limit 2
+```
+
+後續只想搜尋已選定的文件時，可重複傳入 `--document-id`。Collection 結果中的穩定讀取鍵是 `(document_id, block_id)`；不要只保留 block id。
+
+```powershell
+documa search-collection --store-dir .\.documa --query "終止條款" `
+  --document-id "doc-..." --document-id "doc-..."
+```
+
+> Collection search 是 lexical/statistical search，不會自動做同義詞、跨語言或語義相似度展開。查詢無結果時，先改用文件中的原詞、縮寫或較短詞組；需要語義檢索時，請透過預留的 hybrid/vector adapter 邊界接入外部 retriever。
+
+## 支援的文件格式
+
+所有 adapter 都輸出同一種 parser-neutral IR；下游的 block tree、search、read、cite 與 collection search 不直接依賴原始 parser 物件。因此，同一個 collection 可以同時包含不同格式：
+
+| 類型 | 副檔名 | 轉換重點 |
+| --- | --- | --- |
+| PDF | `.pdf` | 保留頁面、文字區塊與 bbox 來源鏈；掃描件可用 `documa[all]` 與 `--ocr` |
+| Word | `.docx` | 擷取標題、段落與表格 |
+| PowerPoint | `.pptx` | 每張投影片視為一頁，擷取文字 shape、標題、表格與 bbox |
+| HTML | `.html`, `.htm`, `.xhtml` | 依 DOM 順序保留標題、段落、表格與連結 |
+| Email | `.eml`, `.msg` | 擷取郵件標頭、本文與附件清單／metadata；`.msg` 需要 `extract-msg` |
+| Jupyter Notebook | `.ipynb` | 依 cell 順序保留 Markdown／程式碼內容、文字輸出預覽與附件 metadata |
+| Markdown / text | `.md`, `.markdown`, `.mdp`, `.mdp.md`, `.txt` | 保留標題層級、段落、表格與 fenced code 內容 |
+
+預設安裝即包含全部文件 adapter、MCP server 與本地 token counter：
+
+```powershell
+python -m pip install documa
+```
+
+Documa 的中文關鍵詞預設使用 LingXi 0.2.0，PDF extraction 預設使用
+rust-pdf-parser 0.2.0。此開發環境可由本機來源專案安裝其已建置 wheel：
+
+```powershell
+python -m pip install --force-reinstall "D:\PycharmProjects\rust_Lingxi\target\wheels\lingxi-0.2.0-cp39-abi3-win_amd64.whl"
+python -m pip install --force-reinstall "D:\PycharmProjects\rust-pdf_parser\target\stage6c2e-final-wheels\rust_pdf_parser-0.2.0-cp310-cp310-win_amd64.whl"
+```
+
+若 native binding 缺失或版本不符，`pdf_provider=auto` 會可觀測地回退至
+PyMuPDF，`keyword_provider=lingxi` 會回退至 n-gram；也可明確指定
+`pdf_provider=pymupdf` 或 `keyword_provider=ngram`。PyMuPDF 仍負責頁面預覽與
+OCR renderer，Rust parser 不宣稱具備渲染能力。
+
+需要本機 CPU OCR 時改裝完整版本：
+
+```powershell
+python -m pip install "documa[all]"
+```
+
+限制：目前不支援舊式 Office `.doc`／`.ppt`；email 與 notebook 附件會保存為資產與 metadata，但不會遞迴當成獨立文件解析。各格式的版面語意會盡量映射到共同 IR，但不保證不同 parser 能還原完全相同的視覺結構。
 
 ### 回應層的 token 工程（v0.5.0）
 
@@ -65,7 +163,7 @@ process/ingest ──► block tree（大綱+梗概）──► search（排序�
 需要 Python 3.10+。以下以 PowerShell 為例（macOS/Linux 改路徑分隔符即可）：
 
 ```powershell
-python -m pip install -e ".[documents,mcp]"   # documents = PDF/DOCX/PPTX/HTML/MSG/IPYNB 依賴
+python -m pip install documa   # 完整非 OCR agent runtime
 ```
 
 **1. 處理一份你自己的 PDF**（挑一份你熟悉內容的長文件，才能評估答案品質）：
@@ -115,11 +213,7 @@ documa cite-block .\out\eval\documa.ir.json --id "<block id>"
 documa block-demo .\your.pdf --question "這份文件的主要風險是什麼？" --out .\out\eval-demo
 ```
 
-**多文件評估**：把幾份文件 `documa ingest` 進同一個 store，然後：
-
-```powershell
-documa search-collection --query "違約金" --group-by-document
-```
+**多文件評估**：依照上方[查詢多份文件](#查詢多份文件)將文件 ingest 到同一個 store、首次建立 collection index，再執行分組或平面搜尋。
 
 ## 接進你的 agent
 
@@ -127,7 +221,7 @@ documa search-collection --query "違約金" --group-by-document
 
 | 入口 | 使用方式 |
 | --- | --- |
-| **MCP** | `documa-mcp`（需 `[mcp]` extra）。`DOCUMA_MCP_PROFILE=agent` 只暴露 evidence 工作流的 16 個工具。repo 內附三個現成 plugin：Claude Code（`plugins/claude-code-documa`）、Codex（`plugins/codex-documa`）、OpenClaw（`plugins/openclaw-documa`），各含引導 LLM 走短搜尋路徑的 `documa-evidence` skill。 |
+| **MCP** | `documa-mcp`（預設安裝即提供）。`DOCUMA_MCP_PROFILE=agent` 只暴露 evidence 工作流的 16 個工具。repo 內附三個現成 plugin：Claude Code（`plugins/claude-code-documa`）、Codex（`plugins/codex-documa`）、OpenClaw（`plugins/openclaw-documa`），各含引導 LLM 走短搜尋路徑的 `documa-evidence` skill。 |
 | **OpenAI function calling** | `from documa.interfaces import openai_tool_schemas, call_documa_tool` |
 | **CLI** | 上面評估路徑用的指令；適合 shell-based agent 或人工檢查。 |
 | **Python API** | `documa.adapters` + `documa.pipeline.run_default_pipeline`，或直接 `call_documa_tool(name, args)`。 |
@@ -155,7 +249,7 @@ result = call_documa_tool(
 - **格式統一**：PDF（`.pdf`）、Word（`.docx`）、PowerPoint（`.pptx`）、HTML、email（`.eml`/`.msg`，含 mailbox 批次 `documa ingest-mailbox`）、Jupyter（`.ipynb`）、Markdown/text 全部進同一種 IR，下游只依賴 IR。
 - **IR 是 semver 契約**：`ir_version` minor 只允許 additive 欄位；schema 由 dataclass 生成並有 CI 同步閘門（`documa validate-ir` 可驗檔）。
 - **品質有 gold 基準**：`documa benchmark --mode quality` 對 13 個 gold case 計分（表格 TEDS、閱讀順序 NED、關係連結 F1）；雙欄/三欄/sidebar 閱讀順序 1.0。兩個已知缺口（footnote 與 caption 連結）**蓄意保留為 failed**，不調門檻掩蓋。
-- **OCR 選配不混料**：`documa[ocr]`（RapidOCR，CPU）處理掃描件；所有 OCR 產物標記 `origin: "ocr"` 與信心值，永不冒充原生文字。
+- **OCR 選配不混料**：`documa[all]`（額外加入 RapidOCR，CPU）處理掃描件；所有 OCR 產物標記 `origin: "ocr"` 與信心值，永不冒充原生文字。
 - **索引皆可拋棄重建**：collection index（SQLite FTS5）與 retrieval sidecar 都是版本化衍生物，來源真相只在 IR + registry。
 
 ## 什麼時候不該用 Documa
@@ -183,7 +277,7 @@ result = call_documa_tool(
 ## 開發與測試
 
 ```powershell
-python -m pip install -e ".[dev,documents,mcp]"
+python -m pip install -e ".[dev]"
 python -m pytest                      # 全套（含 snapshot 回歸）
 documa doctor                         # 環境診斷
 documa benchmark --mode quality       # gold 品質計分

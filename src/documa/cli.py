@@ -60,13 +60,16 @@ def build_parser() -> argparse.ArgumentParser:
     parse_cmd.add_argument("--out", help="Output directory.")
     parse_cmd.add_argument("--lang", default="auto", help="Comma-separated language hints.")
     parse_cmd.add_argument("--progress", choices=["text", "jsonl"], default="text")
+    parse_cmd.add_argument("--pdf-provider", choices=["auto", "rust", "pymupdf"], default="auto")
 
     process_cmd = subparsers.add_parser("process", help="Parse and run the default Documa pipeline.")
     process_cmd.add_argument("source", help="Path to the source document.")
     process_cmd.add_argument("--out", help="Output directory.")
     process_cmd.add_argument("--lang", default="auto", help="Comma-separated language hints.")
     process_cmd.add_argument("--max-chars", type=int, default=1200, help="Target max characters per generated chunk.")
-    process_cmd.add_argument("--ocr", action="store_true", help="Run OCR on image-only pages and embedded images (requires documa[ocr]).")
+    process_cmd.add_argument("--ocr", action="store_true", help="Run OCR on image-only pages and embedded images (requires documa[all]).")
+    process_cmd.add_argument("--pdf-provider", choices=["auto", "rust", "pymupdf"], default="auto")
+    process_cmd.add_argument("--keyword-provider", choices=["lingxi", "ngram"], default="lingxi")
     process_cmd.add_argument(
         "--export-format",
         action="append",
@@ -116,6 +119,8 @@ def build_parser() -> argparse.ArgumentParser:
     view_cmd.add_argument("--include-body", action="store_true", help="Include bounded block body text in the viewer payload.")
     view_cmd.add_argument("--body-chars", type=int, default=1200, help="Maximum body characters per block when included.")
     view_cmd.add_argument("--result-limit", type=int, default=10, help="Maximum query result count.")
+    view_cmd.add_argument("--pdf-provider", choices=["auto", "rust", "pymupdf"], default="auto")
+    view_cmd.add_argument("--keyword-provider", choices=["lingxi", "ngram"], default="lingxi")
 
     blocks_cmd = subparsers.add_parser("blocks", help="List Documa document blocks.")
     blocks_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
@@ -219,6 +224,8 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_cmd.add_argument("--mode", choices=["readiness", "quality"], default="readiness", help="readiness checks files; quality scores against gold annotations.")
     benchmark_cmd.add_argument("--gold-dir", default="fixtures/pdf/gold", help="Directory holding gold expected.partial.json files.")
     benchmark_cmd.add_argument("--quality-threshold", type=float, default=0.85, help="Minimum score for a quality case to pass.")
+    benchmark_cmd.add_argument("--pdf-provider", choices=["auto", "rust", "pymupdf"], default="auto")
+    benchmark_cmd.add_argument("--keyword-provider", choices=["lingxi", "ngram"], default="lingxi")
 
     diff_cmd = subparsers.add_parser("diff", help="Structured diff between two Documa IR JSON files.")
     diff_cmd.add_argument("actual", help="Path to the actual IR JSON.")
@@ -232,9 +239,11 @@ def build_parser() -> argparse.ArgumentParser:
     ingest_cmd.add_argument("--store-dir", default=".documa", help="Document store directory.")
     ingest_cmd.add_argument("--lang", default="auto", help="Comma-separated language hints.")
     ingest_cmd.add_argument("--max-chars", type=int, default=1200, help="Target max characters per generated chunk.")
-    ingest_cmd.add_argument("--ocr", action="store_true", help="Run OCR on image-only pages and embedded images (requires documa[ocr]).")
+    ingest_cmd.add_argument("--ocr", action="store_true", help="Run OCR on image-only pages and embedded images (requires documa[all]).")
     ingest_cmd.add_argument("--rebuild-index", action="store_true", help="Rebuild registry.json from stored documents.")
     ingest_cmd.add_argument("--no-update-index", action="store_true", help="Skip the incremental collection index update after ingest.")
+    ingest_cmd.add_argument("--pdf-provider", choices=["auto", "rust", "pymupdf"], default="auto")
+    ingest_cmd.add_argument("--keyword-provider", choices=["lingxi", "ngram"], default="lingxi")
 
     list_documents_cmd = subparsers.add_parser("list-documents", help="List documents in the local store.")
     list_documents_cmd.add_argument("--store-dir", default=".documa", help="Document store directory.")
@@ -280,7 +289,13 @@ def main(argv: list[str] | None = None) -> int:
         return _emit_json({"documa_version": __version__})
 
     if args.command == "parse":
-        payload = parse_document_tool(source=args.source, out=args.out, lang=args.lang, progress=args.progress)
+        payload = parse_document_tool(
+            source=args.source,
+            out=args.out,
+            lang=args.lang,
+            progress=args.progress,
+            pdf_provider=args.pdf_provider,
+        )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
     if args.command == "process":
@@ -291,6 +306,8 @@ def main(argv: list[str] | None = None) -> int:
             max_chars=args.max_chars,
             export_formats=args.export_formats,
             ocr=args.ocr,
+            pdf_provider=args.pdf_provider,
+            keyword_provider=args.keyword_provider,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
@@ -333,6 +350,8 @@ def main(argv: list[str] | None = None) -> int:
             include_body=args.include_body,
             body_chars=args.body_chars,
             result_limit=args.result_limit,
+            pdf_provider=args.pdf_provider,
+            keyword_provider=args.keyword_provider,
         )
         if payload.get("status") != "ok" or args.out or args.format == "json":
             return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
@@ -457,6 +476,8 @@ def main(argv: list[str] | None = None) -> int:
             mode=args.mode,
             gold_dir=args.gold_dir,
             quality_threshold=args.quality_threshold,
+            pdf_provider=args.pdf_provider,
+            keyword_provider=args.keyword_provider,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
@@ -486,6 +507,8 @@ def main(argv: list[str] | None = None) -> int:
             max_chars=args.max_chars,
             ocr=args.ocr,
             update_index=not args.no_update_index,
+            pdf_provider=args.pdf_provider,
+            keyword_provider=args.keyword_provider,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 

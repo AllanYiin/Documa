@@ -16,20 +16,19 @@ folder demonstrates the mechanism that a UI can call.
 
 ## Requirements
 
-Install Documa with PDF support, or run from this repository with
-`PYTHONPATH=src` and PyMuPDF installed.
+The default install includes PDF support and local `tiktoken` counting:
 
 ```powershell
-python -m pip install ".[pdf]"
+python -m pip install .
 ```
 
-Optional token counting uses `tiktoken`:
+LLM answer generation additionally needs the demo extra and `OPENAI_API_KEY`:
 
 ```powershell
 python -m pip install ".[demo]"
 ```
 
-LLM answer generation requires `OPENAI_API_KEY`. Search itself is local and
+Search itself is local and
 starts from `search_blocks`. The default Responses API model is `gpt-5.4-mini`;
 set `OPENAI_MODEL` to override it.
 

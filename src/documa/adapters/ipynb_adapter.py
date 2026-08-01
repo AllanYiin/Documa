@@ -24,7 +24,7 @@ def _load_nbformat():
                 code="IPYNB_DEPENDENCY_NOT_INSTALLED",
                 message="nbformat is required for IpynbAdapter.",
                 recoverable=True,
-                suggested_action="Install the optional dependency: pip install documa[ipynb]",
+                suggested_action="Install or repair the standard runtime: pip install --upgrade documa",
             )
         ) from exc
 

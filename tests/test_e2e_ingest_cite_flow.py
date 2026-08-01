@@ -100,7 +100,9 @@ class TestColumnFlowEndToEnd:
 
         monkeypatch.chdir(tmp_path)
         source = REPO_ROOT / "fixtures" / "pdf" / "real" / "three-column-newsletter.pdf"
-        ingested = ingest_document_tool(source=str(source))
+        ingested = ingest_document_tool(
+            source=str(source), pdf_provider="pymupdf", keyword_provider="ngram"
+        )
         assert ingested["status"] == "ok"
         document_id = ingested["document_id"]
 
@@ -128,7 +130,9 @@ class TestColumnFlowEndToEnd:
     def test_column_first_order_survives_the_full_pipeline(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         source = REPO_ROOT / "fixtures" / "pdf" / "real" / "three-column-newsletter.pdf"
-        ingested = ingest_document_tool(source=str(source))
+        ingested = ingest_document_tool(
+            source=str(source), pdf_provider="pymupdf", keyword_provider="ngram"
+        )
         document = load_document(ingested["document_id"])
 
         page = document.pages[0]

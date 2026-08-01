@@ -145,6 +145,8 @@ def ingest_document(
     lang: str = "auto",
     max_chars: int = 1200,
     ocr: bool = False,
+    pdf_provider: str = "auto",
+    keyword_provider: str = "lingxi",
     lock_timeout: float = LOCK_TIMEOUT_SECONDS,
 ) -> ToolPayload:
     """Parse + process a document into the store and register a document_id.
@@ -184,7 +186,13 @@ def ingest_document(
     # Expensive work happens unlocked.
     document_dir = _documents_dir(store) / document_id
     result = process_document_tool(
-        source=str(source_path), out=str(document_dir), lang=lang, max_chars=max_chars, ocr=ocr
+        source=str(source_path),
+        out=str(document_dir),
+        lang=lang,
+        max_chars=max_chars,
+        ocr=ocr,
+        pdf_provider=pdf_provider,
+        keyword_provider=keyword_provider,
     )
     if result.get("status") != "ok":
         return result

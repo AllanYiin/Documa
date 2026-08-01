@@ -49,14 +49,17 @@ def _resolve_block(document: DocumentIR, block_id: str):
     Accepts canonical document-block ids and the short (document-prefix
     stripped) form that block-reading tool responses emit.
     """
-    candidates = {block_id, f"db_{document.id}_{block_id}"}
     for block in document.document_blocks:
-        if block.id in candidates:
+        if block.id == block_id:
             return ("document_block", block)
     for page in document.pages:
         for block in page.blocks:
             if block.id == block_id:
                 return ("page_block", (page, block))
+    short_document_block_id = f"db_{document.id}_{block_id}"
+    for block in document.document_blocks:
+        if block.id == short_document_block_id:
+            return ("document_block", block)
     return None
 
 
@@ -244,16 +247,24 @@ def source_window(document: DocumentIR, block_id: str, before: int = 1, after: i
             key=lambda blk: blk.order_index,
         )
         target = resolved
-        text_of = lambda blk: _truncate(blk.text_preview or document_block_text(document, blk))
-        title_of = lambda blk: blk.title
+
+        def text_of(blk):
+            return _truncate(blk.text_preview or document_block_text(document, blk))
+
+        def title_of(blk):
+            return blk.title
     else:
         ordered = sorted(
             (blk for page in document.pages for blk in page.blocks if blk.order_index is not None),
             key=lambda blk: (blk.page_number, blk.order_index),
         )
         target = resolved[1]
-        text_of = lambda blk: _truncate(block_text(blk))
-        title_of = lambda blk: None
+
+        def text_of(blk):
+            return _truncate(block_text(blk))
+
+        def title_of(blk):
+            return None
 
     try:
         position = next(i for i, blk in enumerate(ordered) if blk.id == target.id)

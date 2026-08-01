@@ -4,6 +4,7 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from documa.core.ir import BlockIR, BlockType, DocumentBlockIR, DocumentBlockType, DocumentIR, PageIR, TextContent, to_plain_data
 from documa.interfaces import call_documa_tool
@@ -11,6 +12,8 @@ from documa.interfaces import token_counting
 from documa.interfaces.mcp_server import create_mcp_server
 from documa.interfaces.tool_schemas import documa_tool_schemas
 from documa.pipeline import BlockKeywordExtractionStage
+from documa.pipeline.block_tree import block_text_by_id
+from documa.search import hnsw
 from documa.search.sidecar import APPLICATION_ID, SEARCH_INDEX_VERSION, build_search_sidecar, route_sections
 
 
@@ -167,12 +170,19 @@ class P1P2RetrievalTests(unittest.TestCase):
         self.assertNotIn("documa_doctor", mcp_names)
 
     def test_sidecar_versions_routes_and_deterministic_sketches(self):
-        document = _hierarchical_document(6)
+        document = _hierarchical_document(24)
         BlockKeywordExtractionStage().run(document)
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "documa.search.idx"
             first = build_search_sidecar(document, path)
             first_routes = route_sections(path, ["capital buffer"], source_generation=first["source_digest"])
+            first_connection = sqlite3.connect(path)
+            try:
+                first_ann_edges = first_connection.execute(
+                    "SELECT block_id, level, neighbor_id FROM route_ann_edges ORDER BY 1, 2, 3"
+                ).fetchall()
+            finally:
+                first_connection.close()
             second = build_search_sidecar(document, path)
             second_routes = route_sections(path, ["capital buffer"], source_generation=second["source_digest"])
             connection = sqlite3.connect(path)
@@ -180,6 +190,15 @@ class P1P2RetrievalTests(unittest.TestCase):
                 application_id = connection.execute("PRAGMA application_id").fetchone()[0]
                 user_version = connection.execute("PRAGMA user_version").fetchone()[0]
                 sketch_count = connection.execute("SELECT COUNT(*) FROM routes WHERE sketch <> ''").fetchone()[0]
+                ann_node_count = connection.execute("SELECT COUNT(*) FROM route_ann_nodes").fetchone()[0]
+                ann_edges = connection.execute(
+                    "SELECT block_id, level, neighbor_id FROM route_ann_edges ORDER BY 1, 2, 3"
+                ).fetchall()
+                ann_edge_count = len(ann_edges)
+                max_layer_zero_degree = connection.execute(
+                    "SELECT COALESCE(MAX(degree), 0) FROM ("
+                    "SELECT COUNT(*) AS degree FROM route_ann_edges WHERE level = 0 GROUP BY block_id)"
+                ).fetchone()[0]
                 features = json.loads(connection.execute("SELECT features_json FROM blocks WHERE block_id = 'leaf-0'").fetchone()[0])
                 term_stat_count = connection.execute("SELECT COUNT(*) FROM term_stats").fetchone()[0]
             finally:
@@ -187,12 +206,53 @@ class P1P2RetrievalTests(unittest.TestCase):
 
         self.assertEqual(application_id, APPLICATION_ID)
         self.assertEqual(user_version, SEARCH_INDEX_VERSION)
-        self.assertGreaterEqual(sketch_count, 6)
+        self.assertGreaterEqual(sketch_count, 24)
+        self.assertEqual(ann_node_count, 24)
+        self.assertGreater(ann_edge_count, 0)
+        self.assertLessEqual(max_layer_zero_degree, 16)
+        self.assertEqual(first_ann_edges, ann_edges)
         self.assertEqual(first_routes, second_routes)
         self.assertTrue(features["document_idf"])
         self.assertTrue(features["cjk_substring_suppression"])
         self.assertLessEqual(len(features["retrieval_terms"]), 6)
         self.assertGreater(term_stat_count, 0)
+
+    def test_sidecar_builds_source_text_map_once(self):
+        document = _hierarchical_document(40)
+        BlockKeywordExtractionStage().run(document)
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch("documa.search.sidecar.block_text_by_id", wraps=block_text_by_id) as text_map:
+                build_search_sidecar(document, Path(tmp) / "documa.search.idx")
+
+        text_map.assert_called_once_with(document)
+
+    def test_hnsw_route_fallback_uses_local_features_without_exact_substring(self):
+        document = _hierarchical_document(12)
+        BlockKeywordExtractionStage().run(document)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "documa.search.idx"
+            generation = build_search_sidecar(document, path)["source_digest"]
+            routes = route_sections(path, ["polic 9"], source_generation=generation, limit=3)
+
+        self.assertTrue(routes)
+        self.assertEqual(routes[0]["block_id"], "sec-9")
+        self.assertEqual(routes[0]["route_source"], "hnsw")
+        self.assertEqual(routes[0]["lexical_score"], 0.0)
+        self.assertGreater(routes[0]["ann_score"], 0.0)
+
+    def test_hnsw_query_does_not_materialize_every_section_vector(self):
+        section_count = 96
+        document = _hierarchical_document(section_count)
+        BlockKeywordExtractionStage().run(document)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "documa.search.idx"
+            generation = build_search_sidecar(document, path)["source_digest"]
+            with patch("documa.search.sidecar.hnsw.unpack", wraps=hnsw.unpack) as unpack_vector:
+                routes = route_sections(path, ["polci", "77"], source_generation=generation, limit=5)
+
+        self.assertEqual(routes[0]["block_id"], "sec-77")
+        self.assertGreater(unpack_vector.call_count, 0)
+        self.assertLess(unpack_vector.call_count, section_count)
 
     def test_search_uses_hierarchical_route_sidecar_for_large_outline(self):
         document = _hierarchical_document(6)
@@ -212,6 +272,7 @@ class P1P2RetrievalTests(unittest.TestCase):
 
         self.assertTrue(result["retrieval"]["route_index_path"].endswith("documa.search.idx"))
         self.assertIn("sec-5", result["retrieval"]["route_block_ids"])
+        self.assertTrue(result["retrieval"]["route_sources"])
         self.assertTrue(all(row["branch_id"] in result["retrieval"]["route_block_ids"] for row in result["results"]))
 
 

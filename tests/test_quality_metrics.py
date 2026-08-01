@@ -143,7 +143,9 @@ class TestIrDiff:
 
 class TestQualityBenchmark:
     def test_quality_mode_scores_gold_cases(self):
-        payload = run_fixture_benchmark(BenchmarkOptions(mode="quality"))
+        payload = run_fixture_benchmark(
+            BenchmarkOptions(mode="quality", pdf_provider="pymupdf", keyword_provider="ngram")
+        )
         assert payload["mode"] == "quality"
         by_id = {case["case_id"]: case for case in payload["cases"]}
 

@@ -31,7 +31,7 @@ needs_ocr = pytest.mark.ocr
 
 
 def _parse(source: Path):
-    return adapter_for_source(str(source)).parse(str(source), ParseOptions())
+    return adapter_for_source(str(source), pdf_provider="pymupdf").parse(str(source), ParseOptions())
 
 
 class TestDegradationPaths:

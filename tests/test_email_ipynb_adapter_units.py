@@ -76,7 +76,7 @@ class EmailAndNotebookAdapterUnitTests(unittest.TestCase):
                     EmailAdapter().parse(source)
 
             self.assertEqual(caught.exception.detail.code, "MSG_DEPENDENCY_NOT_INSTALLED")
-            self.assertIn("documa[msg]", caught.exception.detail.suggested_action or "")
+            self.assertIn("pip install --upgrade documa", caught.exception.detail.suggested_action or "")
 
     def test_msg_open_failure_returns_typed_error_and_closes_message(self):
         class FailingMessage:
@@ -139,7 +139,7 @@ class EmailAndNotebookAdapterUnitTests(unittest.TestCase):
                     IpynbAdapter().parse(source)
 
             self.assertEqual(caught.exception.detail.code, "IPYNB_DEPENDENCY_NOT_INSTALLED")
-            self.assertIn("documa[ipynb]", caught.exception.detail.suggested_action or "")
+            self.assertIn("pip install --upgrade documa", caught.exception.detail.suggested_action or "")
 
     def test_ipynb_open_failure_returns_typed_error(self):
         try:

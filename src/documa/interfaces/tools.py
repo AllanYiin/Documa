@@ -212,13 +212,14 @@ def parse_document_tool(
     out: str | None = None,
     lang: str = "auto",
     progress: str = "text",
+    pdf_provider: str = "auto",
 ) -> ToolPayload:
     output_dir = Path(out) if out else None
     asset_dir = output_dir / "assets" if output_dir else None
     languages = [part.strip() for part in lang.split(",") if part.strip()]
 
     try:
-        document = adapter_for_source(source).parse(
+        document = adapter_for_source(source, pdf_provider=pdf_provider).parse(
             source,
             ParseOptions(
                 languages=languages or ["auto"],
@@ -254,6 +255,8 @@ def process_document_tool(
     max_chars: int = 1200,
     export_formats: list[str] | str | None = None,
     ocr: bool = False,
+    pdf_provider: str = "auto",
+    keyword_provider: str = "lingxi",
 ) -> ToolPayload:
     output_dir = Path(out) if out else None
     asset_dir = output_dir / "assets" if output_dir else None
@@ -262,16 +265,31 @@ def process_document_tool(
         export_formats = [export_formats]
     export_formats = export_formats or []
 
+    source_is_pdf = Path(source).suffix.casefold() == ".pdf"
+    effective_pdf_provider = "pymupdf" if ocr and source_is_pdf and pdf_provider == "auto" else pdf_provider
     try:
-        document = adapter_for_source(source).parse(
+        document = adapter_for_source(source, pdf_provider=effective_pdf_provider).parse(
             source,
             ParseOptions(languages=languages or ["auto"], asset_dir=asset_dir),
         )
     except DocumaError as exc:
         return _documa_error_payload(exc)
 
+    if effective_pdf_provider != pdf_provider:
+        document.metadata["pdf_provider"] = {
+            "requested": pdf_provider,
+            "actual": effective_pdf_provider,
+            "fallback": True,
+            "reason_code": "OCR_REQUIRES_PYMUPDF_RENDERER",
+        }
+
     context = PipelineContext(
-        settings={"max_chars": max_chars, "ocr": ocr, "source_path": str(Path(source).resolve())}
+        settings={
+            "max_chars": max_chars,
+            "ocr": ocr,
+            "source_path": str(Path(source).resolve()),
+            "keyword_provider": keyword_provider,
+        }
     )
     pipeline_run = run_default_pipeline(document, context, include_chunking=True)
     _stamp_provenance(pipeline_run.document, pipeline_profile="ocr" if ocr else "default")
@@ -452,6 +470,8 @@ def view_document_tool(
     include_body: bool = False,
     body_chars: int = 1200,
     result_limit: int = 10,
+    pdf_provider: str = "auto",
+    keyword_provider: str = "lingxi",
 ) -> ToolPayload:
     if bool(source) == bool(ir_path):
         return {"status": "error", "message": "Provide exactly one of source or ir_path."}
@@ -464,13 +484,13 @@ def view_document_tool(
             output_dir = output_path.parent if output_path else None
             asset_dir = output_dir / "assets" if output_dir else None
             languages = [part.strip() for part in lang.split(",") if part.strip()]
-            document = adapter_for_source(source).parse(
+            document = adapter_for_source(source, pdf_provider=pdf_provider).parse(
                 source,
                 ParseOptions(languages=languages or ["auto"], asset_dir=asset_dir),
             )
             pipeline_run = run_default_pipeline(
                 document,
-                PipelineContext(settings={"max_chars": max_chars}),
+                PipelineContext(settings={"max_chars": max_chars, "keyword_provider": keyword_provider}),
                 include_chunking=True,
             )
             document = pipeline_run.document
@@ -1571,6 +1591,7 @@ def search_blocks_tool(
                     "selected_evidence_tokens": sum(int(row.get("evidence_tokens") or 0) for row in internal_page),
                     "route_index_path": route_index_path,
                     "route_block_ids": [_short_block_id(row["block_id"], id_prefix) for row in route_rows],
+                    "route_sources": [row.get("route_source", "lexical") for row in route_rows],
                     "route_count": len(route_rows),
                 },
                 "snippet_policy": {
@@ -1768,6 +1789,8 @@ def benchmark_tool(
     mode: str = "readiness",
     gold_dir: str = "fixtures/pdf/gold",
     quality_threshold: float = 0.85,
+    pdf_provider: str = "auto",
+    keyword_provider: str = "lingxi",
 ) -> ToolPayload:
     try:
         payload = run_fixture_benchmark(
@@ -1778,6 +1801,8 @@ def benchmark_tool(
                 mode=mode,
                 gold_dir=Path(gold_dir),
                 quality_threshold=quality_threshold,
+                pdf_provider=pdf_provider,
+                keyword_provider=keyword_provider,
             )
         )
     except (OSError, KeyError, ValueError) as exc:
@@ -1864,8 +1889,18 @@ def ingest_document_tool(
     max_chars: int = 1200,
     ocr: bool = False,
     update_index: bool = True,
+    pdf_provider: str = "auto",
+    keyword_provider: str = "lingxi",
 ) -> ToolPayload:
-    result = registry_store.ingest_document(source, store_dir=store_dir, lang=lang, max_chars=max_chars, ocr=ocr)
+    result = registry_store.ingest_document(
+        source,
+        store_dir=store_dir,
+        lang=lang,
+        max_chars=max_chars,
+        ocr=ocr,
+        pdf_provider=pdf_provider,
+        keyword_provider=keyword_provider,
+    )
     # Keep the derived collection index coherent with the registry: upsert the
     # ingested document (a content-hash no-op for dedup hits) and drop rows of
     # entries this ingest superseded. With no index built yet this is one

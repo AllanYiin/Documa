@@ -1,7 +1,7 @@
 {
   "id": "documa",
   "name": "Documa",
-  "version": "0.5.0",
+  "version": "0.6.1",
   "description": "Adds Documa document-understanding tools to OpenClaw.",
   "icon": "https://raw.githubusercontent.com/AllanYiin/Documa/main/assets/documa-logo.png",
   "contracts": {
