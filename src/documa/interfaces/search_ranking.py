@@ -64,22 +64,37 @@ def _single_document_action(ir_path: str, row: dict[str, Any]) -> dict[str, Any]
             "tool": "documa_list_blocks",
             "arguments": {"ir_path": ir_path, "parent_id": block_id, "limit": 10},
         }
-    if row.get("neighbors", {}).get("needs_next"):
-        return {
-            "tool": "documa_source_window",
-            "arguments": {"ir_path": ir_path, "block_id": block_id, "before": 0, "after": 1},
-        }
     arguments: dict[str, Any] = {"ir_path": ir_path, "block_id": block_id}
     if row.get("recommended_read_chars") is not None:
         arguments["max_chars"] = row["recommended_read_chars"]
     return {"tool": "documa_read_block", "arguments": arguments}
 
 
-def recommended_next_action(ir_path: str, ranked_page: list[dict[str, Any]]) -> dict[str, Any] | None:
+def _row_doc_region(row: dict[str, Any]) -> str:
+    return str(row.get("doc_region") or (row.get("selection") or {}).get("doc_region") or "body")
+
+
+def _low_precision_top_hit(row: dict[str, Any], term_count: int) -> bool:
+    matched_terms = int(row.get("query_matched_terms_count", row.get("matched_terms_count")) or 0)
+    if term_count >= 3 and matched_terms <= 1:
+        return True
+    return term_count >= 2 and matched_terms <= 1 and _row_doc_region(row) != "body"
+
+
+def recommended_next_action(
+    ir_path: str,
+    ranked_page: list[dict[str, Any]],
+    *,
+    term_count: int = 1,
+) -> dict[str, Any] | None:
     """Return schema-valid calls that can be executed without model rewriting."""
     if not ranked_page:
         return None
     top = ranked_page[0]
+    # Broad low-coverage or non-body hits should be refined before Documa
+    # spends evidence tokens reading the wrong block.
+    if _low_precision_top_hit(top, term_count):
+        return None
     runner_up = ranked_page[1] if len(ranked_page) > 1 else None
     confident = top.get("matched_terms_count", 0) >= _CONFIDENT_MATCHED_TERMS or (
         runner_up is None or top["score"] >= _CONFIDENT_SCORE_LEAD * max(runner_up["score"], 1e-9)
@@ -98,6 +113,7 @@ def search_hints(
     search_body: bool,
     term_count: int,
     top_matched_terms: int,
+    top_doc_region: str = "body",
 ) -> list[str]:
     """At most two short, deterministic follow-up hints for the calling agent."""
     hints: list[str] = []
@@ -106,6 +122,14 @@ def search_hints(
             hints.append("No matches with search_body=false; retry with search_body=true.")
         hints.append("No matches; retry with any_of synonyms or browse structure via documa_list_blocks.")
     else:
+        if term_count >= 3 and top_matched_terms <= 1:
+            hints.append(
+                f"Low precision: top hit matches only {top_matched_terms}/{term_count} terms; retry with 2-4 discriminative literals."
+            )
+        elif term_count >= 2 and top_matched_terms <= 1 and top_doc_region != "body":
+            hints.append(
+                f"Top hit is in {top_doc_region} with 1/{term_count} term coverage; prefer a body hit or refine the query before reading."
+            )
         if total_matches > offset + result_count:
             hints.append(f"More matches available: retry with offset={offset + result_count}.")
         if term_count > 1 and top_matched_terms < term_count:

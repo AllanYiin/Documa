@@ -1,7 +1,7 @@
 ---
 name: documa-evidence
 description: Use when the user asks Codex to read, search, summarize, compare, verify, or answer from large PDFs, long documents, Office, HTML, email, notebook, Markdown, or Documa IR files with evidence. Prefer Documa MCP block search before generic PDF reading; do not use for visual/layout rendering tasks.
-version: 2026.7.23
+version: 2026.8.2
 homepage: https://github.com/AllanYiin/Documa/tree/main/plugins/codex-documa
 license: MIT
 metadata: {"language":"en","category":"documents","host":"codex","integration":"mcp","short-description":"Documa MCP evidence-first document workflow for Codex"}
@@ -35,6 +35,7 @@ Fallback rule:
 Step 0: Confirm tool availability
 - Input: User request, current Codex tool list, and any referenced local/uploaded documents.
 - Action: Check whether the agent-profile tools `documa_process`, `documa_search_blocks`, `documa_read_block`, `documa_read_blocks`, `documa_ingest`, and `documa_search_collection` are visible. If they are not visible, discover or load the plugin-provided MCP server before reading the document.
+- Host routing: Call registered Documa tools directly. Do not put them inside a generic parallel/meta-tool wrapper unless the host explicitly declares the target allowed; retry an unsupported-wrapper failure as a direct call.
 - Output: Clear decision to use Documa tools or an explicit fallback reason.
 - Validation: Do not pretend Documa tools exist when they are absent; do not start with generic PDF reading unless fallback conditions are met.
 
@@ -48,21 +49,27 @@ Step 2: Route the query before reading bodies
 - Input: User question, document/collection scope, and Documa IR reference.
 - Action: Pick the route that matches the question shape (defaults are already token-lean nav profiles; responses declare `block_id_prefix` once and emit short block ids — pass them back as-is):
   - Structure or overview question ("what sections exist", "summarize the document"): call `documa_block_tree` with `max_depth=2-3, include_sketches=true` — sections come back with a precomputed one-glance `sketch` plus `read_cost_chars`, often enough to answer without reads. `documa_search_blocks` with `granularity=section` is the query-shaped alternative.
-  - Specific fact or keyword question: call `documa_search_blocks` with 2-4 precise terms. Put bilingual synonyms in `any_of` when the question language may differ from the document language; re-search narrowly with `scope_block_id` + `granularity` instead of widening terms.
+  - Specific fact or keyword question: call `documa_search_blocks` with `limit=6, max_snippets_per_block=1`. Because this search is lexical, put only 2-4 discriminative literals or quoted phrases in `query`; remove broad domain words that can match anywhere.
+  - Put only non-duplicative synonyms, spelling variants, or bilingual equivalents in `any_of`. It expands recall; never repeat the same literals in both `query` and `any_of`.
+  - For a multi-theme request, split it into one bounded search per theme instead of concatenating many high-frequency terms. Make direct tool calls, then converge each theme before widening it.
+  - Re-search narrowly with `scope_block_id` + `granularity` instead of widening terms.
   - Multi-document breadth question ("which documents mention X"): call `documa_search_collection` with `group_by_document=true`; then narrow with `document_ids=[...]` using the compact rollups' `document_id`.
   - Multi-document fact question: call `documa_search_collection` directly (terms are AND-ed; quoted phrases supported; snippets center on the hit). If the response says `match_mode: "any_term"`, precision was degraded — tighten terms before trusting ranking. Read a hit via `documa_read_block` with `ir_path` set to the hit's `document_id` (a `doc-` registry id accepted directly) and its `block_id`. Resolve registry ids with `documa_list_documents` when needed.
   - Index freshness: `documa_ingest`/delete maintain the collection index incrementally by default, so a fresh ingest is searchable immediately; `documa_index_collection` is the repair path when `documa_doctor` (with `store_dir`) reports the index stale or version-outdated.
   - Email collections: mailbox ingestion (`documa_ingest_mailbox`) does NOT enter the registry or collection index; to make messages cross-document searchable, run `documa_ingest` per `.eml`/`.msg` file instead.
 - Output: Candidate block ids, source/page metadata, and the routing rationale.
-- Validation: Treat snippets as navigation, not final evidence. Do not raise `limit` past 10 before narrowing `fields` or refining terms; page with `offset` and `total_matches`/`has_more` instead of re-running broader searches.
+- Precision gate: For queries with 3 or more literals, prefer body hits matching at least 2 terms. If the top row has `coverage=1/N` or a non-body region (`references`, `footnote`, TOC, header/footer), follow the low-precision hint and refine once before reading. Exact single-term queries are exempt.
+- Validation: Treat snippets as navigation, not final evidence. Start at `limit=6` (at most 5 when context is tight) and one snippet per block; page with `offset` and `total_matches`/`has_more` only after the precision gate instead of raising the limit or re-running a broader search.
 
 Step 3: Read and converge on evidence
 - Input: Candidate block ids, search response metadata, and the narrow evidence need.
-- Action: Execute each schema-valid `{tool, arguments}` entry in `recommended_next.actions[]` first. When several candidate ids are already known, prefer one `documa_read_blocks` call with a shared `total_max_tokens` budget.
+- Action: Execute each schema-valid `{tool, arguments}` entry in `recommended_next.actions[]` first. A leaf hit always recommends reading the core block before adjacent context.
+- Neighbor rule: `needs_next=true` is a conditional follow-up signal, not permission to prefetch. Read the core block first; call `documa_source_window` only if the content is truncated or semantically unfinished afterward.
+- Batch rule: Use `documa_read_blocks` only for the smallest candidates that already passed the precision gate (usually 1-3), under one shared `total_max_tokens` budget.
 - Token controls: use the `continuation.start` cursor returned by `documa_read_block`; set `max_evidence_tokens` on search and `total_max_tokens` on batch read. Search responses are auto-capped (~2000 tokens) when a token counter is configured; override with `max_response_tokens` (0 disables). Request `response_profile=evidence` only when selection diagnostics are needed.
 - Collection responses carry the same executable `recommended_next.actions[]` and `hints` surface as single-document search; use `any_term` degradation, `offset=N` paging, and group-mode hints before inventing a new strategy.
 - Output: Quoted or paraphrased evidence, block ids, page/source metadata, and any neighbor context needed for interpretation.
-- Validation: Only cite blocks that were actually read or otherwise provided in the tool result. Never run two consecutive searches without reading in between unless the first search returned zero results.
+- Validation: Only cite blocks that were actually read or otherwise provided in the tool result. Do not rerun the same theme without reading unless its first search returned zero results or a low-precision hint; independent themes may each receive one initial bounded search.
 
 Step 4: Answer with evidence boundaries
 - Input: Read evidence blocks, user question, and any explicit constraints.

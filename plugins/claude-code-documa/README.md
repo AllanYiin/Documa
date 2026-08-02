@@ -7,7 +7,11 @@
 這個 plugin 透過 plugin-provided MCP server 與 evidence workflow skill，把 Documa 暴露給 Claude Code。它不打包 Documa 本體；請先在 Claude Code 可見的 Python 環境安裝 Documa。
 
 ```powershell
-python -m pip install "documa==0.6.1"
+# 首次安裝
+python -m pip install "documa==0.6.3"
+
+# 升級／重裝（會先偵測並斷開 MCP）
+python -m documa.install --upgrade "documa==0.6.3"
 claude --plugin-dir .\plugins\claude-code-documa
 ```
 

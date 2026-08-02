@@ -169,6 +169,24 @@
         "讀取階段沿用 rollup 的 top_blocks read_ref，不重新盲搜。"
       ],
       "trigger_class": "direct"
+    },
+    {
+      "id": 11,
+      "name": "precision-gated-multi-theme-search",
+      "type": "functional",
+      "language": "zh",
+      "coverage_tags": ["should-trigger", "retrieval", "efficiency"],
+      "prompt": "請從這份 120 頁公文手冊整理常見誤用、稱謂與期望語、日期數字和標點規則；上下文預算有限。",
+      "expected_output": "The response should split the themes into bounded lexical searches, avoid generic overlapping query/any_of terms, apply a coverage/body precision gate, and read core blocks before neighbors.",
+      "files": [],
+      "expectations": [
+        "每個主題以 2-4 個高鑑別 lexical literals 查詢，起始 limit<=6 且 max_snippets_per_block=1。",
+        "query 與 any_of 不重複；any_of 只放同義詞、拼寫或雙語替代詞。",
+        "對 3 個以上查詢詞，top hit 僅 coverage=1/N 或落在 references/footnote/TOC/header-footer 時先收斂查詢，不直接精讀。",
+        "先讀核心 block；needs_next=true 只在核心內容仍截斷或語意未完時才觸發鄰接讀取。",
+        "不得把 Documa 工具放進 host 未宣告支援的 generic parallel/meta-tool wrapper。"
+      ],
+      "trigger_class": "direct"
     }
   ]
 }

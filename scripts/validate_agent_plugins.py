@@ -82,11 +82,12 @@ def validate_server_entry(entry: Any, context: str) -> None:
     if not isinstance(entry, dict):
         raise ValidationError(f"{context} must be an object")
     command = entry.get("command")
-    if command != "documa-mcp":
-        raise ValidationError(f"{context} must use command 'documa-mcp'")
+    if command != "python":
+        raise ValidationError(f"{context} must use command 'python'")
     args = entry.get("args", [])
-    if not isinstance(args, list):
-        raise ValidationError(f"{context}.args must be a list")
+    expected_args = ["-m", "documa.interfaces.mcp_server"]
+    if args != expected_args:
+        raise ValidationError(f"{context}.args must be {expected_args!r}")
     env = entry.get("env", {})
     if not isinstance(env, dict):
         raise ValidationError(f"{context}.env must be an object")

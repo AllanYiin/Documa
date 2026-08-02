@@ -9,12 +9,16 @@
 所有 wrapper 都假設 host 執行環境已經能找到 Documa：
 
 ```powershell
-python -m pip install "documa==0.6.1"
+# 首次安裝
+python -m pip install "documa==0.6.3"
+
+# 已安裝 Documa 時的升級／重裝：先斷開 MCP，再執行 pip
+python -m documa.install --upgrade "documa==0.6.3"
 ```
 
 共用整合契約：
 
-1. 支援 MCP 的 host 一律優先使用 `documa-mcp`。
+1. 支援 MCP 的 host 一律使用 `python -m documa.interfaces.mcp_server`，避免 Windows 長駐行程鎖住 pip 管理的 `documa-mcp.exe`。
 2. 只有 host-native runtime 需要直接註冊 tool 時，才包 `documa` CLI。
 3. 回答流程維持 evidence-driven：單文件先 process，再 search/list blocks，最後只 read 選中的 blocks；多文件先逐檔 ingest（集合索引增量維護），廣度問題用 `search_collection --group-by-document`，再以 `document_ids` 收斂並沿 `read_ref` 讀取。
 4. 每個 wrapper 都必須同時暴露單文件與多文件（collection）兩條查詢路徑，並遵循搜尋回應內建的 `recommended_next`／`hints` 引導。
@@ -34,8 +38,8 @@ Codex 與 Claude Code 的 plugin manifest 都用 `mcpServers` 指向 MCP config�
 
 | Host | Manifest field | `.mcp.json` shape |
 | --- | --- | --- |
-| Codex | `"mcpServers": "./.mcp.json"` | wrapped `mcpServers` map，例如 `{ "mcpServers": { "documa": { "command": "documa-mcp" } } }` |
-| Claude Code | `"mcpServers": "./.mcp.json"` | wrapped `mcpServers` map，例如 `{ "mcpServers": { "documa": { "command": "documa-mcp" } } }` |
+| Codex | `"mcpServers": "./.mcp.json"` | wrapped `mcpServers` map，command 為 `python`，args 為 `["-m", "documa.interfaces.mcp_server"]` |
+| Claude Code | `"mcpServers": "./.mcp.json"` | wrapped `mcpServers` map，command 為 `python`，args 為 `["-m", "documa.interfaces.mcp_server"]` |
 
 不要把兩邊 `.mcp.json` 合併成同一份；wrapper 應維持 host-specific。
 

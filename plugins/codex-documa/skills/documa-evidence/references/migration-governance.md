@@ -50,7 +50,7 @@ Required checks:
 
 ```powershell
 python scripts\validate_agent_plugins.py
-python C:\Users\allan\.agents\skills\skill-creator-advanced\scripts\stage_gate.py D:\PycharmProjects\Documa\plugins\codex-documa\skills\documa-evidence --stage revise --json
+python C:\Users\allan\.agents\skills\skillops-studio\scripts\stage_gate.py D:\PycharmProjects\Documa\plugins\codex-documa\skills\documa-evidence --stage revise --json
 ```
 
 Do not claim a migration is complete if any final gate, stage gate, or policy gate returns FAIL or BLOCKED.

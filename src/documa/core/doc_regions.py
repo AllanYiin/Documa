@@ -14,6 +14,7 @@ from __future__ import annotations
 DOC_REGION_MULTIPLIERS = {
     "toc": 0.3,
     "header_footer": 0.3,
+    "footnote": 0.45,
     "references": 0.6,
     "metadata": 0.6,
 }
@@ -39,9 +40,26 @@ def infer_doc_region(
         return "toc"
     if block_type == "metadata":
         return "metadata"
+    if block_type == "footnote" or "footnote" in {source_type, role}:
+        return "footnote"
     if "page_header" in {source_type, role} or "page_footer" in {source_type, role}:
         return "header_footer"
-    if any(term in joined for term in ("references", "bibliography", "works cited")):
+    if any(
+        term in joined
+        for term in (
+            "references",
+            "bibliography",
+            "works cited",
+            "參考文獻",
+            "参考文献",
+            "參考資料",
+            "参考资料",
+            "引用文獻",
+            "引用文献",
+            "書目",
+            "书目",
+        )
+    ):
         return "references"
     if "appendix" in joined or "annex" in joined:
         return "appendix"

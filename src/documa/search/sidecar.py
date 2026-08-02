@@ -25,7 +25,7 @@ from documa.search import hnsw
 SEARCH_INDEX_VERSION = 2
 APPLICATION_ID = 0x444F4355  # "DOCU"
 # route-path-v2: heading paths no longer repeat the document root title.
-FEATURE_VERSION = "keyword-v3-provider-aware+ngram-newword-v2+simhash64+sketch-v1+route-path-v2+hnsw-route-v1"
+FEATURE_VERSION = "keyword-v4-provider-version-aware+ngram-newword-v2+simhash64+sketch-v1+route-path-v2+hnsw-route-v1"
 
 
 def sidecar_path(ir_path: str | Path) -> Path:
@@ -96,6 +96,8 @@ def source_digest(document: DocumentIR) -> str:
         keyword_input = {
             "provider": block.metadata.get("keyword_provider"),
             "provider_requested": block.metadata.get("keyword_provider_requested"),
+            "provider_version": block.metadata.get("keyword_provider_version"),
+            "provider_requested_version": block.metadata.get("keyword_provider_requested_version"),
             "keyword_terms": block.metadata.get("keyword_terms") or [],
             "new_word_terms": block.metadata.get("new_word_terms") or [],
             "search_terms": block.metadata.get("search_terms") or [],
@@ -107,20 +109,18 @@ def source_digest(document: DocumentIR) -> str:
 
 
 def keyword_provider_signature(document: DocumentIR) -> str:
-    requested = sorted(
-        {
-            str(block.metadata.get("keyword_provider_requested"))
-            for block in document.document_blocks
-            if block.metadata.get("keyword_provider_requested")
-        }
-    )
-    actual = sorted(
-        {
-            str(block.metadata.get("keyword_provider"))
-            for block in document.document_blocks
-            if block.metadata.get("keyword_provider")
-        }
-    )
+    def labels(provider_key: str, version_key: str) -> list[str]:
+        values = set()
+        for block in document.document_blocks:
+            provider = block.metadata.get(provider_key)
+            if not provider:
+                continue
+            version = block.metadata.get(version_key)
+            values.add(f"{provider}@{version}" if version else str(provider))
+        return sorted(values)
+
+    requested = labels("keyword_provider_requested", "keyword_provider_requested_version")
+    actual = labels("keyword_provider", "keyword_provider_version")
     requested_label = "+".join(requested) or "unknown"
     actual_label = "+".join(actual) or "unknown"
     return f"requested-{requested_label}__actual-{actual_label}"

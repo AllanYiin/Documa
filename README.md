@@ -114,11 +114,26 @@ documa search-collection --store-dir .\.documa --query "終止條款" `
 python -m pip install documa
 ```
 
-Documa 的中文關鍵詞預設使用 LingXi 0.2.0，PDF extraction 預設使用
+首次安裝時尚無 MCP 行程，直接使用 pip 即可。升級或重裝時，請改用受控安裝入口：
+
+```powershell
+python -m documa.install --upgrade documa
+```
+
+它會先阻止新的 Documa MCP server 啟動，偵測並通知現有 server 退出；逾時未退出時強制終止，確認全部斷線後才執行 pip。Windows 上也會清理尚未支援生命週期登錄的舊版 `documa-mcp.exe`，避免 `WinError 32`。一般 pip/wheel 沒有可靠的 pre-install hook，因此不要用直接的 `pip install --upgrade documa` 取代這個升級入口。
+
+若是從尚未提供 `documa.install` 的舊版升級，Windows 只需做一次遷移：
+
+```powershell
+Get-Process -Name documa-mcp -ErrorAction SilentlyContinue | Stop-Process -Force
+python -m pip install --upgrade documa
+```
+
+Documa 的中文關鍵詞預設使用 LingXi 0.2.1，PDF extraction 預設使用
 rust-pdf-parser 0.2.0。此開發環境可由本機來源專案安裝其已建置 wheel：
 
 ```powershell
-python -m pip install --force-reinstall "D:\PycharmProjects\rust_Lingxi\target\wheels\lingxi-0.2.0-cp39-abi3-win_amd64.whl"
+python -m documa.install --force-reinstall "D:\PycharmProjects\rust_Lingxi\target\wheels\lingxi-0.2.1-cp39-abi3-win_amd64.whl"
 python -m pip install --force-reinstall "D:\PycharmProjects\rust-pdf_parser\target\stage6c2e-final-wheels\rust_pdf_parser-0.2.0-cp310-cp310-win_amd64.whl"
 ```
 
@@ -221,7 +236,7 @@ documa block-demo .\your.pdf --question "這份文件的主要風險是什麼？
 
 | 入口 | 使用方式 |
 | --- | --- |
-| **MCP** | `documa-mcp`（預設安裝即提供）。`DOCUMA_MCP_PROFILE=agent` 只暴露 evidence 工作流的 16 個工具。repo 內附三個現成 plugin：Claude Code（`plugins/claude-code-documa`）、Codex（`plugins/codex-documa`）、OpenClaw（`plugins/openclaw-documa`），各含引導 LLM 走短搜尋路徑的 `documa-evidence` skill。 |
+| **MCP** | Host 建議以 `python -m documa.interfaces.mcp_server` 啟動，避免 Windows 長駐行程鎖住 `documa-mcp.exe`；相容用的 `documa-mcp` 命令仍保留。`DOCUMA_MCP_PROFILE=agent` 只暴露 evidence 工作流的 16 個工具。repo 內附三個現成 plugin：Claude Code（`plugins/claude-code-documa`）、Codex（`plugins/codex-documa`）、OpenClaw（`plugins/openclaw-documa`），各含引導 LLM 走短搜尋路徑的 `documa-evidence` skill。 |
 | **OpenAI function calling** | `from documa.interfaces import openai_tool_schemas, call_documa_tool` |
 | **CLI** | 上面評估路徑用的指令；適合 shell-based agent 或人工檢查。 |
 | **Python API** | `documa.adapters` + `documa.pipeline.run_default_pipeline`，或直接 `call_documa_tool(name, args)`。 |

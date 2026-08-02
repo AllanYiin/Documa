@@ -13,15 +13,17 @@ Trigger and fallback rules:
 - Use Documa first for large PDFs, long attachments, multi-section reports, contracts, papers, manuals, or any document task where reading the whole file would be wasteful.
 - Use Documa first when the user asks for evidence, citations, page/source metadata, comparison, summarization, or question answering over a document.
 - If Documa tools are not visible, inspect or enable the Documa plugin before using another PDF workflow.
+- Call registered Documa tools directly. Do not route them through a generic parallel/meta-tool wrapper unless the host explicitly declares the target allowed; retry unsupported-wrapper failures as direct calls.
 - Fall back to a generic PDF skill only when Documa tools are unavailable, `documa_process` cannot produce usable IR, or the task is visual/layout rendering rather than evidence retrieval. Say that fallback explicitly.
 
 Preferred sequence (single document):
 
 1. If the source is not already a `documa.ir.json`, call `documa_process` with bounded export formats such as `block-json`, `rag-json`, or `markdown`.
-2. For an overview, call `documa_block_tree` with `max_depth=2-3, include_sketches=true` — sections return a precomputed `sketch` and `read_cost_chars`. For facts, start with `documa_search_blocks` using 2-4 precise terms. Defaults are token-lean (nav profile, auto response cap); responses declare `block_id_prefix` once and emit short block ids — pass them back as-is. Treat search snippets as navigation only; page further matches with `offset` (the response reports `total_matches`).
-3. Execute the search response's `recommended_next.actions[]` calls exactly as returned; every item contains a schema-valid `tool` and `arguments` object. Otherwise read the smallest set of block ids that can support the answer, bounding reads with `max_chars` or `max_tokens`.
-4. If evidence is incomplete, refine the query once guided by the response `hints`, re-search narrowly with `scope_block_id` + `granularity`, or read nearby parent/child blocks (`include_children=true` only when the hit reports `needs_next: true`), before expanding scope.
-5. In the final answer, distinguish observed evidence from inference and cite block ids or source/page metadata when available.
+2. For an overview, call `documa_block_tree` with `max_depth=2-3, include_sketches=true`. For facts, start `documa_search_blocks` with `limit=6, max_snippets_per_block=1`; use 2-4 discriminative lexical literals or quoted phrases in `query`, and only non-duplicative synonyms/spelling variants in `any_of`. Split multi-theme questions into one bounded search per theme instead of concatenating high-frequency terms.
+3. Before reading a query with 3+ literals, prefer body hits matching at least 2 terms. Refine a top `coverage=1/N` or non-body hit once. Exact single-term queries are exempt.
+4. Execute `recommended_next.actions[]` exactly as returned. Read the core hit before neighbors even when `needs_next=true`; fetch adjacent context only if the core is truncated or semantically unfinished. Batch only the smallest precision-qualified set (usually 1-3) under a shared budget.
+5. If evidence is incomplete, re-search narrowly with `scope_block_id` + `granularity` or inspect parent/child relations before expanding scope. Do not rerun the same theme without reading unless it returned zero or low precision; independent themes may each receive one initial bounded search.
+6. In the final answer, distinguish observed evidence from inference and cite block ids or source/page metadata when available.
 
 Preferred sequence (multiple documents):
 

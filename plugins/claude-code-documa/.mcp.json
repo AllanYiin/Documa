@@ -1,12 +1,14 @@
 {
   "mcpServers": {
     "documa": {
-      "command": "documa-mcp",
-      "args": [],
+      "command": "python",
+      "args": [
+        "-m",
+        "documa.interfaces.mcp_server"
+      ],
       "env": {
         "DOCUMA_MCP_PROFILE": "agent"
       }
     }
   }
 }
-

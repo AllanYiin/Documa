@@ -56,6 +56,7 @@ def test_lingxi_is_default_and_preserves_ngram_new_word_metadata():
     leaf = next(block for block in document.document_blocks if block.id == "leaf-1")
     root = next(block for block in document.document_blocks if block.id == "root")
     assert leaf.metadata["keyword_provider"] == "lingxi"
+    assert leaf.metadata["keyword_provider_version"] == "0.2.1"
     assert root.metadata["keyword_provider"] == "ngram"
     assert leaf.metadata["keyword_terms"][:2] == ["人工智慧", "文件理解"]
     assert isinstance(leaf.metadata["new_word_terms"], list)
@@ -77,10 +78,10 @@ def test_missing_lingxi_falls_back_to_ngram_and_reports_reason():
     assert result.report["keyword_provider_fallback"].startswith("ImportError:")
 
 
-def test_lingxi_loader_requires_0_2_0_distribution():
+def test_lingxi_loader_requires_0_2_1_distribution():
     _load_lingxi_segmenter.cache_clear()
-    with patch("documa.pipeline.block_keywords.distribution_version", return_value="0.1.0"):
-        with pytest.raises(ImportError, match="LingXi 0.2.0 is required; found 0.1.0"):
+    with patch("documa.pipeline.block_keywords.distribution_version", return_value="0.2.0"):
+        with pytest.raises(ImportError, match="LingXi 0.2.1 is required; found 0.2.0"):
             _load_lingxi_segmenter()
     _load_lingxi_segmenter.cache_clear()
 
@@ -105,3 +106,18 @@ def test_sidecar_digest_changes_with_keyword_provider_and_terms():
         PipelineContext(settings={"keyword_provider": "ngram"}),
     )
     assert source_digest(lingxi_document) != source_digest(ngram_document)
+
+
+def test_sidecar_digest_changes_with_lingxi_version():
+    current_document = _document()
+    with patch("documa.pipeline.block_keywords._load_lingxi_segmenter", return_value=_FakeLingxi()):
+        BlockKeywordExtractionStage().run(current_document)
+    previous_document = _document()
+    with patch("documa.pipeline.block_keywords._load_lingxi_segmenter", return_value=_FakeLingxi()):
+        BlockKeywordExtractionStage().run(previous_document)
+    for block in previous_document.document_blocks:
+        if block.metadata["keyword_provider"] == "lingxi":
+            block.metadata["keyword_provider_version"] = "0.2.0"
+        if block.metadata["keyword_provider_requested"] == "lingxi":
+            block.metadata["keyword_provider_requested_version"] = "0.2.0"
+    assert source_digest(current_document) != source_digest(previous_document)

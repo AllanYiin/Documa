@@ -1,8 +1,8 @@
 # Documa Evidence Readiness Report
 
-Audit date: 2026-07-12
+Audit date: 2026-08-02
 
-Skill version: 2026.7.12
+Skill version: 2026.8.2
 
 ## Scope
 
@@ -27,8 +27,10 @@ Latest intended validation commands:
 
 ```powershell
 python scripts\validate_agent_plugins.py
-python C:\Users\allan\.agents\skills\skill-creator-advanced\scripts\release_gate.py D:\PycharmProjects\Documa\plugins\codex-documa\skills\documa-evidence --stage draft --json
+python C:\Users\allan\.agents\skills\skillops-studio\scripts\release_gate.py D:\PycharmProjects\Documa\plugins\codex-documa\skills\documa-evidence --stage package --json
 ```
+
+Latest executed package gate on 2026-08-02: `PASS`（11 eval cases；format/reference/orphan/security audits PASS；live benchmark SKIPPED and no benchmark claim made）。
 
 Gate precedence rule:
 

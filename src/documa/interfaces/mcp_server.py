@@ -549,8 +549,16 @@ def install_stdio_exit_watchdog(poll_seconds: float = 2.0) -> bool:
 
 
 def main() -> None:
-    install_stdio_exit_watchdog()
-    create_mcp_server().run()
+    from documa.interfaces.mcp_lifecycle import start_install_shutdown_watchdog
+
+    registration = start_install_shutdown_watchdog()
+    if registration is None:
+        raise SystemExit("A Documa install is in progress; refusing to start documa-mcp.")
+    try:
+        install_stdio_exit_watchdog()
+        create_mcp_server().run()
+    finally:
+        registration.close()
 
 
 if __name__ == "__main__":

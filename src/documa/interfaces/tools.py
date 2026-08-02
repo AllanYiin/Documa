@@ -891,7 +891,7 @@ def _selection_metadata(
             "has_numeric": bool(_NUMBER_PATTERN.search(selection_text)),
             "has_date": bool(_DATE_PATTERN.search(selection_text)),
             "has_table": block.type == DocumentBlockType.TABLE,
-            "is_reference": doc_region == "references",
+            "is_reference": doc_region in {"references", "footnote"},
             "is_header_footer": doc_region == "header_footer",
         },
         "dedupe_key": (block.content_hash or hashlib.sha1(selection_text.encode("utf-8", errors="ignore")).hexdigest())[:16],
@@ -924,7 +924,7 @@ def _format_search_row(
                 "path": " > ".join(selection["heading_path"]),
                 "page": citation_meta.get("citation_label"),
                 "score": row["score"],
-                "coverage": f'{row["matched_terms_count"]}/{term_count}',
+                "coverage": f'{row.get("query_matched_terms_count", row["matched_terms_count"])}/{term_count}',
                 "snippet": snippets[0]["snippet"] if snippets else "",
                 "read_chars": selection["recommended_read_chars"],
                 # Only worth tokens when it changes the next action.
@@ -1308,6 +1308,9 @@ def search_blocks_tool(
 
     query_spec = parse_query(query, any_of)
     raw_terms = list(query_spec.units)
+    precision_terms = list(parse_query(query).units) or raw_terms
+    precision_term_keys = {term.casefold() for term in precision_terms}
+
     route_rows: list[dict[str, Any]] = []
     route_index_path: str | None = None
     if effective_granularity in {"leaf", "mixed"} and raw_terms:
@@ -1473,6 +1476,7 @@ def search_blocks_tool(
                 "score": round(score, 4),
                 "matched_terms": matched,
                 "matched_terms_count": len(set(matched)),
+                "query_matched_terms_count": len({term.casefold() for term in matched} & precision_term_keys),
                 "snippets": snippets,
                 "recommended_read_chars": selection["recommended_read_chars"],
                 "neighbors": selection["neighbors"],
@@ -1549,7 +1553,7 @@ def search_blocks_tool(
             by_id=by_id,
             ordered_blocks=ordered_blocks,
             block_positions=block_positions,
-            term_count=len(raw_terms),
+            term_count=len(precision_terms),
             id_prefix=id_prefix,
         )
         for row in internal_page
@@ -1611,12 +1615,13 @@ def search_blocks_tool(
         total_matches=total_matches,
         offset=offset,
         search_body=search_body,
-        term_count=len(raw_terms),
-        top_matched_terms=internal_page[0]["matched_terms_count"] if internal_page else 0,
+        term_count=len(precision_terms),
+        top_matched_terms=internal_page[0]["query_matched_terms_count"] if internal_page else 0,
+        top_doc_region=(internal_page[0].get("selection") or {}).get("doc_region", "body") if internal_page else "body",
     )
     if hints:
         payload["hints"] = hints
-    recommended = search_ranking.recommended_next_action(ir_path, internal_page)
+    recommended = search_ranking.recommended_next_action(ir_path, internal_page, term_count=len(precision_terms))
     if recommended is not None:
         for action in recommended.get("actions") or []:
             arguments = action.get("arguments") or {}

@@ -276,15 +276,23 @@ def documa_tool_schemas(profile: str = "admin") -> list[dict[str, Any]]:
         {
             "name": "documa_search_blocks",
             "title": "Search Documa document blocks",
-            "description": "Search large PDF or long-document evidence blocks by metadata, keywords, previews, and bounded body snippets before reading full text.",
+            "description": "Search large PDF or long-document evidence blocks by metadata, keywords, previews, and bounded body snippets before reading full text. Low-coverage or non-body top hits return refinement hints instead of an automatic read action.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "ir_path": {"type": "string"},
-                    "query": {"type": "string", "default": ""},
+                    "query": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Lexical query. Prefer 2-4 discriminative literals or quoted phrases; avoid broad natural-language filler.",
+                    },
                     "limit": {"type": "integer", "minimum": 1, "default": 10},
                     "offset": {"type": "integer", "minimum": 0, "default": 0, "description": "Skip this many ranked results; use with total_matches for paging."},
-                    "any_of": {"type": ["array", "null"], "items": {"type": "string"}},
+                    "any_of": {
+                        "type": ["array", "null"],
+                        "items": {"type": "string"},
+                        "description": "Optional non-duplicative synonyms or alternate spellings that expand recall; do not repeat query terms.",
+                    },
                     "fields": {"type": ["array", "null"], "items": {"type": "string"}},
                     "snippet_fields": {"type": ["array", "null"], "items": {"type": "string"}},
                     "response_profile": {"type": "string", "enum": ["nav", "evidence", "debug"], "default": "nav", "description": "nav returns only routing fields; evidence adds citation and selection metadata; debug adds diagnostics."},

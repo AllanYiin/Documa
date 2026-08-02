@@ -19,7 +19,7 @@ _EN_TOKEN = re.compile(r"[A-Za-z][A-Za-z0-9_+\-]{1,}")
 _MIXED_TOKEN = re.compile(r"(?:[A-Za-z0-9]+[\u4e00-\u9fff]+|[\u4e00-\u9fff]+[A-Za-z0-9]+)[A-Za-z0-9\u4e00-\u9fff]*")
 _SENTENCE_SPLIT = re.compile(r"[，。！？；：、,.!?;:\n\r\t ]+")
 DEFAULT_KEYWORD_PROVIDER = "lingxi"
-REQUIRED_LINGXI_VERSION = "0.2.0"
+REQUIRED_LINGXI_VERSION = "0.2.1"
 
 
 def _is_cjk(ch: str) -> bool:
@@ -151,7 +151,7 @@ def _load_lingxi_segmenter():
     try:
         installed_version = distribution_version("lingxi")
     except PackageNotFoundError as exc:
-        raise ImportError("LingXi 0.2.0 is not installed") from exc
+        raise ImportError(f"LingXi {REQUIRED_LINGXI_VERSION} is not installed") from exc
     if installed_version != REQUIRED_LINGXI_VERSION:
         raise ImportError(
             f"LingXi {REQUIRED_LINGXI_VERSION} is required; found {installed_version}"
@@ -318,6 +318,14 @@ class BlockKeywordExtractionStage(PipelineStage):
             block.metadata["search_terms"] = search_terms
             block.metadata["keyword_provider"] = block_provider
             block.metadata["keyword_provider_requested"] = requested_provider
+            if block_provider == "lingxi":
+                block.metadata["keyword_provider_version"] = REQUIRED_LINGXI_VERSION
+            else:
+                block.metadata.pop("keyword_provider_version", None)
+            if requested_provider == "lingxi":
+                block.metadata["keyword_provider_requested_version"] = REQUIRED_LINGXI_VERSION
+            else:
+                block.metadata.pop("keyword_provider_requested_version", None)
             if requested_provider == "lingxi" and block_provider != "lingxi":
                 block.metadata["keyword_provider_fallback"] = provider_fallback_reason or "no_lingxi_candidates"
             block.metadata["keyword_thresholds"] = {

@@ -411,11 +411,48 @@ class TokenBudgetTests(unittest.TestCase):
 
             recommended = payload["recommended_next"]
             first_action = recommended["actions"][0]
-            self.assertIn(first_action["tool"], {"documa_read_block", "documa_source_window"})
+            self.assertEqual(first_action["tool"], "documa_read_block")
             self.assertEqual(first_action["arguments"]["ir_path"], str(ir_path))
             self.assertEqual(first_action["arguments"]["block_id"], payload["results"][0]["block_id"])
             self.assertNotIn("block_ids", first_action["arguments"])
             self.assertTrue(any("offset=2" in hint for hint in payload["hints"]))
+
+    def test_search_blocks_refines_low_precision_broad_query_before_reading(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ir_path = _write_ir(tmp, self._multi_block_document())
+            payload = call_documa_tool(
+                "documa_search_blocks",
+                {
+                    "ir_path": str(ir_path),
+                    "query": "budget-needle absent-one absent-two absent-three",
+                    "limit": 3,
+                    "max_response_tokens": 0,
+                },
+            )["structuredContent"]
+
+            self.assertTrue(payload["results"])
+            self.assertEqual(payload["results"][0]["coverage"], "1/4")
+            self.assertNotIn("recommended_next", payload)
+            self.assertTrue(any("Low precision" in hint for hint in payload["hints"]))
+
+    def test_search_blocks_does_not_treat_any_of_synonyms_as_required_literals(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ir_path = _write_ir(tmp, self._multi_block_document())
+            payload = call_documa_tool(
+                "documa_search_blocks",
+                {
+                    "ir_path": str(ir_path),
+                    "query": "budget-needle",
+                    "any_of": ["missing-synonym-a", "missing-synonym-b", "missing-synonym-c"],
+                    "limit": 2,
+                    "max_response_tokens": 0,
+                },
+            )["structuredContent"]
+
+            self.assertTrue(payload["results"])
+            self.assertEqual(payload["results"][0]["coverage"], "1/1")
+            self.assertIn("recommended_next", payload)
+            self.assertFalse(any("Low precision" in hint for hint in payload.get("hints", [])))
 
     def test_search_blocks_zero_results_hint_suggests_recovery(self):
         with tempfile.TemporaryDirectory() as tmp:

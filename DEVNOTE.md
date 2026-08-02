@@ -9,24 +9,28 @@
 ## 📌 SNAPSHOT — 當前狀態
 <!-- 這一整段每次 /devnote 會被覆寫，只反映「到目前為止的最新狀態」 -->
 
-**最後更新**：2026-08-01
+**最後更新**：2026-08-02
 
 ### 需求狀態
-- [x] v0.6.1 版本、runtime 與三個 plugin metadata 已同步；plugin README 鎖定 `documa==0.6.1`，zip 已重建並驗證
+- [x] Windows 安裝／升級加入 MCP lifecycle guard：先偵測與通知退出，逾時依登錄 PID 強制終止，並清理舊版 `documa-mcp.exe`；plugin 改用 `python -m documa.interfaces.mcp_server`
+- [x] v0.6.3 版本、runtime 與三個 plugin metadata 已同步；plugin README 鎖定 `documa==0.6.3`，Python sdist/wheel 與 plugin zip 已重建並驗證
 - [x] `pip install documa` 改為完整非 OCR agent runtime；`documa[all]` 額外加入 OCR；細粒度 extras 保留相容
 - [x] 修正 v0.4 起 `documa_process(out=...)` 同步 sidecar 建置的 O(N²) 文字 map 回歸；真實 423 頁 IR 由約 168s 降至 3.687s
 - [x] 單文件 sidecar v2 新增 local feature-hash HNSW section ANN；只在 lexical coverage 不足時啟動，不呼叫 embedding／LLM／token counter
-- [x] 本機 editable install 的 module/distribution metadata 已刷新為 0.6.1；active MCP server 需重啟才載入新碼
+- [x] 作用中 Python 的 Documa module/distribution metadata 已由重建 wheel 刷新為 0.6.3；LingXi distribution 為 0.2.1
 - [x] PDF 公開預設已改為 `auto` 的 Rust-first provider；`rust` 可嚴格指定、`pymupdf` 可回滾，Rust inferred order 在 pipeline 鎖定
 - [x] Rust Stage 6C2-E 使用真正 lazy `native_events_v2`；頁面即時釋放、finalization 逐頁 drain，舊 wheel fallback 保留
 - [x] Rust Stage 6D 預設 `compact_trace_v1`、verbose 可逆；三次 shadow RSS 1.056367x 通過 1.2x gate，focused 18/18、full 354/354、Ruff pass
 - [x] Rust Stage 6C2-E exact wheel 保持不變：SHA-256 `5ac374d01ec0bfeaea88b1595d8f720237a1adb94d0ae7e5fc7169fa48bf3d61`
 - [ ] Rust 尚未通過完整品質 provider gate：目前 quality gold 9/18 failed（reading order、table、footnote/image relation 等）；memory gate 已通過。預設雖為 Rust-first，品質敏感工作仍須 `pdf_provider="pymupdf"`。
-- [x] 2026-08-01 Rust PDF／LingXi 預設替換與 0.2.0 binding 契約已驗證；保留 provider 回滾、OCR renderer 路由、citation alias 修正、leaf-only LingXi 與 sidecar provider digest。
-- [ ] v0.6.1 尚未 tag 或發布至 PyPI／plugin registry
+- [x] 2026-08-02 LingXi 已升至 0.2.1 exact binding 契約；保留 provider 回滾、leaf-only LingXi，並將 provider 版本納入 sidecar digest/signature 以強制安全重建。
+- [ ] v0.6.3 尚未 tag 或發布至 PyPI／plugin registry
+- [x] 2026-08-02 runtime 搜尋、MCP lifecycle 與 LingXi 0.2.1 已納入 0.6.3 wheel/sdist；Python 與 plugin artifacts SHA-256 已更新
 - [x] v0.5.0 token economy 改造已 release 並推上 origin/main（`ac7c2e3`→`a479a89`）
 - [x] MCP 回應單份傳輸、短 block id、omit-empty、nav/auto-budget 預設、collection 排序訊號統一
 - [x] 三份 plugin skill 與 zip 已同步重建（package_plugins --check 通過）
+- [x] 單文件搜尋新增 lexical precision gate：3+ 個 query literals 的首筆若僅命中 1 個，或 2+ literals 的低覆蓋首筆落在非正文區域，改提示收斂而不自動精讀；`any_of` 同義詞不列入 required literal 計數
+- [x] `needs_next` 改為先讀核心 block、讀後仍截斷／語意未完才補鄰接；footnote 與中英文 references 區域可辨識並降權
 - [ ] token_economy benchmark 的 gold 仍是合成小文件，量不出真實文件的短 id/瘦身紅利（見未解問題）
 - [ ] 單文件搜尋仍在記憶體重算 SimHash/IDF，未消費 sidecar `blocks`/`term_stats`/`block_terms` 預計算（純效能，不影響 token）
 
@@ -36,6 +40,7 @@
 - **替換後能力邊界**：Rust PDF 不提供 renderer/OCR，human-order 與 private table/image gold 尚未完成；LingXi 若直接發布到所有祖先會造成階層重複命中，因此僅替換文字葉節點的關鍵詞選取，並保留 n-gram 邊界熵新詞、`term_freq`/`child_support` bottom-up 統計。仍須保留 `pdf_provider="pymupdf"`、`keyword_provider="ngram"` 回滾，provider/tokenizer 變更時強制重建 sidecar。
 
 ### 關鍵技術決策（當前有效）
+- **升級入口必須先收斂 MCP lifecycle**：首次安裝可直接 pip；升級／重裝使用 `python -m documa.install`，持有 install lock、關閉／強制終止既有 server 後才呼叫 pip。plugin 不再以長駐 `documa-mcp.exe` 作為啟動 image
 > 歷史上做過的、目前仍然成立的決策摘要。被推翻的決策不列。
 - **回應層 token 慣例**：短 id + `block_id_prefix` 宣告、omit-empty、`page_ref_kind` 上提、citation 四欄收斂為單一 `page` label（詳見 HISTORY `[2026-07-23]`）
 - **MCP wire 單份傳輸**：FastMCP wrapper 回傳 compact JSON 字串 + `structured_output=False`；`call_documa_tool` direct 路徑仍雙保留（詳見 HISTORY `[2026-07-23]`）
@@ -52,6 +57,8 @@
 - **替換採可逆 provider，不刪舊能力**：Rust 負責 PDF extraction，PyMuPDF 保留 renderer/OCR 與明確回退；LingXi 負責預設 `keyword_terms`，n-gram 保留為缺模型回退與新詞能力補償，直到等價的新詞／gold gate 通過。
 
 ### 已知地雷（仍需注意）
+- **一般 pip/wheel 沒有可靠的 pre-install hook**：無法由「尚未安裝的新版程式碼」在 pip 覆寫舊 launcher 前自行關閉 MCP；首次安裝直接 pip，後續升級必須走 `python -m documa.install`
+- **`documa.install --force-reinstall` 會讓 pip 重新解析／重裝完整依賴樹**：共用全域 Python 可能因此升級其他專案的套件並產生 `pip check` 衝突；artifact smoke 優先使用隔離環境，或後續為 installer 補受控 `--no-deps` 能力
 > 踩過且未來仍可能重踩的坑的一句話提醒。已徹底不可能重現的不列。
 - **FastMCP `structured_output=False` 的 dict 回傳會被 `pydantic_core.to_json(indent=2)` pretty-print**——必須自己序列化成 str 回傳才是 compact（詳見 HISTORY `[2026-07-23]`）
 - **`DocumentBlockType.TOC.value == "table_of_content"` 不是 `"toc"`**——用字串比對 block type 時務必查 `ir.py` enum 值（詳見 HISTORY `[2026-07-23]`）
@@ -234,3 +241,55 @@
 - `_load_lingxi_segmenter()` 與 `_load_rust_pdf()` 新增 exact 0.2.0 contract；版本缺失／不符會進入既有可觀測 fallback，不會把錯版 native binding 當成成功。
 - 曾嘗試把 LingXi leaf scores 向所有祖先發布；full suite 出現 5 個階層重複命中回歸（collection incremental、document cache、budget、group hint），因此收斂為 leaf-only LingXi，祖先維持 n-gram/support 聚合。這是搜尋去重契約，不是效能取巧。
 - 驗證：focused 12/12、full pytest 362/362、Ruff pass、`git diff --check` pass、doctor 8/8、fixture readiness 18/18；真實 smoke 可抽出中文 TextRank keywords。
+---
+
+## [2026-08-01] v0.6.2 Python／plugins packaging
+
+- runtime `pyproject.toml`／`documa.__version__`、Claude Code／Codex／OpenClaw manifests、OpenClaw package 與四份 plugin install pin 全部同步至 `0.6.2`。
+- Python artifact：`dist/documa-0.6.2-py3-none-any.whl`（SHA-256 `9dc7981eeeaf00e06b9af7ad2c3b3902cf28d7a1edff270aa4ad72a8f3186324`）與 `dist/documa-0.6.2.tar.gz`（`3699e4d7a9e74837d99d7149821c4bc5e453e0330fb56663425378ab1be24e1a`）。
+- Plugin artifact：`plugins/claude-code-documa.zip`（SHA-256 `8f3f14fac3046d704fcdfb2e2ec75c74f35e76c468b6bf6680cbaec07e8b4415`）與 `plugins/codex-documa.zip`（`b910585ce6292c750ba9008dd2361f5c9a76997eaed455a9ae1a52a8e1860eed`）；OpenClaw 依現有慣例同步 package/plugin directory，不另造 zip。
+- 驗證：Twine 2/2 passed、plugin deterministic check passed、agent plugin validator passed、wheel/sdist native modules 與 zip manifest content check passed、full pytest 368/368、Ruff pass、doctor 8/8、fixture readiness 18/18、`git diff --check` pass。
+- 尚未 commit、tag、push、發布 PyPI 或發布 plugin registry。
+
+---
+
+## [2026-08-01] Windows MCP guarded install
+
+- 新增 `documa.interfaces.mcp_lifecycle`：每個 MCP server 以 file lock 登錄 PID，並監看安裝 shutdown token；登錄與 watcher 啟動受同一 install lock 保護，避免安裝／server 重啟 race。
+- 新增 `python -m documa.install`：持有 install lock，先通知登錄中的 server 退出，2 秒未退出則依仍被鎖定的 registration PID 強制終止；Windows 額外用 exact image name 偵測／終止尚未支援登錄的 `documa-mcp.exe`。仍有行程時不啟動 pip。
+- Codex／Claude plugin MCP command 改為 `python -m documa.interfaces.mcp_server`；相容 console script 保留，但 plugin 長駐行程不再鎖住 pip 管理的 exe。
+- 驗證：guarded install／stdio／packaging focused 12/12，full pytest 368/368，Ruff pass，plugin validator pass，plugin deterministic package check pass，Twine wheel/sdist 2/2 pass；wheel 內含 `documa/install.py` 與 `mcp_lifecycle.py`。
+- 最終 artifacts：wheel SHA-256 `9dc7981eeeaf00e06b9af7ad2c3b3902cf28d7a1edff270aa4ad72a8f3186324`；sdist `3699e4d7a9e74837d99d7149821c4bc5e453e0330fb56663425378ab1be24e1a`；Claude plugin `8f3f14fac3046d704fcdfb2e2ec75c74f35e76c468b6bf6680cbaec07e8b4415`；Codex plugin `b910585ce6292c750ba9008dd2361f5c9a76997eaed455a9ae1a52a8e1860eed`。
+
+---
+
+## [2026-08-02] 搜尋 precision gate 與 core-first evidence read
+
+- Harness／grep 對照顯示區塊檢索約省 77% 文件工具 token，但首輪廣查詢會被通用詞、footnote／reference 雜訊拉偏，且 `needs_next` 造成鄰接內容過早讀取。
+- 單文件搜尋現在分開計算 `query` literals 與 OR 型 `any_of` 同義詞：3+ query literals 的首筆只命中 1 個時不發 `recommended_next`，改回低精度提示；2+ literals 的低覆蓋非正文首筆同樣先收斂。既有 query/any_of schema 與 ranking 介面不變。
+- leaf 的 recommended action 一律先 `documa_read_block`；`needs_next` 只保留為讀後補鄰接信號。新增 footnote region 降權與中／英／簡體 references heading 辨識，footnote 在 evidence profile 標 `is_reference=true`。
+- Codex／Claude Code／OpenClaw skills 同步為：直接呼叫已註冊工具、query 使用 2–4 個高鑑別 lexical literals、any_of 不重複、起始 `limit=6`／每 block 1 snippet、多主題分流、正文與多詞命中 precision gate、通常只讀 1–3 個候選。Codex eval 新增 multi-theme precision case。
+- 驗證：focused 49/49；full pytest 371/371；Ruff full pass；doctor 8/8、fixture readiness 18/18；agent plugin validator pass；deterministic plugin zip check pass；OpenClaw `node --check` pass；`git diff --check` pass。
+- 重建後 plugin zip：Claude `86f50dd1a4da28f9bda7f5db34ba5dea30791953de518318a14d537ce4e00425`；Codex `cbbc5408ac1bf104c11fcc9739a8afb0a31434446e9013f0fe2b26280b8aaeac`。2026-08-01 的 wheel/sdist hashes 對應本次 runtime 變更前內容；正式發布 v0.6.2 前必須重建 Python artifacts 並更新 hashes。
+
+---
+
+## [2026-08-02] LingXi 0.2.1 exact binding 升級
+
+- Documa 的 `REQUIRED_LINGXI_VERSION`、README 安裝路徑與 v0.6.2 changelog 由 0.2.0 更新為 0.2.1；作用中 `D:\Python310` 已透過 guarded installer 由 0.2.0 換成 `lingxi-0.2.1-cp39-abi3-win_amd64.whl`，SHA-256 `3ee066708c826861553869adae0b0504edf92506c89ad4d3af9f3d65f6e41fa0`。
+- LingXi 版本寫入實際／requested provider metadata，並納入 `source_digest()` 與 tokenizer signature；sidecar `FEATURE_VERSION` 升為 provider-version-aware v4。只有 LingXi 路徑新增版本欄位，明確 n-gram 路徑維持既有 IR 形狀，避免向前相容 snapshot 回歸。
+- 真實 binding smoke：distribution 0.2.1，可載入 bundled assets、執行 TextRank 與 CKIP tag tokenize（`金管會/Nc`、`前/Nes`、`主委/Na`）。
+- 驗證：keyword／snapshot focused 10/10；LingXi＋搜尋 focused 50/50；full pytest 372/372；Ruff full pass；`git diff --check` pass；doctor 8/8；fixture readiness 18/18。
+- 現有 v0.6.2 wheel/sdist 早於本次 runtime 變更，正式發布前仍須重建。pip 另警告殘留 `D:\Python310\Lib\site-packages\~ocuma-0.6.2.dist-info` 無效 distribution；本次未刪除該非 LingXi 目標。
+
+---
+
+## [2026-08-02] v0.6.3 重建與 package gate
+
+- runtime `pyproject.toml`／`documa.__version__`、Claude Code／Codex／OpenClaw manifests 與四份 plugin install pin 同步推進到 `0.6.3`；CHANGELOG 日期更新為 2026-08-02。
+- Python artifacts：`dist/documa-0.6.3-py3-none-any.whl`（SHA-256 `bb1309725f6138d7aadd34b95965a91e91c240a7292e2ed67229c8436a594f80`）與 `dist/documa-0.6.3.tar.gz`（`deacd82fa98ed095ce321106572d0e5317966d2bed80e8f7af74125ad82cd8b3`）。isolated build 因安裝 build backend 逾時，確認本機 `setuptools 80.9.0` 滿足 `>=77.0.3` 後以 `python -m build --no-isolation` 成功重建。
+- Plugin artifacts：Claude `plugins/claude-code-documa.zip`（SHA-256 `6411ee61779771a8cb581c359a12bea8c6259dd3bd133fdd0d4d219513f571f8`）；Codex `plugins/codex-documa.zip`（`b9e0041573c0e897360b109a897db3d88b745b964dee16cc5beb93d52c4f8fdd`）。兩者 deterministic `--check` 通過；OpenClaw 依既有慣例同步 source directory，不另造 zip。
+- 修正 Codex skill readiness／migration governance 中已失效的 `skill-creator-advanced` gate 路徑，改用 `skillops-studio` 現行 `revise`／`package` stages；stage gate PASS、package release gate PASS（11 eval cases，security PASS；live benchmark SKIPPED，未宣稱 live benchmark）。
+- 驗證：focused packaging/lifecycle 12/12；full pytest 372/372；Ruff full pass；`git diff --check` pass；Twine wheel/sdist 2/2 PASS；agent plugin validator PASS；doctor 8/8；fixture readiness 18/18；作用中 wheel smoke 為 Documa module/distribution 0.6.3、LingXi 0.2.1。
+- 全域 `D:\Python310` 的 `pip check` 為 FAIL：環境原有多個跨專案缺件／版本衝突，且本次 `--force-reinstall` 重新解析依賴後升級了 Pillow、pydantic、mcp、tiktoken 等套件；Documa gates 仍 PASS，但此環境不可宣稱 dependency-clean。另有既存 `~ocuma-0.6.2.dist-info` 警告未刪除。
+- `dist/` 受 `.gitignore` 管理，只保存本機 release artifacts；Git commit 納入 runtime、測試、governance、plugin source 與兩個 tracked plugin zip，不納入 `.documa/` store 或歷史上刻意未追蹤的 `token-economy.json`。

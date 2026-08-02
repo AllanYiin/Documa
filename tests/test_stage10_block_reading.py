@@ -459,6 +459,58 @@ class Stage10BlockReadingTests(unittest.TestCase):
             self.assertEqual(toc_row["doc_region"], "toc")
             self.assertLess(toc_row["score"], content["results"][0]["score"])
 
+    def test_search_blocks_demotes_footnotes_and_marks_them_as_reference_noise(self):
+        doc = DocumentIR(
+            id="d1",
+            source_name="footnote.pdf",
+            pages=[
+                PageIR(
+                    id="p1",
+                    page_number=1,
+                    width=400,
+                    height=500,
+                    blocks=[
+                        block(
+                            "s_foot",
+                            "1 資本緩衝要求，詳見外部參考資料。",
+                            BlockType.FOOTNOTE,
+                            order_index=1,
+                        ),
+                        block("s_body", "資本緩衝要求的計算方式與適用條件。", order_index=2),
+                    ],
+                )
+            ],
+            document_blocks=[
+                DocumentBlockIR(
+                    id="db_foot",
+                    type=DocumentBlockType.FOOTNOTE,
+                    source_block_ids=["s_foot"],
+                    page_refs=[1],
+                    order_index=1,
+                ),
+                DocumentBlockIR(
+                    id="db_body",
+                    type=DocumentBlockType.PARAGRAPH,
+                    source_block_ids=["s_body"],
+                    page_refs=[1],
+                    order_index=2,
+                ),
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            ir_path = Path(tmp) / "documa.ir.json"
+            ir_path.write_text(json.dumps(to_plain_data(doc), ensure_ascii=False), encoding="utf-8")
+            result = call_documa_tool(
+                "documa_search_blocks",
+                {"ir_path": str(ir_path), "query": "資本緩衝", "response_profile": "evidence"},
+            )
+
+            content = result["structuredContent"]
+            self.assertEqual(content["results"][0]["block_id"], "db_body")
+            footnote_row = next(row for row in content["results"] if row["block_id"] == "db_foot")
+            self.assertEqual(footnote_row["doc_region"], "footnote")
+            self.assertTrue(footnote_row["flags"]["is_reference"])
+
     def test_mcp_server_exposes_block_reading_tools(self):
         class FakeFastMCP:
             def __init__(self, name, instructions):

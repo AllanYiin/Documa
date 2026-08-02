@@ -11,6 +11,7 @@ Trigger and fallback rules:
 
 - Use Documa first for large PDFs, long attachments, multi-section reports, contracts, papers, manuals, document sets, or any task where reading whole files would be wasteful — and whenever the user asks for evidence, citations, page/source metadata, comparison, summarization, or QA over documents.
 - If Documa MCP tools are not visible, discover or enable the plugin-provided MCP server before using another PDF workflow.
+- Call registered Documa tools directly. Do not route them through a generic parallel/meta-tool wrapper unless the host explicitly declares the target allowed; retry unsupported-wrapper failures as direct calls.
 - Fall back to a generic PDF skill only when Documa tools are unavailable, `documa_process` cannot produce usable IR, or the task is visual/layout rendering rather than evidence retrieval. Say that fallback explicitly.
 
 ## Reading responses
@@ -24,7 +25,7 @@ Trigger and fallback rules:
 | Question shape | Route |
 | --- | --- |
 | Structure / overview / "summarize" for one document | `documa_block_tree` with `max_depth=2-3, include_sketches=true` — sections come back with a precomputed one-glance `sketch` and `read_cost_chars`, often enough to answer without any reads. Descend with `documa_list_blocks` `parent_id` + `limit`/`offset`. |
-| Specific fact in one document | `documa_search_blocks` with 2-4 precise terms; bilingual synonyms in `any_of`; quote adjacent words for phrases. Re-search narrowly with `scope_block_id` (any section id) and `granularity=section|leaf` instead of widening terms. |
+| Specific fact in one document | Start `documa_search_blocks` with `limit=6, max_snippets_per_block=1`. Use only 2-4 discriminative lexical literals or quoted phrases in `query`; put non-duplicative synonyms/spelling variants in `any_of`. For 3+ literals, refine a top `coverage=1/N` or non-body hit before reading. Re-search under `scope_block_id` instead of widening terms. |
 | Breadth across documents ("which documents mention X") | `documa_search_collection` with `group_by_document=true` — each rollup has an exact `hit_count`, best snippet, and read-ready `top_refs`. |
 | Specific fact across documents | `documa_search_collection` flat — rows carry `(document_id, block_id)`; read via `documa_read_block` with `ir_path=document_id`. Narrow follow-ups with `document_ids=[...]` + `per_document_limit`. |
 
@@ -33,8 +34,9 @@ Single documents enter via `documa_process` (produces IR + blocks). Document set
 ## Converge on evidence
 
 1. Execute `recommended_next.actions[]` first — each item is a schema-valid `{tool, arguments}` call with the required ids already filled in.
-2. If evidence is incomplete, escalate in order: `documa_source_window` for neighbor context; `documa_block_xref` for parent/children/relations; refine the query once, guided by the response `hints`; browse `documa_list_blocks` under the nearest section. Whole-section reads (`include_children=true`) are the last resort, justified only when a hit has `needs_next: true` or is a section heading.
-3. Interpret response signals instead of guessing: `match_mode: "any_term"` means precision degraded — tighten terms or quote phrases; `total_matches`/`has_more` mean page with `offset`, never widen `limit` blindly; a hint suggesting `group_by_document` means the flat list is the wrong shape.
+2. Read the core hit before any neighbor even when `needs_next=true`; that flag is a conditional follow-up signal. Only if the core content is truncated or semantically unfinished, use `documa_source_window`, then `documa_block_xref` or section browsing.
+3. Batch-read only the smallest candidates that passed the precision gate (usually 1-3) under one shared budget. For independent themes, allow one bounded initial search each; do not rerun the same theme without a read unless it returned zero or low precision.
+4. Interpret response signals instead of guessing: `match_mode: "any_term"` means precision degraded — tighten terms or quote phrases; `total_matches`/`has_more` mean page with `offset`, never widen `limit` blindly; a hint suggesting `group_by_document` means the flat list is the wrong shape.
 
 ## Token budget knobs (escalation only — defaults need no tuning)
 
@@ -45,7 +47,7 @@ Single documents enter via `documa_process` (produces IR + blocks). Document set
 
 ## Anti-patterns
 
-- Two consecutive searches without reading in between (unless the first returned zero results).
+- Re-running the same theme without reading in between (unless the first result was zero or low precision); independent themes may each receive one bounded initial search.
 - Looping `documa_search_blocks` per document when `documa_search_collection` answers the breadth question in one call.
 - Treating search snippets or section sketches as final evidence — they are navigation only.
 

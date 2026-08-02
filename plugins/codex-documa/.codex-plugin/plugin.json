@@ -1,6 +1,6 @@
 {
   "name": "codex-documa",
-  "version": "0.6.1",
+  "version": "0.6.3",
   "description": "透過 MCP 在 Codex 中使用 Documa 的文件理解能力。",
   "author": {
     "name": "Documa 貢獻者"

@@ -79,6 +79,16 @@ class PackagingContractTests(unittest.TestCase):
         for name in ("pdf", "ocr", "docx", "pptx", "html", "msg", "ipynb", "documents", "mcp", "tokens"):
             self.assertTrue(_array(self.optional, name), name)
 
+    def test_plugin_mcp_launch_avoids_locked_console_script(self):
+        configs = (
+            ROOT / "plugins" / "claude-code-documa" / ".mcp.json",
+            ROOT / "plugins" / "codex-documa" / ".mcp.json",
+        )
+        for path in configs:
+            entry = json.loads(path.read_text(encoding="utf-8"))["mcpServers"]["documa"]
+            self.assertEqual(entry["command"], "python", path)
+            self.assertEqual(entry["args"], ["-m", "documa.interfaces.mcp_server"], path)
+
     def test_plugin_versions_and_install_pins_match_runtime(self):
         version = _string(self.project, "version")
         manifests = (
