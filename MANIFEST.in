@@ -1,0 +1,6 @@
+graft native
+prune native/pdf/target
+prune native/office/target
+prune native/pdf/bindings/wasm/pkg-*
+prune native/pdf/bindings/wasm/pkg
+global-exclude __pycache__ *.py[cod]

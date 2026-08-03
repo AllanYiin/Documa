@@ -41,11 +41,15 @@ class DocumentFormatAdapterTests(unittest.TestCase):
 
             self.assertFalse(result["isError"])
             payload = result["structuredContent"]
-            self.assertEqual(payload["parser"], "docx")
+            self.assertIn(payload["parser"], {"docx", "rust_office"})
             self.assertEqual(payload["status"], "ok")
 
             ir = json.loads((out_dir / "documa.ir.json").read_text(encoding="utf-8"))
             block_types = [block["type"] for page in ir["pages"] for block in page["blocks"]]
+            self.assertEqual(ir["metadata"]["office_provider"]["requested"], "auto")
+            self.assertIn(
+                ir["metadata"]["office_provider"]["actual"], {"rust", "python_docx"}
+            )
             self.assertIn(BlockType.HEADING.value, block_types)
             self.assertIn(BlockType.TABLE.value, block_types)
 
@@ -83,10 +87,19 @@ class DocumentFormatAdapterTests(unittest.TestCase):
             document = result["structuredContent"]["document"]
 
             self.assertFalse(result["isError"])
-            self.assertEqual(result["structuredContent"]["parser"], "pptx")
+            self.assertIn(
+                result["structuredContent"]["parser"], {"pptx", "rust_office"}
+            )
             self.assertEqual(result["structuredContent"]["page_count"], 1)
             self.assertTrue(any(block["type"] == "section" and block["title"] == "產品路線" for block in document["document_blocks"]))
             self.assertTrue(any(block["type"] == "table" for block in document["document_blocks"]))
+            self.assertEqual(
+                document["metadata"]["office_provider"]["requested"], "auto"
+            )
+            self.assertIn(
+                document["metadata"]["office_provider"]["actual"],
+                {"rust", "python_pptx"},
+            )
 
     def test_html_cli_process_preserves_dom_order_headings_tables_and_links(self):
         html = """<!doctype html>

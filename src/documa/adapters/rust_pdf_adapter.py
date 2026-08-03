@@ -11,6 +11,11 @@ from typing import Any
 import uuid
 
 from documa.adapters.base import ParseOptions, ParserAdapter
+from documa.adapters.native_binding import (
+    NativeBindingSpec,
+    load_native_binding,
+    native_exception_to_documa,
+)
 from documa.core.errors import DocumaError, DocumaErrorDetail
 from documa.core.image_filtering import decorative_image_reason
 from documa.core.ir import (
@@ -23,39 +28,20 @@ from documa.storage.assets import AssetStore, safe_asset_name
 _SCHEMA = 1
 _SPACE = "layout_unrotated_top_left"
 _REQUIRED_RUST_PDF_VERSION = "0.2.0"
+_RUST_PDF_BINDING = NativeBindingSpec(
+    parser_id="rust_pdf",
+    module_name="rust_pdf",
+    identity_labels=("version", "stage"),
+    expected_identity=(_REQUIRED_RUST_PDF_VERSION, None),
+    required_calls=("extract_layout", "extract_images"),
+    not_installed_code="RUST_PDF_NOT_INSTALLED",
+    incompatible_code="RUST_PDF_INCOMPATIBLE_VERSION",
+    suggested_action="Reinstall Documa with its bundled Rust parser extensions.",
+)
 
 
 def _load_rust_pdf() -> Any:
-    try:
-        import rust_pdf  # type: ignore
-    except ImportError as exc:
-        raise DocumaError(DocumaErrorDetail(
-            code="RUST_PDF_NOT_INSTALLED",
-            message="The optional rust_pdf binding is required for RustPdfAdapter.",
-            recoverable=True,
-            suggested_action="Install a verified rust-pdf-parser Python wheel.",
-        )) from exc
-    try:
-        version, stage = rust_pdf.version_info()
-    except (AttributeError, TypeError, ValueError) as exc:
-        raise DocumaError(DocumaErrorDetail(
-            code="RUST_PDF_INCOMPATIBLE_VERSION",
-            message="The installed rust_pdf binding does not expose the 0.2.0 version contract.",
-            recoverable=True,
-            suggested_action="Install rust-pdf-parser 0.2.0 from the configured local project.",
-        )) from exc
-    if str(version) != _REQUIRED_RUST_PDF_VERSION:
-        raise DocumaError(DocumaErrorDetail(
-            code="RUST_PDF_INCOMPATIBLE_VERSION",
-            message=(
-                f"rust-pdf-parser {_REQUIRED_RUST_PDF_VERSION} is required; "
-                f"found {version}."
-            ),
-            recoverable=True,
-            suggested_action="Install rust-pdf-parser 0.2.0 from the configured local project.",
-            context={"required": _REQUIRED_RUST_PDF_VERSION, "actual": str(version), "stage": str(stage)},
-        ))
-    return rust_pdf
+    return load_native_binding(_RUST_PDF_BINDING).module
 
 
 def _layout_error(message: str, **context: Any) -> DocumaError:
@@ -417,11 +403,14 @@ class RustPdfAdapter(ParserAdapter):
         except DocumaError:
             raise
         except Exception as exc:
-            raise DocumaError(DocumaErrorDetail(
-                code="RUST_PDF_PARSE_FAILED", message=f"Rust PDF parsing failed: {source_path}", recoverable=True,
+            raise native_exception_to_documa(
+                exc,
+                source=source_path,
+                default_code="RUST_PDF_PARSE_FAILED",
+                default_message=f"Rust PDF parsing failed: {source_path}",
+                default_recoverable=True,
                 suggested_action="Inspect the Rust error or use the pymupdf provider.",
-                context={"source": str(source_path), "error": str(exc)},
-            )) from exc
+            ) from exc
         if root.get("schema_version") != _SCHEMA:
             raise _layout_error("Unsupported Rust Layout IR schema version.", expected=_SCHEMA, actual=root.get("schema_version"))
         if root.get("coordinate_space") != _SPACE:

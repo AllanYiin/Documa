@@ -1,0 +1,17 @@
+[build-system]
+requires = ["maturin>=1.14,<2"]
+build-backend = "maturin"
+
+[project]
+name = "rust-office-parser"
+description = "Safe Rust-first Office document extraction for Documa"
+requires-python = ">=3.9"
+license = "MIT"
+dynamic = ["version"]
+
+[tool.maturin]
+manifest-path = "crates/office-py/Cargo.toml"
+python-source = "python"
+module-name = "rust_office._core"
+features = ["pyo3/extension-module"]
+

@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Blind block order review</title>
+<style>
+:root {
+  color-scheme: light;
+  --ink:#142033; --muted:#66758d; --line:#d8e0eb; --panel:#ffffff;
+  --canvas:#eef2f7; --navy:#101d31; --accent:#3867f0; --accent-2:#244fc8;
+  --success:#147d64; --danger:#b93645; --warning:#9a6811; --focus:#8ab4ff;
+  --radius:14px; --shadow:0 18px 50px rgb(25 42 70 / 14%);
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
+  --space-5:24px; --space-6:32px; --zoom:1;
+  font-family:Aptos,"Segoe UI Variable","Segoe UI",sans-serif;
+}
+* { box-sizing:border-box; }
+body { margin:0; min-height:100vh; color:var(--ink); background:var(--canvas); }
+button,select,input { font:inherit; }
+button,select { min-height:40px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); }
+button { padding:8px 12px; cursor:pointer; font-weight:700; }
+button:hover:not(:disabled) { border-color:#9db0cc; background:#f6f8fc; }
+button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible { outline:3px solid var(--focus); outline-offset:2px; }
+button:disabled { cursor:not-allowed; opacity:.46; }
+button[aria-pressed="true"],button.is-active { color:#fff; border-color:var(--accent); background:var(--accent); }
+kbd { border:1px solid rgb(255 255 255 / 35%); border-bottom-width:2px; border-radius:5px; padding:1px 5px; font-size:.72rem; }
+.command-bar { position:sticky; z-index:30; top:0; display:grid; grid-template-columns:minmax(180px,1fr) auto auto auto; gap:12px; align-items:center; min-height:68px; padding:10px 18px; color:#fff; background:var(--navy); box-shadow:0 8px 30px rgb(10 21 39 / 24%); }
+.brand { display:flex; gap:12px; align-items:center; min-width:0; }
+.brand-mark { display:grid; width:38px; height:38px; place-items:center; border-radius:12px; background:linear-gradient(145deg,#7897ff,#315de1); font-weight:900; }
+.brand strong,.brand small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.brand small { margin-top:2px; color:#b9c6da; }
+.command-field { display:grid; gap:3px; }
+.command-field label { color:#afbed3; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+.command-field select { min-width:150px; border-color:#41516a; background:#17263d; color:#fff; }
+.progress { min-width:150px; }
+.progress-line { display:flex; justify-content:space-between; color:#cfdaea; font-size:.78rem; }
+progress { width:100%; height:7px; accent-color:#6f91ff; }
+.primary { color:#fff; border-color:var(--accent); background:var(--accent); }
+.primary:hover:not(:disabled) { background:var(--accent-2); }
+.workbench { display:grid; grid-template-columns:minmax(0,1fr) 350px; gap:16px; max-width:1640px; margin:0 auto; padding:16px; }
+.stage-card,.inspector,.utility { border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); box-shadow:var(--shadow); }
+.stage-card { min-width:0; overflow:hidden; }
+.tool-rail { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:12px; border-bottom:1px solid var(--line); background:#f8faff; }
+.tool-group { display:flex; gap:6px; align-items:center; padding-right:10px; border-right:1px solid var(--line); }
+.tool-group:last-child { border:0; padding-right:0; }
+.tool-label { color:var(--muted); font-size:.75rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; }
+.role-button[data-role="main_flow"][aria-pressed="true"] { background:#315fe6; }
+.role-button[data-role="artifact"][aria-pressed="true"] { background:#7b5c31; border-color:#7b5c31; }
+.role-button[data-role="page_header"][aria-pressed="true"],.role-button[data-role="page_footer"][aria-pressed="true"],.role-button[data-role="page_number"][aria-pressed="true"] { background:#6c4ac7; border-color:#6c4ac7; }
+.stage-status { display:flex; justify-content:space-between; gap:12px; align-items:center; padding:10px 14px; border-bottom:1px solid var(--line); }
+.stage-status strong { font-size:.95rem; }
+.stage-status span { color:var(--muted); font-size:.86rem; }
+.viewport { position:relative; min-height:540px; max-height:calc(100vh - 190px); overflow:auto; padding:18px; background:linear-gradient(45deg,#e9eef5 25%,transparent 25%) 0 0/20px 20px,linear-gradient(45deg,transparent 75%,#e9eef5 75%) 0 0/20px 20px,#f4f6fa; }
+.page-shell { position:relative; width:calc(var(--zoom) * 100%); min-width:420px; margin:0 auto; box-shadow:0 12px 38px rgb(25 38 60 / 22%); background:#fff; }
+.page-shell img { display:block; width:100%; height:auto; user-select:none; -webkit-user-drag:none; }
+.node-layer { position:absolute; inset:0; touch-action:none; }
+.node-layer.is-pan { pointer-events:none; touch-action:auto; }
+.node-hit { position:absolute; min-width:4px; min-height:4px; padding:0; border:1.5px solid rgb(45 61 82 / 56%); border-radius:2px; background:rgb(255 255 255 / 4%); cursor:crosshair; }
+.node-hit:hover { z-index:5; border-color:#151f2f; background:rgb(75 105 145 / 12%); }
+.node-hit.is-assigned { border-width:2px; border-color:var(--block-color,#315fe6); background:color-mix(in srgb,var(--block-color,#315fe6) 13%,transparent); }
+.node-hit.is-selected { z-index:6; outline:3px solid color-mix(in srgb,var(--block-color,#315fe6) 58%,white); outline-offset:1px; }
+.node-hit.is-candidate { z-index:9; border-color:#ff8a24; background:rgb(255 138 36 / 24%); }
+.node-badge { position:absolute; top:-11px; left:-8px; display:none; min-width:20px; height:20px; place-items:center; border-radius:10px; padding:0 5px; color:#fff; background:var(--block-color,#315fe6); font-size:.68rem; font-weight:900; box-shadow:0 1px 4px rgb(0 0 0 / 30%); pointer-events:none; }
+.node-hit.is-assigned .node-badge { display:grid; }
+.stroke-layer { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; }
+.stroke-path { fill:none; stroke:#ff8a24; stroke-width:5; stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke; filter:drop-shadow(0 1px 2px rgb(0 0 0 / 30%)); }
+.inspector { position:sticky; top:84px; align-self:start; max-height:calc(100vh - 100px); overflow:auto; }
+.inspector-header { padding:18px; border-bottom:1px solid var(--line); }
+.inspector-header h1 { margin:0; font-size:1.18rem; }
+.inspector-header p { margin:7px 0 0; color:var(--muted); line-height:1.45; }
+.completion-chip { display:inline-flex; margin-top:10px; border-radius:999px; padding:5px 9px; color:#6a4b0f; background:#fff3d8; font-size:.78rem; font-weight:800; }
+.completion-chip.is-complete { color:#0f624f; background:#dff7ef; }
+.panel-section { padding:16px 18px; border-bottom:1px solid var(--line); }
+.panel-section h2 { margin:0 0 10px; font-size:.96rem; }
+.section-heading { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.count { display:inline-grid; min-width:25px; height:25px; place-items:center; border-radius:999px; color:#fff; background:#44546b; font-size:.75rem; }
+.action-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.action-grid .wide { grid-column:1/-1; }
+.block-list { display:grid; gap:8px; margin:0; padding:0; list-style:none; }
+.block-row { display:grid; grid-template-columns:32px minmax(0,1fr) auto; gap:8px; align-items:center; border:1px solid var(--line); border-radius:10px; padding:7px; background:#fbfcfe; }
+.block-row.is-selected { border-color:var(--accent); box-shadow:0 0 0 2px rgb(56 103 240 / 16%); }
+.block-index { display:grid; width:28px; height:28px; place-items:center; border-radius:9px; color:#fff; background:var(--block-color,#315fe6); font-size:.75rem; font-weight:900; }
+.block-main { min-width:0; }
+.block-main strong,.block-main small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.block-main small { margin-top:2px; color:var(--muted); }
+.block-row button { min-height:32px; padding:4px 8px; }
+.empty { margin:0; padding:14px; border:1px dashed #bdc9d9; border-radius:10px; color:var(--muted); text-align:center; line-height:1.45; }
+.field { display:grid; gap:5px; }
+.field label { color:var(--muted); font-size:.78rem; font-weight:800; }
+.field select { width:100%; }
+.comparison { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.review-card { min-width:0; border:1px solid var(--line); border-radius:10px; padding:10px; background:#f8faff; }
+.review-card h3 { margin:0 0 6px; font-size:.83rem; }
+.review-card pre { max-height:130px; overflow:auto; margin:0; white-space:pre-wrap; color:#435168; font-size:.7rem; }
+.reason-list { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.reason-list label { display:flex; gap:6px; align-items:flex-start; font-size:.76rem; }
+.utility { max-width:1640px; margin:0 auto 24px; padding:0 16px; box-shadow:none; }
+details { border-bottom:1px solid var(--line); padding:12px 2px; }
+details:last-child { border-bottom:0; }
+summary { cursor:pointer; font-weight:800; }
+.details-body { display:flex; flex-wrap:wrap; gap:8px; padding-top:12px; color:var(--muted); }
+.error { position:fixed; z-index:50; right:18px; bottom:18px; width:min(430px,calc(100vw - 36px)); border:1px solid #efb7bf; border-radius:14px; padding:14px; background:#fff2f4; box-shadow:var(--shadow); }
+.error strong { display:block; color:var(--danger); }
+.error p { margin:6px 0 10px; }
+.toast { position:fixed; z-index:60; left:50%; bottom:22px; transform:translateX(-50%); border-radius:999px; padding:9px 14px; color:#fff; background:#17263d; box-shadow:var(--shadow); font-weight:700; }
+.sr-only { position:absolute!important; width:1px!important; height:1px!important; overflow:hidden!important; clip:rect(0 0 0 0)!important; }
+[hidden] { display:none!important; }
+body[data-qa="pass"]::after { content:"QA PASS"; position:fixed; z-index:100; right:8px; bottom:8px; padding:5px 8px; border-radius:6px; color:#fff; background:#147d64; font-weight:900; }
+@media (max-width:980px) {
+  .command-bar { grid-template-columns:1fr auto; }
+  .progress,.command-field { grid-row:2; }
+  .workbench { grid-template-columns:1fr; }
+  .inspector { position:static; max-height:none; }
+  .viewport { max-height:70vh; }
+}
+@media (max-width:620px) {
+  .command-bar { position:static; grid-template-columns:1fr; }
+  .command-field,.progress { grid-row:auto; }
+  .workbench { padding:8px; }
+  .tool-rail { align-items:stretch; }
+  .tool-group { width:100%; overflow:auto; padding:0 0 8px; border:0; border-bottom:1px solid var(--line); }
+  .viewport { min-height:430px; padding:8px; }
+  .page-shell { min-width:330px; }
+  .utility { padding:0 8px; }
+}
+@media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto!important; transition:none!important; } }
+</style>
+</head>
+<body data-qa="idle">
+<header class="command-bar">
+  <div class="brand"><span class="brand-mark" aria-hidden="true">B</span><div><strong>Blind block review</strong><small id="profile-label">Locked workspace</small></div></div>
+  <div class="command-field"><label for="page-picker">Page</label><select id="page-picker"></select></div>
+  <div class="progress"><div class="progress-line"><span id="progress-label">0 / 0</span><span id="progress-percent">0%</span></div><progress id="progress" max="100" value="0"></progress></div>
+  <button id="export" class="primary" type="button">Export reviewer file</button>
+</header>
+<main class="workbench">
+  <section class="stage-card" aria-label="Document block brushing stage">
+    <div class="tool-rail" aria-label="Brush tools">
+      <div class="tool-group"><span class="tool-label">Tool</span><button id="tool-brush" type="button" aria-pressed="true">Brush <kbd>B</kbd></button><button id="tool-erase" type="button" aria-pressed="false">Erase <kbd>E</kbd></button><button id="tool-split" type="button" aria-pressed="false">Split</button><button id="tool-pan" type="button" aria-pressed="false">Pan <kbd>P</kbd></button></div>
+      <div class="tool-group" id="role-tools"><span class="tool-label">Block role</span><button class="role-button" data-role="main_flow" type="button" aria-pressed="true">Main <kbd>1</kbd></button><button class="role-button" data-role="artifact" type="button" aria-pressed="false">Artifact <kbd>2</kbd></button><button class="role-button" data-role="page_header" type="button" aria-pressed="false">Header <kbd>3</kbd></button><button class="role-button" data-role="page_footer" type="button" aria-pressed="false">Footer <kbd>4</kbd></button><button class="role-button" data-role="page_number" type="button" aria-pressed="false">Page no. <kbd>5</kbd></button></div>
+      <div class="tool-group"><span class="tool-label">View</span><button id="zoom-out" type="button" aria-label="Zoom out">−</button><button id="zoom-fit" type="button">Fit</button><button id="zoom-in" type="button" aria-label="Zoom in">＋</button><span id="zoom-label" aria-live="polite">100%</span></div>
+    </div>
+    <div class="stage-status"><strong id="stage-message">Brush the first human reading block.</strong><span id="pointer-status">One stroke = one undo step</span></div>
+    <div id="viewport" class="viewport">
+      <div id="page-shell" class="page-shell">
+        <img id="page-image" alt="Private PDF page for reading-order review" draggable="false">
+        <div id="node-layer" class="node-layer" aria-label="Neutral semantic node hit areas"></div>
+        <svg class="stroke-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline id="stroke-path" class="stroke-path" points=""></polyline></svg>
+      </div>
+    </div>
+  </section>
+  <aside class="inspector" aria-label="Block inspector">
+    <div class="inspector-header"><h1 id="page-heading">Page</h1><p id="page-summary">No parser roles or inferred order are shown.</p><span id="completion-chip" class="completion-chip">0 unassigned</span></div>
+    <section class="panel-section" aria-labelledby="selected-heading"><div class="section-heading"><h2 id="selected-heading">Selected block</h2><span id="selected-count" class="count">0</span></div><div id="selected-empty" class="empty">Select a block to merge, split, reorder, or change its human role.</div><div id="selected-controls" hidden><div class="field"><label for="selected-role">Human block role</label><select id="selected-role"><option value="main_flow">Main flow</option><option value="artifact">Artifact</option><option value="page_header">Page header</option><option value="page_footer">Page footer</option><option value="page_number">Page number</option></select></div><div class="action-grid" style="margin-top:8px"><button id="apply-role" type="button">Apply role</button><button id="merge-previous" type="button">Merge previous</button><button id="move-up" type="button">Move up</button><button id="move-down" type="button">Move down</button><button id="unassign-block" class="wide" type="button">Unassign this block</button></div></div></section>
+    <section class="panel-section" aria-labelledby="flow-heading"><div class="section-heading"><h2 id="flow-heading">Main reading blocks</h2><span id="flow-count" class="count">0</span></div><ol id="flow-list" class="block-list"></ol></section>
+    <section class="panel-section" aria-labelledby="artifact-heading"><div class="section-heading"><h2 id="artifact-heading">Furniture / artifacts</h2><span id="artifact-count" class="count">0</span></div><ul id="artifact-list" class="block-list"></ul></section>
+    <section id="comparison-section" class="panel-section" hidden aria-labelledby="comparison-heading"><h2 id="comparison-heading">Reviewer comparison</h2><div class="comparison"><article class="review-card"><h3>Reviewer A</h3><pre id="summary-a"></pre><button id="copy-a" type="button">Use A</button></article><article class="review-card"><h3>Reviewer B</h3><pre id="summary-b"></pre><button id="copy-b" type="button">Use B</button></article></div><div id="reason-field" style="margin-top:12px"><strong>Reason for disagreement</strong><div id="reason-list" class="reason-list"></div></div></section>
+    <section class="panel-section"><div class="action-grid"><button id="undo" type="button">Undo <kbd>Ctrl+Z</kbd></button><button id="next-incomplete" class="primary" type="button">Next incomplete</button></div></section>
+  </aside>
+</main>
+<section class="utility" aria-label="Secondary review tools">
+  <details><summary>File actions</summary><div class="details-body"><input id="import-file" type="file" accept="application/json" hidden><button id="import-button" type="button">Import reviewer file</button><button id="export-draft" type="button">Export current draft</button><span>Imports are identity- and schema-validated before merge.</span></div></details>
+  <details><summary>Brush and keyboard help</summary><div class="details-body"><span>Brush main blocks in reading order. Erase removes membership. Select a multi-node block, choose Split, then brush the subset. B/E/P change tools; 1–5 change role; Escape cancels; Ctrl+Z undoes.</span></div></details>
+  <details><summary>Danger actions</summary><div class="details-body"><button id="clear-page" type="button">Clear current page</button><button id="reset-profile" type="button">Reset locked profile</button></div></details>
+</section>
+<div id="error" class="error" hidden role="alert"><strong>Review action blocked</strong><p id="error-message"></p><button id="dismiss-error" type="button">Dismiss</button></div>
+<div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
+<pre id="qa-manifest" hidden></pre>
+<script>
+const pages = __PACKET_PAGES__;
+const baseManifest = __PACKET_MANIFEST__;
+const packetKey = __PACKET_KEY__;
+const initialProfile = __INITIAL_PROFILE__;
+const lockedProfile = __LOCKED_PROFILE__;
+const blockRoles = ["main_flow","artifact","page_header","page_footer","page_number"];
+const reasonCodes = ["column_order","sidebar_policy","artifact_policy","caption_anchor","rotation_policy","tag_conflict","block_membership","other_reviewed"];
+const qaMode = new URLSearchParams(window.location.search).get("qa") === "synthetic";
+const storageKey = "stage7-block-review:" + packetKey + ":" + (lockedProfile || "unified");
+const pageData = new Map(pages.map(function(item){ return [keyFor(item),item]; }));
+let manifest = clone(baseManifest);
+let current = 0;
+let profile = lockedProfile || initialProfile;
+let tool = "brush";
+let activeRole = "main_flow";
+let selectedBlockId = null;
+let undoStack = [];
+let zoom = 1;
+let stroke = null;
+let toastTimer = 0;
+const nextOrdinalByPage = new Map();
+const elements = Object.fromEntries(["profile-label","page-picker","progress-label","progress-percent","progress","export","tool-brush","tool-erase","tool-split","tool-pan","role-tools","zoom-out","zoom-fit","zoom-in","zoom-label","stage-message","pointer-status","viewport","page-shell","page-image","node-layer","stroke-path","page-heading","page-summary","completion-chip","selected-count","selected-empty","selected-controls","selected-role","apply-role","merge-previous","move-up","move-down","unassign-block","flow-count","flow-list","artifact-count","artifact-list","comparison-section","summary-a","summary-b","copy-a","copy-b","reason-field","reason-list","undo","next-incomplete","import-file","import-button","export-draft","clear-page","reset-profile","error","error-message","dismiss-error","toast","qa-manifest"].map(function(id){ return [id,document.getElementById(id)]; }));
+function clone(value){ return JSON.parse(JSON.stringify(value)); }
+function emptyLabels(){ return {blocks:[],block_precedence_pairs:[]}; }
+function keyFor(item){ return item.document_id + ":" + item.page_number; }
+function findPage(source,item){
+  const documentEntry = source.documents.find(function(entry){ return entry.id === item.document_id; });
+  if (!documentEntry) throw new Error("Document identity is missing.");
+  const pageEntry = documentEntry.pages.find(function(entry){ return entry.page_number === item.page_number; });
+  if (!pageEntry) throw new Error("Page identity is missing.");
+  return pageEntry;
+}
+function currentItem(){ return pages[current]; }
+function currentManifestPage(){ return findPage(manifest,currentItem()); }
+function labelsFor(pageEntry,selectedProfile){
+  const target = selectedProfile || profile;
+  if (target === "adjudicated") return pageEntry.adjudicated;
+  const review = pageEntry.reviews.find(function(entry){ return entry.reviewer_id === target; });
+  if (!review) throw new Error("Reviewer identity is missing.");
+  return review.labels;
+}
+function currentLabels(){ return labelsFor(currentManifestPage(),profile); }
+function labelsHaveData(labels){ return Array.isArray(labels.blocks) && labels.blocks.length > 0; }
+function assignedMap(labels){
+  const result = new Map();
+  labels.blocks.forEach(function(block){ block.member_node_ids.forEach(function(id){ result.set(id,block); }); });
+  return result;
+}
+function syncPairs(labels){
+  const flow = labels.blocks.filter(function(block){ return block.role === "main_flow"; });
+  labels.block_precedence_pairs = flow.slice(0,-1).map(function(block,index){ return [block.block_id,flow[index+1].block_id]; });
+}
+function cleanLabels(labels){
+  labels.blocks = labels.blocks.filter(function(block){ return Array.isArray(block.member_node_ids) && block.member_node_ids.length; });
+  labels.blocks.forEach(function(block){ block.internal_order = "unspecified"; });
+  syncPairs(labels);
+}
+function validateImportedLabels(labels,nodeIds,location,requireCoverage){
+  if (!labels || !Array.isArray(labels.blocks) || !Array.isArray(labels.block_precedence_pairs)) throw new Error(location + " is not schema-v2 block labels.");
+  const known = new Set(nodeIds); const ids = new Set(); const assigned = new Set(); const main = new Set();
+  labels.blocks.forEach(function(block,index){
+    const where = location + ".blocks[" + index + "]";
+    if (!block || typeof block.block_id !== "string" || !block.block_id || ids.has(block.block_id)) throw new Error(where + " has invalid or duplicate block id.");
+    ids.add(block.block_id);
+    if (!Array.isArray(block.member_node_ids) || !block.member_node_ids.length || new Set(block.member_node_ids).size !== block.member_node_ids.length) throw new Error(where + " has empty or duplicate membership.");
+    if (!blockRoles.includes(block.role) || block.internal_order !== "unspecified") throw new Error(where + " has invalid role or internal order.");
+    block.member_node_ids.forEach(function(nodeId){ if (!known.has(nodeId) || assigned.has(nodeId)) throw new Error(where + " has unknown or multiply assigned node."); assigned.add(nodeId); });
+    if (block.role === "main_flow") main.add(block.block_id);
+  });
+  if (requireCoverage && (assigned.size !== known.size || nodeIds.some(function(id){ return !assigned.has(id); }))) throw new Error(location + " must assign every node exactly once.");
+  const pairKeys = new Set(); const edges = new Map(Array.from(main,function(id){ return [id,[]]; })); const indegree = new Map(Array.from(main,function(id){ return [id,0]; }));
+  labels.block_precedence_pairs.forEach(function(pair){
+    if (!Array.isArray(pair) || pair.length !== 2 || pair[0] === pair[1] || !main.has(pair[0]) || !main.has(pair[1])) throw new Error(location + " has invalid main-flow block precedence.");
+    const pairKey = pair[0] + "\u0000" + pair[1]; if (pairKeys.has(pairKey)) throw new Error(location + " has duplicate block precedence."); pairKeys.add(pairKey); edges.get(pair[0]).push(pair[1]); indegree.set(pair[1],indegree.get(pair[1])+1);
+  });
+  const queue = Array.from(main).filter(function(id){ return indegree.get(id) === 0; }).sort(); let visited = 0;
+  while (queue.length){ const id = queue.shift(); visited += 1; edges.get(id).slice().sort().forEach(function(after){ indegree.set(after,indegree.get(after)-1); if (indegree.get(after) === 0) queue.push(after); }); }
+  if (visited !== main.size) throw new Error(location + " block precedence contains a cycle.");
+  if (requireCoverage && main.size > 1){ const involved = new Set(labels.block_precedence_pairs.flat()); if (involved.size !== main.size) throw new Error(location + " precedence does not cover all main-flow blocks."); }
+  return true;
+}
+function labelsComplete(labels,nodeIds){ try { validateImportedLabels(labels,nodeIds,"labels",true); return true; } catch (_error) { return false; } }
+function blockSignature(block){ return block.role + ":" + block.member_node_ids.slice().sort().join("|"); }
+function canonicalLabels(labels){
+  const signatures = new Map(labels.blocks.map(function(block){ return [block.block_id,blockSignature(block)]; }));
+  return JSON.stringify({blocks:Array.from(signatures.values()).sort(),pairs:labels.block_precedence_pairs.map(function(pair){ return [signatures.get(pair[0]),signatures.get(pair[1])]; }).sort(function(a,b){ return JSON.stringify(a).localeCompare(JSON.stringify(b)); })});
+}
+function labelsEqual(left,right){ return canonicalLabels(left) === canonicalLabels(right); }
+function allManifestPages(source){ return source.documents.flatMap(function(documentEntry){ return documentEntry.pages; }); }
+function profileCompletion(selectedProfile){
+  const target = selectedProfile || profile; const all = allManifestPages(manifest); const complete = all.filter(function(page){ return labelsComplete(labelsFor(page,target),page.node_ids); }).length;
+  return {complete:complete,total:all.length};
+}
+function bothReviewsComplete(){ return ["reviewer-a","reviewer-b"].every(function(id){ const result = profileCompletion(id); return result.complete === result.total; }); }
+function pageDisagrees(pageEntry){ return !labelsEqual(labelsFor(pageEntry,"reviewer-a"),labelsFor(pageEntry,"reviewer-b")); }
+function finalManifestReady(){
+  if (!bothReviewsComplete()) return false;
+  return allManifestPages(manifest).every(function(page){ return labelsComplete(page.adjudicated,page.node_ids) && (!pageDisagrees(page) || (Array.isArray(page.adjudication_reason_codes) && page.adjudication_reason_codes.length)); });
+}
+function verifyIdentity(imported){
+  if (!imported || imported.schema_version !== 2 || !Array.isArray(imported.documents)) throw new Error("Imported file must use schema_version 2.");
+  if (imported.documents.length !== manifest.documents.length) throw new Error("Imported document count does not match this packet.");
+  manifest.documents.forEach(function(documentEntry,index){ const incoming = imported.documents[index]; if (!incoming || incoming.id !== documentEntry.id || incoming.file_sha256 !== documentEntry.file_sha256 || incoming.pages.length !== documentEntry.pages.length) throw new Error("Imported document identity does not match this packet."); documentEntry.pages.forEach(function(page,pageIndex){ const candidate = incoming.pages[pageIndex]; if (!candidate || candidate.page_number !== page.page_number || JSON.stringify(candidate.node_ids) !== JSON.stringify(page.node_ids)) throw new Error("Imported page or node identity does not match this packet."); candidate.reviews.forEach(function(review){ validateImportedLabels(review.labels,page.node_ids,"imported review",false); }); validateImportedLabels(candidate.adjudicated,page.node_ids,"imported adjudication",false); }); });
+}
+function save(){ try { localStorage.setItem(storageKey,JSON.stringify(manifest)); } catch (_error) { toast("Browser storage is unavailable; export recovery JSON."); } }
+function loadSaved(){ try { const raw = localStorage.getItem(storageKey); if (!raw) return; const candidate = JSON.parse(raw); verifyIdentity(candidate); manifest = candidate; } catch (_error) { localStorage.removeItem(storageKey); } }
+function snapshot(){ return {page:keyFor(currentItem()),profile:profile,labels:clone(currentLabels()),reasons:clone(currentManifestPage().adjudication_reason_codes),selected:selectedBlockId}; }
+function pushUndo(){ undoStack.push(snapshot()); if (undoStack.length > 120) undoStack.shift(); }
+function undo(){ const change = undoStack.pop(); if (!change) return; const itemIndex = pages.findIndex(function(item){ return keyFor(item) === change.page; }); if (itemIndex >= 0) current = itemIndex; const page = currentManifestPage(); if (change.profile === "adjudicated") page.adjudicated = change.labels; else page.reviews.find(function(review){ return review.reviewer_id === change.profile; }).labels = change.labels; page.adjudication_reason_codes = change.reasons; selectedBlockId = change.selected; save(); render(); toast("Latest transaction undone."); }
+function nextBlockId(item,labels){
+  const key = keyFor(item); if (!nextOrdinalByPage.has(key)){ const maximum = labels.blocks.reduce(function(value,block){ const match = /^b(\d+)$/.exec(block.block_id); return Math.max(value,match ? Number(match[1]) : 0); },0); nextOrdinalByPage.set(key,maximum+1); }
+  const ordinal = nextOrdinalByPage.get(key); nextOrdinalByPage.set(key,ordinal+1); return "b" + String(ordinal).padStart(4,"0");
+}
+function orderMembers(item,ids){ const wanted = new Set(ids); return item.nodes.filter(function(node){ return wanted.has(node.id); }).map(function(node){ return node.id; }); }
+function commitBrush(ids){
+  const item = currentItem(); const labels = currentLabels(); const assigned = assignedMap(labels); const members = orderMembers(item,ids).filter(function(id){ return !assigned.has(id); }); if (!members.length) return false;
+  pushUndo(); const block = {block_id:nextBlockId(item,labels),member_node_ids:members,role:activeRole,internal_order:"unspecified"}; labels.blocks.push(block); selectedBlockId = block.block_id; syncPairs(labels); save(); return true;
+}
+function commitErase(ids){
+  const labels = currentLabels(); const hit = new Set(ids); if (!labels.blocks.some(function(block){ return block.member_node_ids.some(function(id){ return hit.has(id); }); })) return false;
+  pushUndo(); labels.blocks.forEach(function(block){ block.member_node_ids = block.member_node_ids.filter(function(id){ return !hit.has(id); }); }); cleanLabels(labels); if (!labels.blocks.some(function(block){ return block.block_id === selectedBlockId; })) selectedBlockId = null; save(); return true;
+}
+function commitSplit(ids){
+  const item = currentItem(); const labels = currentLabels(); const selected = labels.blocks.find(function(block){ return block.block_id === selectedBlockId; }); if (!selected || selected.member_node_ids.length < 2){ toast("Select a block with at least two nodes before splitting."); return false; }
+  const hit = new Set(ids); const members = selected.member_node_ids.filter(function(id){ return hit.has(id); }); if (!members.length || members.length === selected.member_node_ids.length){ toast("Split stroke must cover a non-empty subset."); return false; }
+  pushUndo(); selected.member_node_ids = selected.member_node_ids.filter(function(id){ return !hit.has(id); }); const block = {block_id:nextBlockId(item,labels),member_node_ids:orderMembers(item,members),role:selected.role,internal_order:"unspecified"}; const index = labels.blocks.indexOf(selected); labels.blocks.splice(index+1,0,block); selectedBlockId = block.block_id; syncPairs(labels); save(); return true;
+}
+function blockColor(block,labels){ if (block.role !== "main_flow") return "#7657c7"; const index = labels.blocks.filter(function(item){ return item.role === "main_flow"; }).indexOf(block); const hues = [222,168,28,338,194,267,8,118]; return "hsl(" + hues[index % hues.length] + " 68% 47%)"; }
+function blockLabel(block,labels){ if (block.role !== "main_flow") return block.role.replace("page_",""); return "Block " + (labels.blocks.filter(function(item){ return item.role === "main_flow"; }).indexOf(block)+1); }
+function mergePrevious(){
+  const labels = currentLabels(); const selected = labels.blocks.find(function(block){ return block.block_id === selectedBlockId; }); if (!selected) return; const compatible = labels.blocks.filter(function(block){ return block.role === selected.role; }); const index = compatible.indexOf(selected); if (index <= 0){ toast("No previous block with the same role."); return; } const previous = compatible[index-1];
+  pushUndo(); previous.member_node_ids = orderMembers(currentItem(),previous.member_node_ids.concat(selected.member_node_ids)); labels.blocks = labels.blocks.filter(function(block){ return block !== selected; }); selectedBlockId = previous.block_id; syncPairs(labels); save(); render();
+}
+function moveSelected(offset){
+  const labels = currentLabels(); const selected = labels.blocks.find(function(block){ return block.block_id === selectedBlockId && block.role === "main_flow"; }); if (!selected) return; const flow = labels.blocks.filter(function(block){ return block.role === "main_flow"; }); const flowIndex = flow.indexOf(selected); const target = flow[flowIndex+offset]; if (!target) return; pushUndo(); const left = labels.blocks.indexOf(selected); const right = labels.blocks.indexOf(target); labels.blocks[left] = target; labels.blocks[right] = selected; syncPairs(labels); save(); render();
+}
+function applySelectedRole(){ const labels = currentLabels(); const selected = labels.blocks.find(function(block){ return block.block_id === selectedBlockId; }); if (!selected) return; pushUndo(); selected.role = elements["selected-role"].value; syncPairs(labels); save(); render(); }
+function unassignSelected(){ const labels = currentLabels(); if (!labels.blocks.some(function(block){ return block.block_id === selectedBlockId; })) return; pushUndo(); labels.blocks = labels.blocks.filter(function(block){ return block.block_id !== selectedBlockId; }); selectedBlockId = null; syncPairs(labels); save(); render(); }
+function setTool(next){ tool = next; ["brush","erase","split","pan"].forEach(function(name){ elements["tool-"+name].setAttribute("aria-pressed",String(name === tool)); }); elements["node-layer"].classList.toggle("is-pan",tool === "pan"); elements["pointer-status"].textContent = tool === "pan" ? "Pan/scroll without editing" : "One stroke = one undo step"; }
+function setRole(next){ activeRole = next; document.querySelectorAll(".role-button").forEach(function(button){ button.setAttribute("aria-pressed",String(button.dataset.role === next)); }); }
+function setZoom(value){ zoom = Math.max(.65,Math.min(2.25,value)); document.documentElement.style.setProperty("--zoom",String(zoom)); elements["zoom-label"].textContent = Math.round(zoom*100)+"%"; }
+function nodeRectHit(rect,x0,y0,x1,y1,padding){
+  const left=rect.left-padding,right=rect.right+padding,top=rect.top-padding,bottom=rect.bottom+padding;
+  if ((x0>=left&&x0<=right&&y0>=top&&y0<=bottom)||(x1>=left&&x1<=right&&y1>=top&&y1<=bottom)) return true;
+  const steps=Math.max(1,Math.ceil(Math.hypot(x1-x0,y1-y0)/8)); for(let i=0;i<=steps;i+=1){ const t=i/steps,x=x0+(x1-x0)*t,y=y0+(y1-y0)*t; if(x>=left&&x<=right&&y>=top&&y<=bottom) return true; } return false;
+}
+function collectStrokeSegment(x0,y0,x1,y1){ document.querySelectorAll(".node-hit").forEach(function(node){ if (nodeRectHit(node.getBoundingClientRect(),x0,y0,x1,y1,6)) stroke.nodes.add(node.dataset.nodeId); }); renderStrokeCandidates(); }
+function localStrokePoint(event){ const rect=elements["page-shell"].getBoundingClientRect(); return [100*(event.clientX-rect.left)/rect.width,100*(event.clientY-rect.top)/rect.height]; }
+function startStroke(event){ if (profile === "adjudicated" && !bothReviewsComplete()){ toast("Import two complete reviewer files first."); return; } if (tool === "pan" || event.button !== 0) return; event.preventDefault(); const point=localStrokePoint(event); stroke={pointerId:event.pointerId,nodes:new Set(),points:[point],last:[event.clientX,event.clientY]}; elements["node-layer"].setPointerCapture(event.pointerId); collectStrokeSegment(event.clientX,event.clientY,event.clientX,event.clientY); renderStrokePath(); elements["stage-message"].textContent="Stroke active — release to commit, Escape to cancel."; }
+function moveStroke(event){ if (!stroke || event.pointerId !== stroke.pointerId) return; event.preventDefault(); collectStrokeSegment(stroke.last[0],stroke.last[1],event.clientX,event.clientY); stroke.last=[event.clientX,event.clientY]; stroke.points.push(localStrokePoint(event)); renderStrokePath(); }
+function finishStroke(event){ if (!stroke || event.pointerId !== stroke.pointerId) return; event.preventDefault(); const ids=Array.from(stroke.nodes); const activeTool=tool; stroke=null; elements["stroke-path"].setAttribute("points",""); let changed=false; if(activeTool==="brush") changed=commitBrush(ids); if(activeTool==="erase") changed=commitErase(ids); if(activeTool==="split") changed=commitSplit(ids); render(); if(changed) toast(activeTool.charAt(0).toUpperCase()+activeTool.slice(1)+" transaction committed."); }
+function cancelStroke(){ if (!stroke) return; stroke=null; elements["stroke-path"].setAttribute("points",""); render(); toast("Stroke cancelled; no change committed."); }
+function renderStrokePath(){ elements["stroke-path"].setAttribute("points",stroke ? stroke.points.map(function(point){ return point[0].toFixed(2)+","+point[1].toFixed(2); }).join(" ") : ""); }
+function renderStrokeCandidates(){ const candidates=stroke ? stroke.nodes : new Set(); document.querySelectorAll(".node-hit").forEach(function(node){ node.classList.toggle("is-candidate",candidates.has(node.dataset.nodeId)); }); }
+function renderCanvas(item,labels){
+  elements["page-image"].src=item.clean_file; elements["node-layer"].replaceChildren(); const assigned=assignedMap(labels); item.nodes.forEach(function(node){ const button=document.createElement("button"); button.type="button"; button.tabIndex=-1; button.className="node-hit"; button.dataset.nodeId=node.id; const box=node.percent_box; button.style.left=box[0]+"%"; button.style.top=box[1]+"%"; button.style.width=Math.max(box[2],.32)+"%"; button.style.height=Math.max(box[3],.32)+"%"; const block=assigned.get(node.id); if(block){ const color=blockColor(block,labels); button.classList.add("is-assigned"); if(block.block_id===selectedBlockId) button.classList.add("is-selected"); button.style.setProperty("--block-color",color); button.title=node.id+" | human "+blockLabel(block,labels); const badge=document.createElement("span"); badge.className="node-badge"; badge.textContent=block.role==="main_flow" ? String(labels.blocks.filter(function(value){return value.role==="main_flow";}).indexOf(block)+1) : "A"; button.append(badge); } else { button.title=node.id+" | unassigned"; } button.setAttribute("aria-label",button.title); elements["node-layer"].append(button); });
+}
+function blockRow(block,labels){ const row=document.createElement("li"); row.className="block-row"+(block.block_id===selectedBlockId?" is-selected":""); row.style.setProperty("--block-color",blockColor(block,labels)); const index=document.createElement("span"); index.className="block-index"; index.textContent=block.role==="main_flow" ? String(labels.blocks.filter(function(item){return item.role==="main_flow";}).indexOf(block)+1) : "A"; const main=document.createElement("span"); main.className="block-main"; const strong=document.createElement("strong"); strong.textContent=blockLabel(block,labels); const small=document.createElement("small"); small.textContent=block.member_node_ids.length+" node"+(block.member_node_ids.length===1?"":"s")+" · "+block.block_id; main.append(strong,small); const select=document.createElement("button"); select.type="button"; select.textContent=block.block_id===selectedBlockId?"Selected":"Select"; select.addEventListener("click",function(){ selectedBlockId=block.block_id; render(); }); row.append(index,main,select); return row; }
+function renderBlockLists(labels){ const flow=labels.blocks.filter(function(block){return block.role==="main_flow";}); const artifacts=labels.blocks.filter(function(block){return block.role!=="main_flow";}); elements["flow-count"].textContent=String(flow.length); elements["artifact-count"].textContent=String(artifacts.length); elements["flow-list"].replaceChildren(); elements["artifact-list"].replaceChildren(); if(!flow.length){ const empty=document.createElement("p"); empty.className="empty"; empty.textContent="Brush the first main reading block."; elements["flow-list"].append(empty); } else flow.forEach(function(block){ elements["flow-list"].append(blockRow(block,labels)); }); if(!artifacts.length){ const empty=document.createElement("p"); empty.className="empty"; empty.textContent="Headers, footers, page numbers, and other artifacts appear here."; elements["artifact-list"].append(empty); } else artifacts.forEach(function(block){ elements["artifact-list"].append(blockRow(block,labels)); }); }
+function reviewSummary(labels){ return labels.blocks.map(function(block){ return blockSignature(block); }).join("\n") || "(incomplete)"; }
+function renderComparison(page){ if(profile!=="adjudicated"){ elements["comparison-section"].hidden=true; return; } elements["comparison-section"].hidden=false; const left=labelsFor(page,"reviewer-a"),right=labelsFor(page,"reviewer-b"); elements["summary-a"].textContent=reviewSummary(left); elements["summary-b"].textContent=reviewSummary(right); const differs=!labelsEqual(left,right); elements["reason-field"].hidden=!differs; elements["reason-list"].replaceChildren(); reasonCodes.forEach(function(code){ const label=document.createElement("label"); const input=document.createElement("input"); input.type="checkbox"; input.checked=page.adjudication_reason_codes.includes(code); input.addEventListener("change",function(){ if(input.checked&&!page.adjudication_reason_codes.includes(code)) page.adjudication_reason_codes.push(code); if(!input.checked) page.adjudication_reason_codes=page.adjudication_reason_codes.filter(function(value){return value!==code;}); save(); render(); }); label.append(input,document.createTextNode(code.replaceAll("_"," "))); elements["reason-list"].append(label); }); }
+function renderPicker(){ elements["page-picker"].replaceChildren(); pages.forEach(function(item,index){ const option=document.createElement("option"); option.value=String(index); option.textContent=(index+1)+" / "+pages.length+" · "+item.document_id+" p."+item.page_number; elements["page-picker"].append(option); }); }
+function render(){
+  const item=currentItem(),page=currentManifestPage(),labels=currentLabels(); cleanLabels(labels); const assigned=assignedMap(labels); const unassigned=item.nodes.filter(function(node){return !assigned.has(node.id);}); const completion=profileCompletion(profile); const percent=completion.total?100*completion.complete/completion.total:0;
+  elements["page-picker"].value=String(current); elements["profile-label"].textContent=profile==="adjudicated"?"Adjudication workspace":profile.replace("reviewer-","Reviewer ").toUpperCase()+" · independent"; elements["progress-label"].textContent=completion.complete+" / "+completion.total+" pages"; elements["progress-percent"].textContent=Math.round(percent)+"%"; elements["progress"].value=percent;
+  elements["page-heading"].textContent=item.document_id+" · page "+item.page_number; elements["page-summary"].textContent="Blind mode: parser roles, order, confidence, and feature hints are hidden."; elements["completion-chip"].textContent=unassigned.length?unassigned.length+" unassigned":"Page complete"; elements["completion-chip"].classList.toggle("is-complete",!unassigned.length&&labelsComplete(labels,page.node_ids)); elements["stage-message"].textContent=stroke?"Stroke active — release to commit, Escape to cancel.":(!labels.blocks.length?"Brush the first human reading block.":unassigned.length?"Brush the next block; "+unassigned.length+" nodes remain.":"Page complete. Continue or correct a block.");
+  const selected=labels.blocks.find(function(block){return block.block_id===selectedBlockId;}); elements["selected-empty"].hidden=Boolean(selected); elements["selected-controls"].hidden=!selected; elements["selected-count"].textContent=selected?String(selected.member_node_ids.length):"0"; if(selected){ elements["selected-role"].value=selected.role; const same=labels.blocks.filter(function(block){return block.role===selected.role;}); elements["merge-previous"].disabled=same.indexOf(selected)<=0; const flow=labels.blocks.filter(function(block){return block.role==="main_flow";}); const flowIndex=flow.indexOf(selected); elements["move-up"].disabled=flowIndex<=0; elements["move-down"].disabled=flowIndex<0||flowIndex>=flow.length-1; elements["tool-split"].disabled=selected.member_node_ids.length<2; } else { elements["tool-split"].disabled=true; }
+  renderCanvas(item,labels); renderBlockLists(labels); renderComparison(page); elements["undo"].disabled=!undoStack.length; elements["export"].textContent=profile==="adjudicated"?(finalManifestReady()?"Export complete manifest":"Export merged draft"):"Export reviewer file"; elements["next-incomplete"].disabled=completion.complete===completion.total; setTool(tool); setRole(activeRole);
+}
+function nextIncomplete(){ const start=current; for(let offset=1;offset<=pages.length;offset+=1){ const index=(start+offset)%pages.length; const item=pages[index]; const page=findPage(manifest,item); if(!labelsComplete(labelsFor(page,profile),page.node_ids)){ current=index; selectedBlockId=null; render(); return; } } toast("No incomplete pages for this profile."); }
+function blankOtherProfiles(output,selectedProfile){ output.documents.forEach(function(documentEntry){ documentEntry.pages.forEach(function(page){ page.reviews.forEach(function(review){ if(review.reviewer_id!==selectedProfile) review.labels=emptyLabels(); }); page.adjudicated=emptyLabels(); page.adjudication_reason_codes=[]; }); }); }
+function reviewerExportObject(selectedProfile){ const target=selectedProfile||profile; const output=clone(manifest); output.schema_version=2; output.status="review_required"; blankOtherProfiles(output,target); return output; }
+function mergedExportObject(){ const output=clone(manifest); output.schema_version=2; output.status=finalManifestReady()?"complete":"review_required"; return output; }
+function downloadJson(value,name){ const blob=new Blob([JSON.stringify(value,null,2)],{type:"application/json"}); const link=document.createElement("a"); link.href=URL.createObjectURL(blob); link.download=name; link.click(); setTimeout(function(){URL.revokeObjectURL(link.href);},0); }
+function exportActive(){ if(profile==="adjudicated") downloadJson(mergedExportObject(),finalManifestReady()?"stage7-block-complete.json":"stage7-block-merged-draft.json"); else downloadJson(reviewerExportObject(profile),"stage7-block-"+profile+".json"); }
+function mergeLabels(target,incoming,location){ if(!labelsHaveData(incoming)) return; if(labelsHaveData(target)&&!labelsEqual(target,incoming)) throw new Error(location+" conflicts with labels already stored."); target.blocks=clone(incoming.blocks); target.block_precedence_pairs=clone(incoming.block_precedence_pairs); }
+function mergeManifest(imported){ verifyIdentity(imported); imported.documents.forEach(function(documentEntry,documentIndex){ documentEntry.pages.forEach(function(incomingPage,pageIndex){ const target=manifest.documents[documentIndex].pages[pageIndex]; incomingPage.reviews.forEach(function(incomingReview){ const targetReview=target.reviews.find(function(review){return review.reviewer_id===incomingReview.reviewer_id;}); if(targetReview) mergeLabels(targetReview.labels,incomingReview.labels,"Imported "+incomingReview.reviewer_id); }); }); }); autoAdjudicateAgreements(); save(); render(); toast("Reviewer file imported and validated."); }
+function autoAdjudicateAgreements(){ allManifestPages(manifest).forEach(function(page){ const left=labelsFor(page,"reviewer-a"),right=labelsFor(page,"reviewer-b"); if(labelsComplete(left,page.node_ids)&&labelsComplete(right,page.node_ids)&&labelsEqual(left,right)&&!labelsHaveData(page.adjudicated)){ page.adjudicated=clone(left); page.adjudication_reason_codes=[]; } }); }
+function copyReviewToAdjudication(reviewer){ const page=currentManifestPage(); const labels=labelsFor(page,reviewer); if(!labelsComplete(labels,page.node_ids)){ toast("That reviewer page is incomplete."); return; } pushUndo(); page.adjudicated=clone(labels); selectedBlockId=null; save(); render(); }
+function showError(message){ elements["error-message"].textContent=message; elements["error"].hidden=false; }
+function clearError(){ elements["error"].hidden=true; }
+function toast(message){ clearTimeout(toastTimer); elements["toast"].textContent=message; elements["toast"].hidden=false; toastTimer=setTimeout(function(){elements["toast"].hidden=true;},2600); }
+function clearCurrentPage(){ if(!confirm("Clear all human blocks on this page?")) return; pushUndo(); const labels=currentLabels(); labels.blocks=[]; labels.block_precedence_pairs=[]; selectedBlockId=null; save(); render(); }
+function resetActiveProfile(){ if(!confirm("Reset every page for this locked profile?")) return; allManifestPages(manifest).forEach(function(page){ if(profile==="adjudicated"){page.adjudicated=emptyLabels();page.adjudication_reason_codes=[];} else labelsFor(page,profile).blocks=[]; if(profile!=="adjudicated") labelsFor(page,profile).block_precedence_pairs=[]; }); undoStack=[]; selectedBlockId=null; save(); render(); }
+function syntheticLabels(page,prefix,lastRole){ const main=page.node_ids.slice(0,-1),last=page.node_ids.slice(-1); const blocks=[]; if(main.length) blocks.push({block_id:prefix+"0",member_node_ids:main,role:"main_flow",internal_order:"unspecified"}); if(last.length) blocks.push({block_id:prefix+"1",member_node_ids:last,role:lastRole,internal_order:"unspecified"}); return {blocks:blocks,block_precedence_pairs:[]}; }
+function syntheticQa(){
+  allManifestPages(manifest).forEach(function(page,index){ const a=syntheticLabels(page,"a"+index+"-","page_number"); const b=syntheticLabels(page,"b"+index+"-","page_number"); if(index===0&&b.blocks.length>1) b.blocks[1].role="artifact"; page.reviews[0].labels=a; page.reviews[1].labels=b; page.adjudicated=clone(a); page.adjudication_reason_codes=index===0?["artifact_policy"]:[]; });
+  const output=mergedExportObject(); const passed=output.status==="complete"&&finalManifestReady(); elements["qa-manifest"].textContent=JSON.stringify(output); elements["qa-manifest"].hidden=false; document.body.dataset.qa=passed?"pass":"fail"; if(!passed) throw new Error("Synthetic block QA did not reach complete status."); render();
+}
+renderPicker(); loadSaved(); setZoom(1); render();
+elements["page-picker"].addEventListener("change",function(){current=Number(elements["page-picker"].value);selectedBlockId=null;render();});
+elements["tool-brush"].addEventListener("click",function(){setTool("brush");}); elements["tool-erase"].addEventListener("click",function(){setTool("erase");}); elements["tool-split"].addEventListener("click",function(){setTool("split");}); elements["tool-pan"].addEventListener("click",function(){setTool("pan");});
+document.querySelectorAll(".role-button").forEach(function(button){button.addEventListener("click",function(){setRole(button.dataset.role);});});
+elements["zoom-out"].addEventListener("click",function(){setZoom(zoom-.15);}); elements["zoom-in"].addEventListener("click",function(){setZoom(zoom+.15);}); elements["zoom-fit"].addEventListener("click",function(){setZoom(1);elements["viewport"].scrollTo(0,0);});
+elements["node-layer"].addEventListener("pointerdown",startStroke); elements["node-layer"].addEventListener("pointermove",moveStroke); elements["node-layer"].addEventListener("pointerup",finishStroke); elements["node-layer"].addEventListener("pointercancel",cancelStroke);
+elements["apply-role"].addEventListener("click",applySelectedRole); elements["merge-previous"].addEventListener("click",mergePrevious); elements["move-up"].addEventListener("click",function(){moveSelected(-1);}); elements["move-down"].addEventListener("click",function(){moveSelected(1);}); elements["unassign-block"].addEventListener("click",unassignSelected);
+elements["undo"].addEventListener("click",undo); elements["next-incomplete"].addEventListener("click",nextIncomplete); elements["copy-a"].addEventListener("click",function(){copyReviewToAdjudication("reviewer-a");}); elements["copy-b"].addEventListener("click",function(){copyReviewToAdjudication("reviewer-b");}); elements["export"].addEventListener("click",exportActive); elements["export-draft"].addEventListener("click",exportActive); elements["import-button"].addEventListener("click",function(){elements["import-file"].click();});
+elements["import-file"].addEventListener("change",async function(){try{const file=elements["import-file"].files[0];if(file)mergeManifest(JSON.parse(await file.text()));}catch(error){showError(error.message);}finally{elements["import-file"].value="";}}); elements["clear-page"].addEventListener("click",clearCurrentPage); elements["reset-profile"].addEventListener("click",resetActiveProfile); elements["dismiss-error"].addEventListener("click",clearError);
+window.addEventListener("keydown",function(event){ if(event.key==="Escape"&&stroke){cancelStroke();return;} if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="z"){event.preventDefault();undo();return;} if(["INPUT","SELECT","TEXTAREA"].includes(document.activeElement.tagName))return; const key=event.key.toLowerCase(); if(key==="b")setTool("brush");if(key==="e")setTool("erase");if(key==="p")setTool("pan");if(["1","2","3","4","5"].includes(key))setRole(blockRoles[Number(key)-1]);if(event.key==="ArrowRight"&&current<pages.length-1){current+=1;selectedBlockId=null;render();}if(event.key==="ArrowLeft"&&current>0){current-=1;selectedBlockId=null;render();} });
+window.__stage7Review={mergedExportObject:mergedExportObject,reviewerExportObject:reviewerExportObject,finalManifestReady:finalManifestReady,validateImportedLabels:validateImportedLabels,commitBrush:commitBrush,commitErase:commitErase,commitSplit:commitSplit,mergePrevious:mergePrevious,undo:undo,setTool:setTool,setRole:setRole,setZoom:setZoom,getManifest:function(){return clone(manifest);},getUndoDepth:function(){return undoStack.length;}};
+if(qaMode){try{syntheticQa();}catch(error){document.body.dataset.qa="fail";showError(error.message);throw error;}}
+</script>
+</body>
+</html>

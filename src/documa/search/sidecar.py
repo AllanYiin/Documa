@@ -89,6 +89,18 @@ def _select_retrieval_terms(
 def source_digest(document: DocumentIR) -> str:
     digest = hashlib.sha256()
     digest.update(document.id.encode("utf-8"))
+    provider_input = {
+        "parser": document.parser,
+        "adapter_version": document.adapter_version,
+        "office_binding_version": document.metadata.get("office_binding_version"),
+        "office_provider": document.metadata.get("office_provider"),
+    }
+    digest.update(
+        json.dumps(
+            provider_input, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+    )
+
     for block in sorted(document.document_blocks, key=lambda item: item.id):
         digest.update(block.id.encode("utf-8"))
         digest.update((block.content_hash or "").encode("ascii", errors="ignore"))

@@ -1,0 +1,11 @@
+schema_version = 1
+
+[latin-positioned-glyphs]
+content_order = "Artificial Intelligence Index Report 2026"
+layout = "A r t i f i c i a l I n t e l l i g e n c e I n d e x R e p o r t 2 0 2 6"
+target_auto = "Artificial Intelligence Index Report 2026"
+
+[cjk-positioned-glyphs]
+content_order = "台灣政府動畫宣導影片"
+layout = "台 灣 政 府 動 畫 宣 導 影 片"
+target_auto = "台灣政府動畫宣導影片"

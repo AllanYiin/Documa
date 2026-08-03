@@ -22,6 +22,11 @@
 - [x] Rust Stage 6C2-E 使用真正 lazy `native_events_v2`；頁面即時釋放、finalization 逐頁 drain，舊 wheel fallback 保留
 - [x] Rust Stage 6D 預設 `compact_trace_v1`、verbose 可逆；三次 shadow RSS 1.056367x 通過 1.2x gate，focused 18/18、full 354/354、Ruff pass
 - [x] Rust Stage 6C2-E exact wheel 保持不變：SHA-256 `5ac374d01ec0bfeaea88b1595d8f720237a1adb94d0ae7e5fc7169fa48bf3d61`
+- [x] Rust PDF 0.2.0 與 Office 0.1.0 已 vendored 至 Documa `native/`；同一個 platform wheel 內建 `rust_pdf._native`／`rust_office._core`，並透過共用 binding identity/capability/error 契約對接
+- [x] Rust Office parser 0.1.0 已在 `D:\PycharmProjects\rust_office_parser` 建立七 crate workspace 與 ABI3 wheel；DOCX、BIFF8 XLS、XLSX、PPTX real fixtures 可完成 process/search/read/cite
+- [x] `office_provider=auto|rust|python` 已公開到 Python tools、CLI、MCP、schemas；auto 僅在 binding/contract/capability 缺失時對 DOCX/PPTX fallback，corrupt/encrypted/resource-limit 禁止 fallback
+- [ ] Rust Office 本機 release gates 已完成：deterministic corpus 24/24、四 fuzz targets 實跑、DOCX/PPTX parity 與 latency/RSS report PASS；仍待 GitHub Windows/Linux/macOS CI 實際 run 後才能宣稱跨平台 release PASS
+
 - [ ] Rust 尚未通過完整品質 provider gate：目前 quality gold 9/18 failed（reading order、table、footnote/image relation 等）；memory gate 已通過。預設雖為 Rust-first，品質敏感工作仍須 `pdf_provider="pymupdf"`。
 - [x] 2026-08-02 LingXi 已升至 0.2.1 exact binding 契約；保留 provider 回滾、leaf-only LingXi，並將 provider 版本納入 sidecar digest/signature 以強制安全重建。
 - [ ] v0.6.3 尚未 tag 或發布至 PyPI／plugin registry
@@ -54,6 +59,9 @@
 - **Rust 只替換 parser adapter，不替換 renderer**：OCR/page preview 仍需 PyMuPDF；Rust 座標只接受 `layout_unrotated_top_left`，跨頁/domain/LLM 語意留在 Documa
 - **Rust Documa metadata 預設 compact、verbose opt-in**：`compact_trace_v1` 以共享 schema 保留 ordinal/MCID/text-origin/rule，page object/coordinate space 向上繼承；`rust_pdf_include_verbose_metadata=True` 恢復舊形狀
 - **Rust lazy finalization 是 terminal patch stream**：頁面先映射，metadata 在 exhaustion 原地更新，再以 `draining_stable_id_patches_v1` 逐頁套用 role/main-flow；不得在頁面迴圈前把 capabilities/warnings 當最終值
+- **Office 引用依來源模型分流**：DOCX/XLS/XLSX 使用 `structural`，PPTX 使用 `slide_number_1_based` 且只有實際 shape bbox 才 visual；不得將 Office logical units 顯示成 PDF 頁碼
+- **Office fallback 比 recoverable 更嚴格**：auto 只接受 binding/contract/capability allowlist；corrupt、encrypted、limit 即使底層標 recoverable 也不得切 Python
+
 - **替換採可逆 provider，不刪舊能力**：Rust 負責 PDF extraction，PyMuPDF 保留 renderer/OCR 與明確回退；LingXi 負責預設 `keyword_terms`，n-gram 保留為缺模型回退與新詞能力補償，直到等價的新詞／gold gate 通過。
 
 ### 已知地雷（仍需注意）
@@ -66,6 +74,8 @@
 - **INDEX_VERSION=4 / sidecar schema v2**：v0.5.0 前的 collection index，以及未含 `hnsw-route-v1` 的 search sidecar 都是 stale 衍生物；需重建後才使用 indexed routing
 - **`document_block_text()` 每次都重建全文件 source-text map**——大量迴圈不可逐 block 呼叫；sidecar 必須一次建 map 並重用（詳見 HISTORY `[2026-07-24]`）
 - **`test_registry_locking` 在 Windows 全套跑偶發 `PermissionError` flake**，單獨重跑即過
+- **Source install 現在會編譯兩個 Rust extension**：需要 Rust 1.88+ 與平台 linker；預建 wheel 使用者不需要 toolchain。Windows CPython 3.10 wheel 已驗證，Linux/macOS wheel 仍需 CI 實跑
+
 - **關閉 pytest plugin autoload 會拿掉 snapshot fixtures**：全套需顯式 `-p pytest_datadir.plugin -p pytest_regressions.plugin`
 - **Rust memory gate 已過但不可直接切換**：Stage 6D 完整 Documa 峰值 646,643,712 bytes（1.056367x PyMuPDF）；字元／tagged-order／私有 table-image gold 仍是 NO-GO
 - **readiness 不是 accuracy**：fixture readiness 18/18 只證明檔案與 capability contract 齊備；2026-07-30 Rust quality mode 實測為 9 passed / 9 failed，不得寫成品質全過。
@@ -284,6 +294,18 @@
 
 ---
 
+
+---
+
+## [2026-08-02] Rust Office parser v1 vertical slice 與 Documa provider
+
+- 新建 `rust_office_parser` workspace：office-core/ooxml/word/sheet/slide/py/cli；公開 `office-layout-v1` event stream，ABI3 py39 wheel `rust-office-parser 0.1.0`。
+- 真實 deterministic fixtures 覆蓋 DOCX、BIFF8 XLS、XLSX、PPTX；四者皆經 Documa strict Rust provider 完成 process/search/read/cite。DOCX/XLS/XLSX citations 為 structural worksheet/document label；PPTX shape bbox 為 points visual citation，notes 無 bbox 時維持 logical。
+- Provider 已接到 registry、Python tools、CLI、MCP 與 JSON schema。`auto` Rust-first，但只有 `RUST_OFFICE_NOT_INSTALLED`、binding contract mismatch 或 capability unavailable 能讓 DOCX/PPTX fallback；legacy DOC/PPT 與 macro-enabled formats 有穩定錯誤。
+- search sidecar `source_digest` 納入 parser、adapter contract、Office binding version 與 requested/actual provider，切換時會失效重建。
+- 驗證：Rust fmt/Clippy -D warnings/workspace tests PASS；ABI3 wheel build + Python tests 6/6；Documa Office focused 8/8、Office+PDF focused 14/14、interfaces/citation/registry regression 51/51；Ruff changed files PASS。四 fuzz targets可編譯。
+- release gate 仍未完成：fixture manifest 明載 4/24 partial，尚無跨平台 CI 實際 run、24 件 corpus、parity F1 與正式 latency/RSS 報告。
+
 ## [2026-08-02] v0.6.3 重建與 package gate
 
 - runtime `pyproject.toml`／`documa.__version__`、Claude Code／Codex／OpenClaw manifests 與四份 plugin install pin 同步推進到 `0.6.3`；CHANGELOG 日期更新為 2026-08-02。
@@ -293,3 +315,23 @@
 - 驗證：focused packaging/lifecycle 12/12；full pytest 372/372；Ruff full pass；`git diff --check` pass；Twine wheel/sdist 2/2 PASS；agent plugin validator PASS；doctor 8/8；fixture readiness 18/18；作用中 wheel smoke 為 Documa module/distribution 0.6.3、LingXi 0.2.1。
 - 全域 `D:\Python310` 的 `pip check` 為 FAIL：環境原有多個跨專案缺件／版本衝突，且本次 `--force-reinstall` 重新解析依賴後升級了 Pillow、pydantic、mcp、tiktoken 等套件；Documa gates 仍 PASS，但此環境不可宣稱 dependency-clean。另有既存 `~ocuma-0.6.2.dist-info` 警告未刪除。
 - `dist/` 受 `.gitignore` 管理，只保存本機 release artifacts；Git commit 納入 runtime、測試、governance、plugin source 與兩個 tracked plugin zip，不納入 `.documa/` store 或歷史上刻意未追蹤的 `token-economy.json`。
+
+---
+
+## [2026-08-03] Rust Office parser v1 release evidence
+
+- deterministic synthetic corpus 由 4 件補齊為 24 件（DOCX/XLS/XLSX/PPTX 各 6）；manifest 記錄 SHA-256、coverage、provenance、license、expected needle/error，連續重建 hash 穩定。
+- 修正契約錯誤碼為 `ENCRYPTED_OFFICE_NOT_SUPPORTED`／`ZIP_PATH_TRAVERSAL`；DOCX `w:gridSpan` 水平合併儲存格依共同能力展開，並受 `max_cells` 限制。
+- Windows parity/performance report PASS：6 件 DOCX/PPTX 共同能力 fixture character F1 全為 1.0；DOCX/PPTX median time ratio 分別 0.1026/0.0943，peak RSS ratio 0.5839/0.5874。
+- 驗證：Rust fmt/Clippy -D warnings/workspace tests PASS；ABI3 wheel build PASS；binding corpus 52/52；Documa full pytest 381/381；Ruff PASS；四 fuzz targets 各實跑 5 秒無 crash；doctor 8/8；fixture readiness 18/18；agent plugin validator PASS；Codex documa-evidence package gate PASS（live benchmark SKIPPED，未宣稱）。
+- 尚餘外部 gate：本機只驗證 Windows；GitHub Windows/Linux/macOS CI 尚未有實際 run，因此跨平台正式 release 狀態維持 pending。
+
+---
+
+## [2026-08-03] Rust PDF／Office 內部子模組整合
+
+- 將兩個 parser source vendored 至 `native/pdf` 與 `native/office`；保留獨立 Cargo workspace，Documa 根目錄透過 `setuptools-rust` 同時建置兩個 Python extension。
+- 新增共用 native binding 抽象，統一模組載入、`version_info()` identity、required calls、capabilities 與 JSON error envelope 驗證；PDF／Office adapter 不再各自重複處理 binding 契約。
+- PDF workspace 僅將 `pdf-core` 與 Python binding 列為 build members；CLI／WASM source 只保留給既有 contract audit，未納入 Documa wheel 編譯。
+- 驗證：Rust fmt、workspace check/test、Clippy `-D warnings` 均 PASS；Python full suite 447/447；Windows CPython 3.10 platform wheel 內含兩個 native extension，PDF 與 DOCX/XLS/XLSX/PPTX 真實 smoke PASS。
+- 尚餘外部 gate：Linux/macOS platform wheel 與其他 Python ABI 需 CI 實跑；既有 0.6.3 pure-Python release artifacts／hashes 已被新的 platform wheel 模型取代，發布前必須重建。

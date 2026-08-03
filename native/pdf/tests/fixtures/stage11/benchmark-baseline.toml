@@ -1,0 +1,47 @@
+schema_version = 1
+recorded_on = "2026-07-29"
+command = "cargo test --release -p pdf-core --test stage11_layout benchmark_legacy_layout_vs_auto_on_fixed_2000_glyph_page -- --ignored --nocapture"
+profile = "release"
+absolute_time_is_gate = false
+
+[toolchain]
+rustc = "1.96.0 (ac68faa20 2026-05-25)"
+cargo = "1.96.0 (30a34c682 2026-05-25)"
+host = "x86_64-pc-windows-msvc"
+llvm = "22.1.2"
+
+[hardware]
+cpu = "Intel64 Family 6 Model 198 Stepping 2, GenuineIntel"
+logical_processors = 24
+os = "Microsoft Windows 10.0.26200"
+architecture = "X64"
+
+[workload]
+fixture = "generated fixed 2,000-glyph single page"
+iterations = 50
+parse_inside_measurement = false
+document_reused = true
+deterministic_output_asserted = true
+
+[results.content_order]
+role = "source-order reference"
+total_ns = 199509700
+per_iteration_ns = 3990194
+text_bytes = 2000
+
+[results.legacy_layout]
+role = "before: preserved pre-Stage-11 layout path"
+total_ns = 211506100
+per_iteration_ns = 4230122
+text_bytes = 3999
+
+[results.auto]
+role = "after: Stage-11 script-aware layout path"
+total_ns = 201292200
+per_iteration_ns = 4025844
+text_bytes = 2019
+
+[comparison]
+auto_over_legacy_layout = 0.9517
+auto_change_percent = -4.83
+interpretation = "This observation records the release-candidate environment; correctness, determinism, bounded resources, and the static O(n log n) design are the gates, not an absolute duration."

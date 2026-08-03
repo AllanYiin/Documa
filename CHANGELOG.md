@@ -3,7 +3,7 @@
 ## v0.6.3 — Rust-first native providers（2026-08-02）
 
 - **LingXi 0.2.1 中文關鍵詞 provider**：文字葉節點的 `keyword_terms` 預設改由 LingXi TextRank 選取；既有 n-gram 僅保留祖先 support/new-word 補償與明確回滾，避免同一 evidence 在階層中重複命中。binding 嚴格驗證 0.2.1，缺失或版本不符時可觀測回退；provider 版本納入 IR metadata、source digest 與 tokenizer signature，升級後會重建舊 sidecar。
-- **rust-pdf-parser 0.2.0 Rust-first adapter**：PDF extraction 預設走 `pdf_provider=auto` 的 Rust provider，binding 驗證 0.2.0；PyMuPDF 保留為 recoverable fallback、OCR 與 page-preview renderer。`0.6.3` Python sdist/wheel 與 Claude Code/Codex plugin zip 已同步打包並驗證。
+- **內建 Rust PDF／Office parsers**：rust-pdf-parser 0.2.0 與 rust-office-parser 0.1.0 已 vendored 至 `native/`，由同一個 Documa platform wheel 編譯 `rust_pdf._native` 與 `rust_office._core`。兩者共用 binding identity、capability 與 native error envelope 契約；PDF 保留 PyMuPDF recoverable fallback／renderer，Office 則依格式與錯誤 allowlist 決定是否回退。
 - **MCP 安裝生命週期**：新增 `python -m documa.install` 受控升級入口；安裝鎖會阻止 MCP 重啟，已登錄 server 先收到退出通知、逾時則依 PID 強制終止，Windows 舊版 `documa-mcp.exe` 亦會被偵測並關閉。Codex／Claude plugin 改以 Python module 啟動，避免長駐行程鎖住 pip 管理的 console launcher。
 - **檢索精度閘門**：單文件廣查詢若首筆只命中 1 個詞，或低覆蓋首筆落在 footnote／references／TOC／頁首頁尾，不再自動建議讀取，而是提示改用 2–4 個高鑑別 lexical literals；`needs_next` 改為先讀核心 block 後才條件式補鄰接內容。三份 agent skill 同步採 `limit=6`、每 block 1 段 snippet、query/any_of 去重與多主題分流。
 

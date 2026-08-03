@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "private_corpus": true,
+  "redistributable": false,
+  "root_env": "RUST_PDF_STAGE12_CORPUS_DIR",
+  "default_options": {
+    "documa_normalize_unicode": true,
+    "documa_extract_images": true,
+    "documa_resolve_relations": true,
+    "preview_enabled": false,
+    "rust_mode": "auto",
+    "rust_normalize_unicode": false
+  },
+  "measurement": {
+    "warmup_runs": 1,
+    "measured_runs": 3,
+    "save_private_ir_by_default": false,
+    "canonical_json_sort_keys": true
+  },
+  "documents": [
+    {"id":"music-12251708-02","file_name":"12251708_02.pdf","bytes":7666246,"sha256":"39f6fb400f54d1d0cdf7b713f7286aa37176efd4b89f4a4ff9980cddfe05010e","pages":580},
+    {"id":"music-2305-17216-v1","file_name":"2305.17216v1.pdf","bytes":5098907,"sha256":"76b5c063bb8888dbc9e5442d52b8c621b5ef4ed192d9eb13ac87a7b585db6fb5","pages":18},
+    {"id":"music-2305-17216-v3","file_name":"2305.17216v3.pdf","bytes":5138308,"sha256":"c7093034285178d25a67d1d669254431b172c469a6e4069024fe235d6d7d1a47","pages":20},
+    {"id":"music-2312-00311-v3","file_name":"2312.00311v3.pdf","bytes":24955075,"sha256":"e7cad26f68af6be2219644758fecf3ce35450aa38518e8c81c258096153dfe46","pages":17},
+    {"id":"music-2512-24601-v1","file_name":"2512.24601v1.pdf","bytes":8250587,"sha256":"7f0e822fdde98bdb7348fe565481e59b70470b240e43d23cc2b7ffac13d9cd75","pages":33},
+    {"id":"music-2602-24281-v1","file_name":"2602.24281v1.pdf","bytes":2122573,"sha256":"f4983c96c96400320b3d883e8d39f96ade91cae55e2bde04c4d99b06a8348e82","pages":22},
+    {"id":"ai-index-2026","file_name":"ai_index_report_2026.pdf","bytes":38698610,"sha256":"9e1a0455a77523b9dd86351b13a569b9e4e8173c3031757dff220ad7e238fca5","pages":423}
+  ]
+}
+

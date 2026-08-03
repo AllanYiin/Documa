@@ -1,0 +1,315 @@
+{
+  "schema_version": 1,
+  "generator": "scripts/generate_fixtures.py",
+  "deterministic": true,
+  "quality_gate": {
+    "required_committed_fixtures": 24,
+    "current_committed_fixtures": 24,
+    "status": "complete"
+  },
+  "fixtures": [
+    {
+      "path": "smoke.docx",
+      "format": "docx",
+      "sha256": "d8d0f2e8462fd8c228a5536266ba811c59bf96ee53cebbec3104034596d7821c",
+      "coverage": [
+        "unicode",
+        "heading",
+        "runs",
+        "table"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_needle": "繁體中文"
+    },
+    {
+      "path": "docx-unicode-list.docx",
+      "format": "docx",
+      "sha256": "8cd87c9fccc0963f1e0b3c0effa05b803875c8288c37ff3c5274fedb2bd33295",
+      "coverage": [
+        "unicode",
+        "heading",
+        "list"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_needle": "Unicode 與清單"
+    },
+    {
+      "path": "docx-table-merged.docx",
+      "format": "docx",
+      "sha256": "c132505629c7fecc9f7485a53ec6789cc80e2b675662ccc674af69726e000c8d",
+      "coverage": [
+        "table",
+        "merged_cells"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_needle": "跨欄表頭"
+    },
+    {
+      "path": "docx-header-footer.docx",
+      "format": "docx",
+      "sha256": "207b4c1326f42831633351816734db858271497d143a5e7dc60638e527766784",
+      "coverage": [
+        "sections",
+        "header",
+        "footer"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_needle": "頁首證據"
+    },
+    {
+      "path": "docx-image-link.docx",
+      "format": "docx",
+      "sha256": "4c141b3d1f8f78af4fccbe64c0d7fb6ba28c4430966eb3581b5414e9ce3279bf",
+      "coverage": [
+        "image",
+        "external_link"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_needle": "外部參考"
+    },
+    {
+      "path": "docx-corrupt.docx",
+      "format": "docx",
+      "sha256": "4e11b22e10c155a003216f2dba6462086926984fc7720a912688d119b55543b4",
+      "coverage": [
+        "corrupt",
+        "security"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_error": "CORRUPT_PACKAGE"
+    },
+    {
+      "path": "smoke.xls",
+      "format": "xls",
+      "sha256": "764bd6e11024bef900efad76578a6244b36c166976473607bc791a3de01dd582",
+      "coverage": [
+        "unicode",
+        "formula",
+        "merged_cells"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "variant": "BIFF8",
+      "expected_needle": "BIFF8"
+    },
+    {
+      "path": "xls-unicode.xls",
+      "format": "xls",
+      "sha256": "e1ce766a09c6b1dd69f0a38425ba1a71cae78a9504b1bcc54fcc07a0c3a5f5b1",
+      "coverage": [
+        "unicode"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "variant": "BIFF8",
+      "expected_needle": "供應鏈"
+    },
+    {
+      "path": "xls-formula.xls",
+      "format": "xls",
+      "sha256": "6a95f31e759db9721d3d3056dbd154fdb59beb630ee82b18640cc3709c40b26e",
+      "coverage": [
+        "formula",
+        "cached_value"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "variant": "BIFF8",
+      "expected_needle": "折扣"
+    },
+    {
+      "path": "xls-merged.xls",
+      "format": "xls",
+      "sha256": "a73d0a4fb8f0dac4882eda4483f1237980df59e237b8a4374c14e9c825b77370",
+      "coverage": [
+        "merged_cells"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "variant": "BIFF8",
+      "expected_needle": "BIFF8 合併標題"
+    },
+    {
+      "path": "xls-multisheet.xls",
+      "format": "xls",
+      "sha256": "4c243c0e945c7c7d2840088852de61816cc3899172ae4f87e3728c541ad29f6b",
+      "coverage": [
+        "multiple_sheets",
+        "hidden_sheet"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "variant": "BIFF8",
+      "expected_needle": "公開資料"
+    },
+    {
+      "path": "xls-invalid.xls",
+      "format": "xls",
+      "sha256": "dd9f665bab4d0e39ef709b03d983138820773e0e3e8ca6b4a8724522b9b7e2bf",
+      "coverage": [
+        "corrupt",
+        "format_mismatch"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_error": "FORMAT_MISMATCH"
+    },
+    {
+      "path": "smoke.xlsx",
+      "format": "xlsx",
+      "sha256": "162dce2a0aea3ddf8503cd1cea83a99ca67fc3cada71ba3f57495094a9a196bc",
+      "coverage": [
+        "unicode",
+        "formula",
+        "merged_cells",
+        "comment",
+        "hidden_sheet"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_needle": "流動性"
+    },
+    {
+      "path": "xlsx-unicode-formula.xlsx",
+      "format": "xlsx",
+      "sha256": "f5a7a7673f70da281b1697889f98520f1d229bf5f0ed0aa35d409ef68b9e6f37",
+      "coverage": [
+        "unicode",
+        "formula",
+        "cached_value"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_needle": "總額"
+    },
+    {
+      "path": "xlsx-merged-link.xlsx",
+      "format": "xlsx",
+      "sha256": "8aa5b37bc57e1045c264bdd741f2fd480471a45063d426a6fadfedc69b5dcb38",
+      "coverage": [
+        "merged_cells",
+        "hyperlink",
+        "comment"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_needle": "外部資料"
+    },
+    {
+      "path": "xlsx-hidden.xlsx",
+      "format": "xlsx",
+      "sha256": "60d22abfe5942b01e7ac14c6ab79ea9c7e1f8761ff9d03c0aa55e88ff5ab345a",
+      "coverage": [
+        "hidden_sheet"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_needle": "可見工作表"
+    },
+    {
+      "path": "xlsx-table-chart.xlsx",
+      "format": "xlsx",
+      "sha256": "0b9a5b5db4dced2353ac6b510871c41d3f44cf1df506b82fcbbca5a37101d3ba",
+      "coverage": [
+        "structured_table",
+        "chart_inventory"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_needle": "季度"
+    },
+    {
+      "path": "xlsx-path-traversal.xlsx",
+      "format": "xlsx",
+      "sha256": "537f2e5b8e372b978bbf7049d218e07c30d337c57fea48ba9825d921dd9103fc",
+      "coverage": [
+        "security",
+        "path_traversal"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_error": "ZIP_PATH_TRAVERSAL"
+    },
+    {
+      "path": "smoke.pptx",
+      "format": "pptx",
+      "sha256": "b8aa1c6a10c952a5b548a2b6b5799f7f2a59b4b4ba2afa6b91ec75dbce11b840",
+      "coverage": [
+        "unicode",
+        "placeholder_geometry",
+        "table",
+        "speaker_notes"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_needle": "產品路線"
+    },
+    {
+      "path": "pptx-multislide.pptx",
+      "format": "pptx",
+      "sha256": "518aabf0839db5d17bdd87e992c6c59821cd406a5149d4ef248da8b4cf638f93",
+      "coverage": [
+        "multiple_slides",
+        "reading_order"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_needle": "第二張投影片"
+    },
+    {
+      "path": "pptx-unicode-bullets.pptx",
+      "format": "pptx",
+      "sha256": "218d7d73b883d5036983ac89d33677a136ea25de45253c2449260cdd2c134123",
+      "coverage": [
+        "unicode",
+        "bullets"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_needle": "巢狀項目"
+    },
+    {
+      "path": "pptx-table-notes.pptx",
+      "format": "pptx",
+      "sha256": "d196c76bcab3e59042dccc40a53ff0dd35099ddc36bb94fa6bf4bc32ed34b2b3",
+      "coverage": [
+        "table",
+        "speaker_notes"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_needle": "會議結論"
+    },
+    {
+      "path": "pptx-image-link.pptx",
+      "format": "pptx",
+      "sha256": "3fd8f425b446087b42e57bb8d656c12df56bc4104ac7c5f094e68b598e2d5711",
+      "coverage": [
+        "image",
+        "external_link",
+        "bbox"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_needle": "外部參考"
+    },
+    {
+      "path": "pptx-path-traversal.pptx",
+      "format": "pptx",
+      "sha256": "95ae079135b725c7302c692120d498ab3fb1208ba861e2da9a0a5a270fecbda9",
+      "coverage": [
+        "security",
+        "path_traversal"
+      ],
+      "provenance": "project-generated deterministic synthetic fixture",
+      "license": "MIT",
+      "expected_error": "ZIP_PATH_TRAVERSAL"
+    }
+  ]
+}

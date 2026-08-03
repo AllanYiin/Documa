@@ -1,0 +1,22 @@
+[build-system]
+requires = ["maturin>=1.9,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "rust-pdf-parser"
+version = "0.2.0"
+description = "Python bindings for a from-scratch Rust PDF parser"
+requires-python = ">=3.9"
+readme = "../../README.md"
+license = { text = "MIT OR Apache-2.0" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Rust",
+]
+
+[tool.maturin]
+manifest-path = "Cargo.toml"
+python-source = "python"
+module-name = "rust_pdf._native"
+features = ["pyo3/extension-module"]
+

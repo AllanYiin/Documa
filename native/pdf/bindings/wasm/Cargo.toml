@@ -1,0 +1,29 @@
+[package]
+name = "pdf-wasm"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Browser WebAssembly bindings for the Rust PDF parser"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pdf-core.workspace = true
+serde.workspace = true
+serde-wasm-bindgen = "0.6"
+serde_json.workspace = true
+wasm-bindgen = "0.2"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"
+
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

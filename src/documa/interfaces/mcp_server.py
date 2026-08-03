@@ -101,10 +101,17 @@ def create_mcp_server(profile: str | None = None) -> Any:
         out: str | None = None,
         lang: str = "auto",
         pdf_provider: str = "auto",
+        office_provider: str = "auto",
     ) -> dict[str, Any]:
         """Parse a document into Documa IR."""
 
-        return parse_document_tool(source=source, out=out, lang=lang, pdf_provider=pdf_provider)
+        return parse_document_tool(
+            source=source,
+            out=out,
+            lang=lang,
+            pdf_provider=pdf_provider,
+            office_provider=office_provider,
+        )
 
     @_documa_tool
     def documa_process(
@@ -114,6 +121,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
         max_chars: int = 1200,
         export_formats: list[str] | None = None,
         pdf_provider: str = "auto",
+        office_provider: str = "auto",
         keyword_provider: str = "lingxi",
     ) -> dict[str, Any]:
         """Parse and process a document.
@@ -131,6 +139,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
             max_chars=max_chars,
             export_formats=export_formats,
             pdf_provider=pdf_provider,
+            office_provider=office_provider,
             keyword_provider=keyword_provider,
         )
 
@@ -189,6 +198,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
         body_chars: int = 1200,
         result_limit: int = 10,
         pdf_provider: str = "auto",
+        office_provider: str = "auto",
         keyword_provider: str = "lingxi",
     ) -> dict[str, Any]:
         """Build a universal hierarchical human viewer for any Documa-supported document."""
@@ -206,6 +216,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
             body_chars=body_chars,
             result_limit=result_limit,
             pdf_provider=pdf_provider,
+            office_provider=office_provider,
             keyword_provider=keyword_provider,
         )
 
@@ -331,6 +342,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
         ocr: bool = False,
         update_index: bool = True,
         pdf_provider: str = "auto",
+        office_provider: str = "auto",
         keyword_provider: str = "lingxi",
     ) -> dict[str, Any]:
         """Ingest a document into the local store; returns a stable doc- registry id and keeps the collection index fresh."""
@@ -343,6 +355,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
             ocr=ocr,
             update_index=update_index,
             pdf_provider=pdf_provider,
+            office_provider=office_provider,
             keyword_provider=keyword_provider,
         )
 

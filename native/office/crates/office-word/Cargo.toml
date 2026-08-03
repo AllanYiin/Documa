@@ -1,0 +1,13 @@
+[package]
+name = "office-word"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+office-core = { path = "../office-core" }
+office-ooxml = { path = "../office-ooxml" }
+quick-xml.workspace = true
+serde_json.workspace = true
+

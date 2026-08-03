@@ -1,0 +1,25 @@
+[package]
+name = "pdf-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Command-line interface for the from-scratch Rust PDF parser"
+
+[[bin]]
+name = "rust-pdf"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+pdf-core.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+sha2.workspace = true
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"
+

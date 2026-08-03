@@ -1,0 +1,14 @@
+[package]
+name = "office-sheet"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+calamine.workspace = true
+cfb.workspace = true
+office-core = { path = "../office-core" }
+office-ooxml = { path = "../office-ooxml" }
+quick-xml.workspace = true
+serde_json.workspace = true

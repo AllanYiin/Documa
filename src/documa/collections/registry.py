@@ -146,6 +146,7 @@ def ingest_document(
     max_chars: int = 1200,
     ocr: bool = False,
     pdf_provider: str = "auto",
+    office_provider: str = "auto",
     keyword_provider: str = "lingxi",
     lock_timeout: float = LOCK_TIMEOUT_SECONDS,
 ) -> ToolPayload:
@@ -192,6 +193,7 @@ def ingest_document(
         max_chars=max_chars,
         ocr=ocr,
         pdf_provider=pdf_provider,
+        office_provider=office_provider,
         keyword_provider=keyword_provider,
     )
     if result.get("status") != "ok":

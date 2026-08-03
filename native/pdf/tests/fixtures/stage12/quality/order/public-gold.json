@@ -1,0 +1,572 @@
+{
+  "schema_version": 2,
+  "status": "complete",
+  "private_corpus": false,
+  "redistributable": true,
+  "documents": [
+    {
+      "id": "public-order-cases",
+      "file_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "pages": [
+        {
+          "page_number": 1,
+          "adjudication_reason_codes": [],
+          "node_ids": [
+            "heading",
+            "paragraph_1",
+            "paragraph_2",
+            "footer"
+          ],
+          "reviews": [
+            {
+              "reviewer_id": "reviewer-a",
+              "labels": {
+                "blocks": [
+                  {
+                    "block_id": "heading",
+                    "member_node_ids": [
+                      "heading"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "body",
+                    "member_node_ids": [
+                      "paragraph_1",
+                      "paragraph_2"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "footer",
+                    "member_node_ids": [
+                      "footer"
+                    ],
+                    "role": "page_footer",
+                    "internal_order": "unspecified"
+                  }
+                ],
+                "block_precedence_pairs": [
+                  [
+                    "heading",
+                    "body"
+                  ]
+                ]
+              }
+            },
+            {
+              "reviewer_id": "reviewer-b",
+              "labels": {
+                "blocks": [
+                  {
+                    "block_id": "reviewer-b-p1-b0",
+                    "member_node_ids": [
+                      "heading"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "reviewer-b-p1-b1",
+                    "member_node_ids": [
+                      "paragraph_1",
+                      "paragraph_2"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "reviewer-b-p1-b2",
+                    "member_node_ids": [
+                      "footer"
+                    ],
+                    "role": "page_footer",
+                    "internal_order": "unspecified"
+                  }
+                ],
+                "block_precedence_pairs": [
+                  [
+                    "reviewer-b-p1-b0",
+                    "reviewer-b-p1-b1"
+                  ]
+                ]
+              }
+            }
+          ],
+          "adjudicated": {
+            "blocks": [
+              {
+                "block_id": "heading",
+                "member_node_ids": [
+                  "heading"
+                ],
+                "role": "main_flow",
+                "internal_order": "unspecified"
+              },
+              {
+                "block_id": "body",
+                "member_node_ids": [
+                  "paragraph_1",
+                  "paragraph_2"
+                ],
+                "role": "main_flow",
+                "internal_order": "unspecified"
+              },
+              {
+                "block_id": "footer",
+                "member_node_ids": [
+                  "footer"
+                ],
+                "role": "page_footer",
+                "internal_order": "unspecified"
+              }
+            ],
+            "block_precedence_pairs": [
+              [
+                "heading",
+                "body"
+              ]
+            ]
+          }
+        },
+        {
+          "page_number": 2,
+          "adjudication_reason_codes": [],
+          "node_ids": [
+            "spanning_heading",
+            "left_1",
+            "left_2",
+            "right_1",
+            "right_2",
+            "sidebar",
+            "caption",
+            "page_number"
+          ],
+          "reviews": [
+            {
+              "reviewer_id": "reviewer-a",
+              "labels": {
+                "blocks": [
+                  {
+                    "block_id": "spanning-heading",
+                    "member_node_ids": [
+                      "spanning_heading"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "left-column",
+                    "member_node_ids": [
+                      "left_1",
+                      "left_2"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "right-column",
+                    "member_node_ids": [
+                      "right_1",
+                      "right_2"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "sidebar",
+                    "member_node_ids": [
+                      "sidebar"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "caption",
+                    "member_node_ids": [
+                      "caption"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "page-number",
+                    "member_node_ids": [
+                      "page_number"
+                    ],
+                    "role": "page_number",
+                    "internal_order": "unspecified"
+                  }
+                ],
+                "block_precedence_pairs": [
+                  [
+                    "spanning-heading",
+                    "left-column"
+                  ],
+                  [
+                    "left-column",
+                    "right-column"
+                  ],
+                  [
+                    "right-column",
+                    "sidebar"
+                  ],
+                  [
+                    "sidebar",
+                    "caption"
+                  ]
+                ]
+              }
+            },
+            {
+              "reviewer_id": "reviewer-b",
+              "labels": {
+                "blocks": [
+                  {
+                    "block_id": "reviewer-b-p2-b0",
+                    "member_node_ids": [
+                      "spanning_heading"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "reviewer-b-p2-b1",
+                    "member_node_ids": [
+                      "left_1",
+                      "left_2"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "reviewer-b-p2-b2",
+                    "member_node_ids": [
+                      "right_1",
+                      "right_2"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "reviewer-b-p2-b3",
+                    "member_node_ids": [
+                      "sidebar"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "reviewer-b-p2-b4",
+                    "member_node_ids": [
+                      "caption"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "reviewer-b-p2-b5",
+                    "member_node_ids": [
+                      "page_number"
+                    ],
+                    "role": "page_number",
+                    "internal_order": "unspecified"
+                  }
+                ],
+                "block_precedence_pairs": [
+                  [
+                    "reviewer-b-p2-b0",
+                    "reviewer-b-p2-b1"
+                  ],
+                  [
+                    "reviewer-b-p2-b1",
+                    "reviewer-b-p2-b2"
+                  ],
+                  [
+                    "reviewer-b-p2-b2",
+                    "reviewer-b-p2-b3"
+                  ],
+                  [
+                    "reviewer-b-p2-b3",
+                    "reviewer-b-p2-b4"
+                  ]
+                ]
+              }
+            }
+          ],
+          "adjudicated": {
+            "blocks": [
+              {
+                "block_id": "spanning-heading",
+                "member_node_ids": [
+                  "spanning_heading"
+                ],
+                "role": "main_flow",
+                "internal_order": "unspecified"
+              },
+              {
+                "block_id": "left-column",
+                "member_node_ids": [
+                  "left_1",
+                  "left_2"
+                ],
+                "role": "main_flow",
+                "internal_order": "unspecified"
+              },
+              {
+                "block_id": "right-column",
+                "member_node_ids": [
+                  "right_1",
+                  "right_2"
+                ],
+                "role": "main_flow",
+                "internal_order": "unspecified"
+              },
+              {
+                "block_id": "sidebar",
+                "member_node_ids": [
+                  "sidebar"
+                ],
+                "role": "main_flow",
+                "internal_order": "unspecified"
+              },
+              {
+                "block_id": "caption",
+                "member_node_ids": [
+                  "caption"
+                ],
+                "role": "main_flow",
+                "internal_order": "unspecified"
+              },
+              {
+                "block_id": "page-number",
+                "member_node_ids": [
+                  "page_number"
+                ],
+                "role": "page_number",
+                "internal_order": "unspecified"
+              }
+            ],
+            "block_precedence_pairs": [
+              [
+                "spanning-heading",
+                "left-column"
+              ],
+              [
+                "left-column",
+                "right-column"
+              ],
+              [
+                "right-column",
+                "sidebar"
+              ],
+              [
+                "sidebar",
+                "caption"
+              ]
+            ]
+          }
+        },
+        {
+          "page_number": 3,
+          "adjudication_reason_codes": [],
+          "node_ids": [
+            "list_label",
+            "list_body",
+            "table",
+            "caption",
+            "vertical_note",
+            "header"
+          ],
+          "reviews": [
+            {
+              "reviewer_id": "reviewer-a",
+              "labels": {
+                "blocks": [
+                  {
+                    "block_id": "list-item",
+                    "member_node_ids": [
+                      "list_label",
+                      "list_body"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "table",
+                    "member_node_ids": [
+                      "table"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "caption",
+                    "member_node_ids": [
+                      "caption"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "vertical-note",
+                    "member_node_ids": [
+                      "vertical_note"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "header",
+                    "member_node_ids": [
+                      "header"
+                    ],
+                    "role": "page_header",
+                    "internal_order": "unspecified"
+                  }
+                ],
+                "block_precedence_pairs": [
+                  [
+                    "list-item",
+                    "table"
+                  ],
+                  [
+                    "table",
+                    "caption"
+                  ],
+                  [
+                    "caption",
+                    "vertical-note"
+                  ]
+                ]
+              }
+            },
+            {
+              "reviewer_id": "reviewer-b",
+              "labels": {
+                "blocks": [
+                  {
+                    "block_id": "reviewer-b-p3-b0",
+                    "member_node_ids": [
+                      "list_label",
+                      "list_body"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "reviewer-b-p3-b1",
+                    "member_node_ids": [
+                      "table"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "reviewer-b-p3-b2",
+                    "member_node_ids": [
+                      "caption"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "reviewer-b-p3-b3",
+                    "member_node_ids": [
+                      "vertical_note"
+                    ],
+                    "role": "main_flow",
+                    "internal_order": "unspecified"
+                  },
+                  {
+                    "block_id": "reviewer-b-p3-b4",
+                    "member_node_ids": [
+                      "header"
+                    ],
+                    "role": "page_header",
+                    "internal_order": "unspecified"
+                  }
+                ],
+                "block_precedence_pairs": [
+                  [
+                    "reviewer-b-p3-b0",
+                    "reviewer-b-p3-b1"
+                  ],
+                  [
+                    "reviewer-b-p3-b1",
+                    "reviewer-b-p3-b2"
+                  ],
+                  [
+                    "reviewer-b-p3-b2",
+                    "reviewer-b-p3-b3"
+                  ]
+                ]
+              }
+            }
+          ],
+          "adjudicated": {
+            "blocks": [
+              {
+                "block_id": "list-item",
+                "member_node_ids": [
+                  "list_label",
+                  "list_body"
+                ],
+                "role": "main_flow",
+                "internal_order": "unspecified"
+              },
+              {
+                "block_id": "table",
+                "member_node_ids": [
+                  "table"
+                ],
+                "role": "main_flow",
+                "internal_order": "unspecified"
+              },
+              {
+                "block_id": "caption",
+                "member_node_ids": [
+                  "caption"
+                ],
+                "role": "main_flow",
+                "internal_order": "unspecified"
+              },
+              {
+                "block_id": "vertical-note",
+                "member_node_ids": [
+                  "vertical_note"
+                ],
+                "role": "main_flow",
+                "internal_order": "unspecified"
+              },
+              {
+                "block_id": "header",
+                "member_node_ids": [
+                  "header"
+                ],
+                "role": "page_header",
+                "internal_order": "unspecified"
+              }
+            ],
+            "block_precedence_pairs": [
+              [
+                "list-item",
+                "table"
+              ],
+              [
+                "table",
+                "caption"
+              ],
+              [
+                "caption",
+                "vertical-note"
+              ]
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

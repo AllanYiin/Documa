@@ -1,0 +1,18 @@
+[package]
+name = "office-py"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+office-core = { path = "../office-core" }
+office-sheet = { path = "../office-sheet" }
+office-slide = { path = "../office-slide" }
+office-word = { path = "../office-word" }
+pyo3 = { version = "0.23", features = ["abi3-py39", "extension-module"] }
+serde_json.workspace = true

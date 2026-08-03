@@ -1,0 +1,14 @@
+{
+  "name": "@project/rust-pdf-wasm",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "pkg"
+  ],
+  "scripts": {
+    "build": "wasm-pack build --target web",
+    "test": "wasm-pack test --headless --chrome"
+  }
+}
+

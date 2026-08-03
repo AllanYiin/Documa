@@ -1,0 +1,51 @@
+schema_version = 1
+
+[corpus]
+root_env = "RUST_PDF_REAL_CORPUS_DIR"
+description = """
+The corpus directory is private and is never committed. Each document may also
+be supplied with its path_env override. A missing corpus is reported as SKIP;
+a configured file with a wrong SHA-256 is a hard failure.
+"""
+
+[[document]]
+id = "ai-index-2026"
+file_name = "ai_index_report_2026.pdf"
+path_env = "RUST_PDF_REAL_AI_INDEX"
+sha256 = "9e1a0455a77523b9dd86351b13a569b9e4e8173c3031757dff220ad7e238fca5"
+redistributable = false
+expected_pdf_version = "1.7"
+expected_pages = 423
+expected_in_use_objects = 45151
+baseline_layout_characters = 1090180
+baseline_content_order_characters = 851998
+baseline_warning_count = 29
+stage11_actual_text_replacements = 311
+baseline_layout_fragments = ["A r tificial", "Int elligenc e"]
+baseline_content_order_fragments = ["Artificial IntelligenceIndex Report2026"]
+target_auto_fragments = ["Artificial Intelligence Index Report 2026"]
+forbidden_auto_fragments = ["A r tificial", "Int elligenc e", "Inde x"]
+expected_warning_codes = [
+  "font_fallback_encoding",
+  "unicode_mapping_invalid",
+  "unicode_mapping_missing",
+]
+
+[[document]]
+id = "taiwan-government-animation"
+file_name = "台灣政府動畫宣導影片.pdf"
+path_env = "RUST_PDF_REAL_TAIWAN"
+sha256 = "e197a176b28bc37a43196301a403696ad67c699a69a3f63d0445dda60d9aa597"
+redistributable = false
+expected_pdf_version = "1.4"
+expected_pages = 15
+expected_in_use_objects = 1317
+baseline_layout_characters = 6176
+baseline_content_order_characters = 4288
+baseline_warning_count = 0
+stage11_actual_text_replacements = 248
+baseline_layout_fragments = ["台 灣 政 府 動 畫 宣 導"]
+baseline_content_order_fragments = ["台灣政府動畫宣導影片"]
+target_auto_fragments = ["台灣政府動畫宣導影片"]
+forbidden_auto_fragments = ["台 灣 政 府 動 畫 宣 導"]
+expected_warning_codes = []

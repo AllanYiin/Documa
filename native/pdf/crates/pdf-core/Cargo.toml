@@ -1,0 +1,32 @@
+[package]
+name = "pdf-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "From-scratch, read-only PDF parsing and text extraction core"
+
+[features]
+default = ["serde"]
+serde = ["dep:serde"]
+
+[dependencies]
+encoding_rs.workspace = true
+image.workspace = true
+flate2.workspace = true
+serde = { workspace = true, optional = true }
+sha2.workspace = true
+thiserror.workspace = true
+unicode-normalization.workspace = true
+
+[dev-dependencies]
+sha2.workspace = true
+serde_json.workspace = true
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"

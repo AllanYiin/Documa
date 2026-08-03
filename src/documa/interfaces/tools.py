@@ -36,7 +36,7 @@ from documa.pipeline import (
     run_default_pipeline,
 )
 from documa.pipeline.block_tree import document_block_text
-from documa.pipeline.page_refs import PAGE_REF_KIND, ensure_page_citation_map, page_citation_metadata
+from documa.pipeline.page_refs import document_page_ref_kind, ensure_page_citation_map, page_citation_metadata
 from documa.viewer import VIEWER_FORMATS, ViewerOptions, build_universal_viewer, render_viewer
 from documa.quality import BenchmarkOptions, DoctorOptions, run_doctor, run_fixture_benchmark
 from documa.search.sidecar import build_search_sidecar, route_sections, section_sketches, sidecar_path, source_digest
@@ -213,13 +213,18 @@ def parse_document_tool(
     lang: str = "auto",
     progress: str = "text",
     pdf_provider: str = "auto",
+    office_provider: str = "auto",
 ) -> ToolPayload:
     output_dir = Path(out) if out else None
     asset_dir = output_dir / "assets" if output_dir else None
     languages = [part.strip() for part in lang.split(",") if part.strip()]
 
     try:
-        document = adapter_for_source(source, pdf_provider=pdf_provider).parse(
+        document = adapter_for_source(
+            source,
+            pdf_provider=pdf_provider,
+            office_provider=office_provider,
+        ).parse(
             source,
             ParseOptions(
                 languages=languages or ["auto"],
@@ -256,6 +261,7 @@ def process_document_tool(
     export_formats: list[str] | str | None = None,
     ocr: bool = False,
     pdf_provider: str = "auto",
+    office_provider: str = "auto",
     keyword_provider: str = "lingxi",
 ) -> ToolPayload:
     output_dir = Path(out) if out else None
@@ -268,7 +274,11 @@ def process_document_tool(
     source_is_pdf = Path(source).suffix.casefold() == ".pdf"
     effective_pdf_provider = "pymupdf" if ocr and source_is_pdf and pdf_provider == "auto" else pdf_provider
     try:
-        document = adapter_for_source(source, pdf_provider=effective_pdf_provider).parse(
+        document = adapter_for_source(
+            source,
+            pdf_provider=effective_pdf_provider,
+            office_provider=office_provider,
+        ).parse(
             source,
             ParseOptions(languages=languages or ["auto"], asset_dir=asset_dir),
         )
@@ -471,6 +481,7 @@ def view_document_tool(
     body_chars: int = 1200,
     result_limit: int = 10,
     pdf_provider: str = "auto",
+    office_provider: str = "auto",
     keyword_provider: str = "lingxi",
 ) -> ToolPayload:
     if bool(source) == bool(ir_path):
@@ -484,7 +495,11 @@ def view_document_tool(
             output_dir = output_path.parent if output_path else None
             asset_dir = output_dir / "assets" if output_dir else None
             languages = [part.strip() for part in lang.split(",") if part.strip()]
-            document = adapter_for_source(source, pdf_provider=pdf_provider).parse(
+            document = adapter_for_source(
+                source,
+                pdf_provider=pdf_provider,
+                office_provider=office_provider,
+            ).parse(
                 source,
                 ParseOptions(languages=languages or ["auto"], asset_dir=asset_dir),
             )
@@ -1051,7 +1066,7 @@ def list_blocks_tool(
         "status": "ok",
         "document_id": document.id,
         **({"block_id_prefix": emitted_prefix} if (emitted_prefix := _emitted_block_id_prefix(document)) else {}),
-        "page_ref_kind": PAGE_REF_KIND,
+        "page_ref_kind": document_page_ref_kind(document),
         "block_count": len(blocks),
         "total_blocks": total_blocks,
         "offset": offset,
@@ -1092,7 +1107,7 @@ def inspect_block_tool(ir_path: str, block_id: str) -> ToolPayload:
         "status": "ok",
         "document_id": document.id,
         **({"block_id_prefix": emitted_prefix} if (emitted_prefix := _emitted_block_id_prefix(document)) else {}),
-        "page_ref_kind": PAGE_REF_KIND,
+        "page_ref_kind": document_page_ref_kind(document),
         "block": _drop_empty_fields(block_payload),
         "page": page_citation_metadata(block.page_refs, page_citations).get("citation_label") or None,
         "block_path": _block_path(block.id, by_id),
@@ -1154,7 +1169,7 @@ def read_block_tool(
             "status": "ok",
             "document_id": document.id,
             "block_id_prefix": _emitted_block_id_prefix(document),
-            "page_ref_kind": PAGE_REF_KIND,
+            "page_ref_kind": document_page_ref_kind(document),
             "block_id": short_id,
             "block_path": _block_path(block.id, by_id),
             "content": content,
@@ -1248,7 +1263,7 @@ def read_blocks_tool(
         "status": "ok",
         "document_id": document.id,
         **({"block_id_prefix": emitted_prefix} if (emitted_prefix := _emitted_block_id_prefix(document)) else {}),
-        "page_ref_kind": PAGE_REF_KIND,
+        "page_ref_kind": document_page_ref_kind(document),
         "results": items,
         "budget": {"total_max_tokens": budget, "spent_tokens": budget - remaining, "remaining_tokens": remaining, "token_counter": counter.name},
         "has_more": len(items) < len(expanded) or any(item.get("truncated") for item in items),
@@ -1570,7 +1585,7 @@ def search_blocks_tool(
     if profile == "evidence":
         payload.update(
             {
-                "page_ref_kind": PAGE_REF_KIND,
+                "page_ref_kind": document_page_ref_kind(document),
                 "retrieval": {
                     "effective_granularity": effective_granularity,
                     "selected_evidence_tokens": sum(int(row.get("evidence_tokens") or 0) for row in internal_page),
@@ -1581,7 +1596,7 @@ def search_blocks_tool(
         # Full diagnostics are a debugging surface, not agent guidance.
         payload.update(
             {
-                "page_ref_kind": PAGE_REF_KIND,
+                "page_ref_kind": document_page_ref_kind(document),
                 "query": query,
                 "terms": raw_terms,
                 "searched_fields": selected_fields,
@@ -1720,7 +1735,7 @@ def block_tree_tool(
         "status": "ok",
         "document_id": document.id,
         **({"block_id_prefix": emitted_prefix} if (emitted_prefix := _emitted_block_id_prefix(document)) else {}),
-        "page_ref_kind": PAGE_REF_KIND,
+        "page_ref_kind": document_page_ref_kind(document),
         "truncated": truncated,
         "tree": roots,
     }
@@ -1773,7 +1788,7 @@ def block_xref_tool(ir_path: str, block_id: str) -> ToolPayload:
             "status": "ok",
             "document_id": document.id,
             "block_id_prefix": _emitted_block_id_prefix(document),
-            "page_ref_kind": PAGE_REF_KIND,
+            "page_ref_kind": document_page_ref_kind(document),
             "id": _short_block_id(block.id, prefix),
             "page_refs": block.page_refs,
             "page": page_citation_metadata(block.page_refs, page_citations).get("citation_label"),
@@ -1895,6 +1910,7 @@ def ingest_document_tool(
     ocr: bool = False,
     update_index: bool = True,
     pdf_provider: str = "auto",
+    office_provider: str = "auto",
     keyword_provider: str = "lingxi",
 ) -> ToolPayload:
     result = registry_store.ingest_document(
@@ -1904,6 +1920,7 @@ def ingest_document_tool(
         max_chars=max_chars,
         ocr=ocr,
         pdf_provider=pdf_provider,
+        office_provider=office_provider,
         keyword_provider=keyword_provider,
     )
     # Keep the derived collection index coherent with the registry: upsert the

@@ -1,0 +1,82 @@
+{
+  "schema_version": 2,
+  "documents": [
+    {
+      "id": "public-order-cases",
+      "pages": [
+        {
+          "page_number": 1,
+          "inferred_order": [
+            "heading",
+            "paragraph_2",
+            "paragraph_1",
+            "footer"
+          ],
+          "main_flow_node_ids": [
+            "heading",
+            "paragraph_1",
+            "paragraph_2"
+          ],
+          "artifact_roles": [
+            {
+              "node_id": "footer",
+              "role": "page_footer"
+            }
+          ]
+        },
+        {
+          "page_number": 2,
+          "inferred_order": [
+            "spanning_heading",
+            "left_2",
+            "left_1",
+            "right_2",
+            "right_1",
+            "sidebar",
+            "caption",
+            "page_number"
+          ],
+          "main_flow_node_ids": [
+            "spanning_heading",
+            "left_1",
+            "left_2",
+            "right_1",
+            "right_2",
+            "sidebar",
+            "caption"
+          ],
+          "artifact_roles": [
+            {
+              "node_id": "page_number",
+              "role": "page_number"
+            }
+          ]
+        },
+        {
+          "page_number": 3,
+          "inferred_order": [
+            "list_body",
+            "list_label",
+            "table",
+            "caption",
+            "vertical_note",
+            "header"
+          ],
+          "main_flow_node_ids": [
+            "list_label",
+            "list_body",
+            "table",
+            "caption",
+            "vertical_note"
+          ],
+          "artifact_roles": [
+            {
+              "node_id": "header",
+              "role": "page_header"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
