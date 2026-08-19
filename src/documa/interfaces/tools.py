@@ -2085,6 +2085,79 @@ def validate_ir_tool(ir_path: str) -> ToolPayload:
     return result
 
 
+def load_skill_tool(
+    task: str,
+    skill_names: list[str] | None = None,
+    max_tokens: int = 3000,
+    max_skills: int = 3,
+    store_dir: str = ".documa",
+    refresh: bool = False,
+    render: bool = True,
+) -> ToolPayload:
+    from documa.skills import load_skill_bundle
+
+    return to_plain_data(
+        load_skill_bundle(
+            task,
+            skill_names=skill_names,
+            max_tokens=max_tokens,
+            max_skills=max_skills,
+            store_dir=store_dir,
+            refresh=refresh,
+            render=render,
+        )
+    )
+
+
+def read_skill_resource_tool(
+    skill_id: str,
+    resource_path: str,
+    block_ids: list[str] | None = None,
+    max_tokens: int = 1200,
+    cursor: int = 0,
+    store_dir: str = ".documa",
+) -> ToolPayload:
+    from documa.skills import read_skill_resource
+
+    return read_skill_resource(
+        skill_id,
+        resource_path,
+        block_ids=block_ids,
+        max_tokens=max_tokens,
+        cursor=cursor,
+        store_dir=store_dir,
+    )
+
+
+def sync_skills_tool(
+    roots: list[dict[str, Any]] | None = None,
+    store_dir: str = ".documa",
+) -> ToolPayload:
+    from documa.skills import sync_skill_roots
+
+    try:
+        return to_plain_data(sync_skill_roots(roots, store_dir=store_dir))
+    except (OSError, ValueError) as exc:
+        return {"status": "error", "code": "SKILL_CONFIG_INVALID", "message": str(exc)}
+
+
+def skill_status_tool(store_dir: str = ".documa") -> ToolPayload:
+    from documa.skills import skill_store_status
+
+    return skill_store_status(store_dir)
+
+
+def inspect_skill_graph_tool(
+    skill_id: str | None = None,
+    limit: int = 100,
+    cursor: int = 0,
+    store_dir: str = ".documa",
+) -> ToolPayload:
+    from documa.skills import inspect_skill_graph
+
+    return inspect_skill_graph(skill_id, limit=limit, cursor=cursor, store_dir=store_dir)
+
+
 def list_documa_tools(profile: str = "admin") -> list[dict[str, Any]]:
     return documa_tool_schemas(profile=profile)
 
@@ -2117,6 +2190,11 @@ def _tool_registry() -> dict[str, Callable[..., ToolPayload]]:
         "documa_search_collection": search_collection_tool,
         "documa_list_documents": list_documents_tool,
         "documa_inspect_store": inspect_store_tool,
+        "documa_load_skill": load_skill_tool,
+        "documa_read_skill_resource": read_skill_resource_tool,
+        "documa_sync_skills": sync_skills_tool,
+        "documa_skill_status": skill_status_tool,
+        "documa_inspect_skill_graph": inspect_skill_graph_tool,
     }
 
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "documa"
-version = "0.6.3"
+version = "0.6.4"
 description = "LLM-ready document understanding package."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -39,6 +39,7 @@ dependencies = [
   "nbformat>=5.10",
   "mcp>=1.0,<2",
   "tiktoken>=0.7",
+  "PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]

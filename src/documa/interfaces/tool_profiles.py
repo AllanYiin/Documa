@@ -27,6 +27,8 @@ AGENT_TOOLS = {
     "documa_cite_chunk",
     "documa_render_citation",
     "documa_verify_citations",
+    "documa_load_skill",
+    "documa_read_skill_resource",
 }
 
 ADVANCED_TOOLS = AGENT_TOOLS | {
@@ -43,6 +45,9 @@ ADMIN_TOOLS = ADVANCED_TOOLS | {
     "documa_doctor",
     "documa_validate_ir",
     "documa_inspect_store",
+    "documa_sync_skills",
+    "documa_skill_status",
+    "documa_inspect_skill_graph",
 }
 
 TOOL_PROFILES = {"agent": AGENT_TOOLS, "advanced": ADVANCED_TOOLS, "admin": ADMIN_TOOLS}

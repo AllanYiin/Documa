@@ -710,6 +710,111 @@ def documa_tool_schemas(profile: str = "admin") -> list[dict[str, Any]]:
             "annotations": {"readOnlyHint": True},
         },
     ]
+    descriptors.extend(
+        [
+            {
+                "name": "documa_load_skill",
+                "title": "Load a bounded dynamic skill bundle",
+                "description": (
+                    "Select skills from the precompiled local catalog, navigate required blocks and dependencies, "
+                    "and return a source-preserving SkillBundle plus an optional virtual SKILL.md under a real token budget."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "task": {"type": "string"},
+                        "skill_names": {"type": ["array", "null"], "items": {"type": "string"}},
+                        "max_tokens": {"type": "integer", "minimum": 256, "maximum": 8000, "default": 3000},
+                        "max_skills": {"type": "integer", "minimum": 1, "maximum": 3, "default": 3},
+                        "store_dir": {"type": "string", "default": ".documa"},
+                        "refresh": {"type": "boolean", "default": False},
+                        "render": {"type": "boolean", "default": True},
+                    },
+                    "required": ["task"],
+                },
+                "outputSchema": {"type": "object", "properties": {"status": {"type": "string"}}, "required": ["status"]},
+                "annotations": {"readOnlyHint": False},
+            },
+            {
+                "name": "documa_read_skill_resource",
+                "title": "Read a selected skill resource",
+                "description": "Read only an indexed text reference from a selected skill; scripts and assets are never executed or returned as text.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "skill_id": {"type": "string"},
+                        "resource_path": {"type": "string"},
+                        "block_ids": {"type": ["array", "null"], "items": {"type": "string"}},
+                        "max_tokens": {"type": "integer", "minimum": 1, "maximum": 8000, "default": 1200},
+                        "cursor": {"type": "integer", "minimum": 0, "default": 0},
+                        "store_dir": {"type": "string", "default": ".documa"},
+                    },
+                    "required": ["skill_id", "resource_path"],
+                },
+                "outputSchema": {"type": "object", "properties": {"status": {"type": "string"}}, "required": ["status"]},
+                "annotations": {"readOnlyHint": True},
+            },
+            {
+                "name": "documa_sync_skills",
+                "title": "Synchronize configured skill roots",
+                "description": "Compile changed local skills, tombstone missing generations, and atomically rebuild the derived catalog index.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "roots": {
+                            "type": ["array", "null"],
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {"type": "string"},
+                                    "path": {"type": "string"},
+                                    "priority": {"type": "integer", "default": 0},
+                                    "enabled": {"type": "boolean", "default": True},
+                                    "trusted": {"type": "boolean", "default": True},
+                                    "allow_native_scan_overlap": {
+                                        "type": "boolean",
+                                        "default": False,
+                                        "description": "Explicit opt-in for roots that overlap Codex/shared native skill scan paths.",
+                                    },
+                                },
+                                "required": ["id", "path"],
+                            },
+                        },
+                        "store_dir": {"type": "string", "default": ".documa"},
+                    },
+                },
+                "outputSchema": {"type": "object", "properties": {"status": {"type": "string"}}, "required": ["status"]},
+                "annotations": {"readOnlyHint": False},
+            },
+            {
+                "name": "documa_skill_status",
+                "title": "Inspect the skill store",
+                "description": "Report configured roots, active/superseded/missing skill generations, and index availability.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"store_dir": {"type": "string", "default": ".documa"}},
+                },
+                "outputSchema": {"type": "object", "properties": {"status": {"type": "string"}}, "required": ["status"]},
+                "annotations": {"readOnlyHint": True},
+            },
+            {
+                "name": "documa_inspect_skill_graph",
+                "title": "Inspect compiled skill graph metadata",
+                "description": "Inspect the global skill catalog or one skill's blocks, resources, and authoritative graph edges.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "skill_id": {"type": ["string", "null"]},
+                        "limit": {"type": "integer", "minimum": 1, "maximum": 500, "default": 100},
+                        "cursor": {"type": "integer", "minimum": 0, "default": 0},
+                        "store_dir": {"type": "string", "default": ".documa"},
+                    },
+                },
+                "outputSchema": {"type": "object", "properties": {"status": {"type": "string"}}, "required": ["status"]},
+                "annotations": {"readOnlyHint": True},
+            },
+        ]
+    )
     allowed = allowed_tool_names(profile)
     return [descriptor for descriptor in descriptors if descriptor["name"] in allowed]
 

@@ -20,17 +20,22 @@ from documa.interfaces.tools import (
     ingest_document_tool,
     inspect_block_tool,
     inspect_document_tool,
+    inspect_skill_graph_tool,
     ingest_mailbox_tool,
     list_blocks_tool,
     list_documents_tool,
+    load_skill_tool,
     parse_document_tool,
     process_document_tool,
     read_block_tool,
     read_blocks_tool,
+    read_skill_resource_tool,
     render_citation_tool,
     search_blocks_tool,
     search_collection_tool,
     source_window_tool,
+    skill_status_tool,
+    sync_skills_tool,
     verify_citations_tool,
     view_document_tool,
 )
@@ -61,12 +66,29 @@ _MCP_REGISTERED_TOOLS = {
     "documa_list_documents",
     "documa_benchmark",
     "documa_doctor",
+    "documa_load_skill",
+    "documa_read_skill_resource",
+    "documa_sync_skills",
+    "documa_skill_status",
+    "documa_inspect_skill_graph",
 }
 
 
 def create_mcp_server(profile: str | None = None) -> Any:
     active_profile = (profile or os.environ.get("DOCUMA_MCP_PROFILE") or "admin").casefold()
     allowed = allowed_tool_names(active_profile)
+
+    # A configured catalog is compiled once when the MCP process starts.  Do
+    # not create .documa state for users who have not opted into skill roots.
+    try:
+        from documa.skills.store import config_path, ensure_skill_store
+
+        if config_path().exists():
+            ensure_skill_store(refresh=True)
+    except (OSError, ValueError):
+        # Discovery must remain available so the status/admin tools can report
+        # the broken configuration instead of preventing the server from booting.
+        pass
 
     try:
         from mcp.server.fastmcp import FastMCP
@@ -77,7 +99,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
         "Documa",
         instructions=(
             "Use Documa for large PDFs, long documents, document QA, evidence search, "
-            "citations, and source-grounded summaries. Parse files into Documa IR, "
+            "citations, source-grounded summaries, and bounded dynamic skill loading. Parse files into Documa IR, "
             "search progressive document blocks first, then read selected blocks instead of "
             "loading whole documents into context."
         ),
@@ -450,6 +472,71 @@ def create_mcp_server(profile: str | None = None) -> Any:
         """List registry documents so collection read_refs can be resolved."""
 
         return list_documents_tool(store_dir=store_dir)
+
+    @_documa_tool
+    def documa_load_skill(
+        task: str,
+        skill_names: list[str] | None = None,
+        max_tokens: int = 3000,
+        max_skills: int = 3,
+        store_dir: str = ".documa",
+        refresh: bool = False,
+        render: bool = True,
+    ) -> dict[str, Any]:
+        """Load a deterministic, graph-aware skill bundle under a real token budget."""
+
+        return load_skill_tool(
+            task=task,
+            skill_names=skill_names,
+            max_tokens=max_tokens,
+            max_skills=max_skills,
+            store_dir=store_dir,
+            refresh=refresh,
+            render=render,
+        )
+
+    @_documa_tool
+    def documa_read_skill_resource(
+        skill_id: str,
+        resource_path: str,
+        block_ids: list[str] | None = None,
+        max_tokens: int = 1200,
+        cursor: int = 0,
+        store_dir: str = ".documa",
+    ) -> dict[str, Any]:
+        """Read a selected text reference without executing scripts or loading assets."""
+
+        return read_skill_resource_tool(
+            skill_id=skill_id,
+            resource_path=resource_path,
+            block_ids=block_ids,
+            max_tokens=max_tokens,
+            cursor=cursor,
+            store_dir=store_dir,
+        )
+
+    @_documa_tool
+    def documa_sync_skills(roots: list[dict[str, Any]] | None = None, store_dir: str = ".documa") -> dict[str, Any]:
+        """Synchronize explicitly configured trusted local skill roots."""
+
+        return sync_skills_tool(roots=roots, store_dir=store_dir)
+
+    @_documa_tool
+    def documa_skill_status(store_dir: str = ".documa") -> dict[str, Any]:
+        """Report skill catalog lifecycle and index health."""
+
+        return skill_status_tool(store_dir=store_dir)
+
+    @_documa_tool
+    def documa_inspect_skill_graph(
+        skill_id: str | None = None,
+        limit: int = 100,
+        cursor: int = 0,
+        store_dir: str = ".documa",
+    ) -> dict[str, Any]:
+        """Inspect the global skill catalog or one compiled skill graph."""
+
+        return inspect_skill_graph_tool(skill_id=skill_id, limit=limit, cursor=cursor, store_dir=store_dir)
 
     @_documa_tool
     def documa_benchmark(

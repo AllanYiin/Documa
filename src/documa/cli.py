@@ -26,16 +26,21 @@ from documa.interfaces import (
     inspect_block_tool,
     inspect_document_tool,
     inspect_store_tool,
+    inspect_skill_graph_tool,
     ingest_mailbox_tool,
     list_blocks_tool,
     list_documa_tools,
+    load_skill_tool,
     parse_document_tool,
     process_document_tool,
     read_block_tool,
     read_blocks_tool,
+    read_skill_resource_tool,
     search_blocks_tool,
     search_collection_tool,
     source_window_tool,
+    skill_status_tool,
+    sync_skills_tool,
     view_document_tool,
 )
 
@@ -218,6 +223,49 @@ def build_parser() -> argparse.ArgumentParser:
 
     tools_cmd = subparsers.add_parser("tools", help="List Documa tool-calling schemas.")
     tools_cmd.add_argument("--profile", choices=["agent", "advanced", "admin"], default="admin")
+
+    skills_cmd = subparsers.add_parser("skills", help="Configure, compile, load, and inspect dynamic Agent Skills.")
+    skills_subparsers = skills_cmd.add_subparsers(dest="skills_command", required=True)
+    skill_root_cmd = skills_subparsers.add_parser("root-add", help="Add or update one trusted local skill root.")
+    skill_root_cmd.add_argument("root_id", help="Stable lowercase root identifier.")
+    skill_root_cmd.add_argument("path", help="Local directory containing skill folders.")
+    skill_root_cmd.add_argument("--priority", type=int, default=0)
+    skill_root_cmd.add_argument("--disabled", action="store_true")
+    skill_root_cmd.add_argument("--untrusted", action="store_true")
+    skill_root_cmd.add_argument(
+        "--allow-native-scan-overlap",
+        action="store_true",
+        help="Explicitly allow this trusted root to overlap Codex/shared native skill scan paths.",
+    )
+    skill_root_cmd.add_argument("--store-dir", default=".documa")
+
+    skill_sync_cmd = skills_subparsers.add_parser("sync", help="Incrementally compile configured skill roots.")
+    skill_sync_cmd.add_argument("--store-dir", default=".documa")
+
+    skill_load_cmd = skills_subparsers.add_parser("load", help="Materialize a bounded skill bundle for a task.")
+    skill_load_cmd.add_argument("task", help="Task description used for deterministic routing.")
+    skill_load_cmd.add_argument("--skill", action="append", dest="skill_names", help="Exact skill name or qualified root:name; repeatable.")
+    skill_load_cmd.add_argument("--max-tokens", type=int, default=3000)
+    skill_load_cmd.add_argument("--max-skills", type=int, default=3)
+    skill_load_cmd.add_argument("--store-dir", default=".documa")
+    skill_load_cmd.add_argument("--refresh", action="store_true")
+    skill_load_cmd.add_argument("--no-render", action="store_true")
+
+    skill_read_cmd = skills_subparsers.add_parser("read-resource", help="Read a selected indexed text resource.")
+    skill_read_cmd.add_argument("skill_id")
+    skill_read_cmd.add_argument("resource_path")
+    skill_read_cmd.add_argument("--block-id", action="append", dest="block_ids")
+    skill_read_cmd.add_argument("--max-tokens", type=int, default=1200)
+    skill_read_cmd.add_argument("--cursor", type=int, default=0)
+    skill_read_cmd.add_argument("--store-dir", default=".documa")
+
+    skill_status_cmd = skills_subparsers.add_parser("status", help="Report dynamic skill store health.")
+    skill_status_cmd.add_argument("--store-dir", default=".documa")
+    skill_graph_cmd = skills_subparsers.add_parser("graph", help="Inspect the catalog or one skill graph.")
+    skill_graph_cmd.add_argument("--skill-id")
+    skill_graph_cmd.add_argument("--limit", type=int, default=100)
+    skill_graph_cmd.add_argument("--cursor", type=int, default=0)
+    skill_graph_cmd.add_argument("--store-dir", default=".documa")
     benchmark_cmd = subparsers.add_parser("benchmark", help="Run Documa benchmark fixtures.")
     benchmark_cmd.add_argument("--manifest", default="fixtures/pdf/manifest.json", help="Path to fixture manifest JSON.")
     benchmark_cmd.add_argument("--fixtures-dir", default="fixtures/pdf", help="Directory containing fixture files.")
@@ -472,6 +520,55 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "tools":
         return _emit_json({"status": "ok", "profile": args.profile, "tools": list_documa_tools(profile=args.profile)})
+
+    if args.command == "skills":
+        if args.skills_command == "root-add":
+            from documa.skills import add_skill_root
+
+            try:
+                payload = add_skill_root(
+                    args.root_id,
+                    args.path,
+                    priority=args.priority,
+                    enabled=not args.disabled,
+                    trusted=not args.untrusted,
+                    allow_native_scan_overlap=args.allow_native_scan_overlap,
+                    store_dir=args.store_dir,
+                )
+            except (OSError, ValueError) as exc:
+                return _emit_json({"status": "error", "code": "SKILL_CONFIG_INVALID", "message": str(exc)}, exit_code=1)
+            return _emit_json({"status": "ok", **payload})
+        if args.skills_command == "sync":
+            payload = sync_skills_tool(store_dir=args.store_dir)
+        elif args.skills_command == "load":
+            payload = load_skill_tool(
+                task=args.task,
+                skill_names=args.skill_names,
+                max_tokens=args.max_tokens,
+                max_skills=args.max_skills,
+                store_dir=args.store_dir,
+                refresh=args.refresh,
+                render=not args.no_render,
+            )
+        elif args.skills_command == "read-resource":
+            payload = read_skill_resource_tool(
+                skill_id=args.skill_id,
+                resource_path=args.resource_path,
+                block_ids=args.block_ids,
+                max_tokens=args.max_tokens,
+                cursor=args.cursor,
+                store_dir=args.store_dir,
+            )
+        elif args.skills_command == "status":
+            payload = skill_status_tool(store_dir=args.store_dir)
+        else:
+            payload = inspect_skill_graph_tool(
+                skill_id=args.skill_id,
+                limit=args.limit,
+                cursor=args.cursor,
+                store_dir=args.store_dir,
+            )
+        return _emit_json(payload, exit_code=0 if payload.get("status") in {"ok", "warning"} else 1)
 
     if args.command == "benchmark":
         payload = benchmark_tool(

@@ -201,6 +201,23 @@ def _rank_new_words(
     return [item for _, item in ranked[:top_k]]
 
 
+def extract_new_word_terms(text: str, *, top_k: int = 12) -> list[dict[str, Any]]:
+    """Return deterministic CJK new-word metadata for non-DocumentIR callers."""
+
+    term_frequency = _text_terms(text)
+    left_neighbors, right_neighbors = _neighbor_counters(text)
+    support = Counter({term: 1 for term in term_frequency})
+    return _rank_new_words(
+        term_frequency,
+        support,
+        left_neighbors,
+        right_neighbors,
+        min_support=1,
+        min_freq=2,
+        top_k=max(0, top_k),
+    )
+
+
 @dataclass(slots=True)
 class BlockKeywordExtractionStage(PipelineStage):
     """Aggregate block keywords bottom-up instead of rescanning every level."""
