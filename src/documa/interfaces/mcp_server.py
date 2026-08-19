@@ -13,7 +13,10 @@ from documa.interfaces.tools import (
     benchmark_tool,
     block_tree_tool,
     block_xref_tool,
+    build_context_tool,
     cite_block_tool,
+    context_read_blocks_tool,
+    context_search_tool,
     doctor_tool,
     export_document_tool,
     index_collection_tool,
@@ -71,6 +74,9 @@ _MCP_REGISTERED_TOOLS = {
     "documa_sync_skills",
     "documa_skill_status",
     "documa_inspect_skill_graph",
+    "documa_build_context",
+    "documa_context_search",
+    "documa_context_read_blocks",
 }
 
 
@@ -537,6 +543,82 @@ def create_mcp_server(profile: str | None = None) -> Any:
         """Inspect the global skill catalog or one compiled skill graph."""
 
         return inspect_skill_graph_tool(skill_id=skill_id, limit=limit, cursor=cursor, store_dir=store_dir)
+
+    @_documa_tool
+    def documa_build_context(
+        source_kind: str,
+        source: str,
+        additional_sources: list[str] | None = None,
+        context_id: str | None = None,
+        store_dir: str = ".documa",
+        output_path: str | None = None,
+    ) -> dict[str, Any]:
+        """Project a document, code set, or compiled skill into shared ContextIR."""
+
+        return build_context_tool(
+            source_kind,
+            source,
+            additional_sources=additional_sources,
+            context_id=context_id,
+            store_dir=store_dir,
+            output_path=output_path,
+        )
+
+    @_documa_tool
+    def documa_context_search(
+        context_ir_path: str,
+        query: str,
+        expected_source_digest: str | None = None,
+        route: str = "auto",
+        intent: str | None = None,
+        seed_block_ids: list[str] | None = None,
+        target_block_ids: list[str] | None = None,
+        direction: str | None = None,
+        allow_semantic_edges: bool = False,
+        max_hops: int = 1,
+        max_graph_nodes: int = 12,
+        max_evidence_blocks: int = 3,
+        max_navigation_tokens: int | None = None,
+        max_navigation_bytes: int | None = None,
+    ) -> dict[str, Any]:
+        """Search ContextIR; graph paths are navigation rather than evidence."""
+
+        return context_search_tool(
+            context_ir_path,
+            query,
+            expected_source_digest=expected_source_digest,
+            route=route,
+            intent=intent,
+            seed_block_ids=seed_block_ids,
+            target_block_ids=target_block_ids,
+            direction=direction,
+            allow_semantic_edges=allow_semantic_edges,
+            max_hops=max_hops,
+            max_graph_nodes=max_graph_nodes,
+            max_evidence_blocks=max_evidence_blocks,
+            max_navigation_tokens=max_navigation_tokens,
+            max_navigation_bytes=max_navigation_bytes,
+        )
+
+    @_documa_tool
+    def documa_context_read_blocks(
+        context_ir_path: str,
+        block_ids: list[str],
+        required_block_ids: list[str] | None = None,
+        expected_source_digest: str | None = None,
+        total_max_tokens: int | None = None,
+        total_max_bytes: int | None = None,
+    ) -> dict[str, Any]:
+        """Read hash-verified ContextIR bodies after navigation."""
+
+        return context_read_blocks_tool(
+            context_ir_path,
+            block_ids,
+            required_block_ids=required_block_ids,
+            expected_source_digest=expected_source_digest,
+            total_max_tokens=total_max_tokens,
+            total_max_bytes=total_max_bytes,
+        )
 
     @_documa_tool
     def documa_benchmark(

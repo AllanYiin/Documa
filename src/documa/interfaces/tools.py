@@ -2085,6 +2085,133 @@ def validate_ir_tool(ir_path: str) -> ToolPayload:
     return result
 
 
+def build_context_tool(
+    source_kind: str,
+    source: str,
+    additional_sources: list[str] | None = None,
+    context_id: str | None = None,
+    store_dir: str = ".documa",
+    output_path: str | None = None,
+) -> ToolPayload:
+    """Project a document, code set, or compiled skill into shared ContextIR."""
+
+    from documa.context import (
+        context_from_code,
+        context_from_document,
+        context_from_skill,
+        context_ir_to_plain_data,
+        save_context_ir,
+    )
+
+    kind = source_kind.casefold()
+    try:
+        if kind == "document":
+            context = context_from_document(load_document(source))
+        elif kind == "code":
+            context = context_from_code([source, *(additional_sources or [])], context_id=context_id or "code-workspace")
+        elif kind == "skill":
+            from documa.skills.store import active_skill_entries, load_skill_ir
+
+            matches = [
+                entry
+                for entry in active_skill_entries(store_dir)
+                if source in {entry.get("skill_id"), entry.get("qualified_name"), entry.get("name")}
+            ]
+            if len(matches) != 1:
+                code = "CONTEXT_SKILL_NOT_FOUND" if not matches else "CONTEXT_SKILL_AMBIGUOUS"
+                return {"status": "error", "code": code, "message": f"Skill selector matched {len(matches)} active skills."}
+            context = context_from_skill(load_skill_ir(matches[0], store_dir))
+        else:
+            return {"status": "error", "code": "CONTEXT_SOURCE_KIND_INVALID", "message": f"Unknown source_kind: {source_kind}"}
+    except (OSError, ValueError, json.JSONDecodeError, SyntaxError) as exc:
+        return {"status": "error", "code": "CONTEXT_BUILD_FAILED", "message": str(exc)}
+    payload: ToolPayload = {
+        "status": "ok",
+        "context_id": context.context_id,
+        "source_kind": context.source_kind.value,
+        "source_tree_hash": context.source_digest,
+        "block_count": len(context.blocks),
+        "relation_count": len(context.relations),
+    }
+    if output_path:
+        payload["output_path"] = str(save_context_ir(context, output_path))
+    else:
+        payload["context_ir"] = context_ir_to_plain_data(context)
+    return payload
+
+
+def context_search_tool(
+    context_ir_path: str,
+    query: str,
+    expected_source_digest: str | None = None,
+    route: str = "auto",
+    intent: str | None = None,
+    seed_block_ids: list[str] | None = None,
+    target_block_ids: list[str] | None = None,
+    direction: str | None = None,
+    allow_semantic_edges: bool = False,
+    max_hops: int = 1,
+    max_graph_nodes: int = 12,
+    max_evidence_blocks: int = 3,
+    max_navigation_tokens: int | None = None,
+    max_navigation_bytes: int | None = None,
+) -> ToolPayload:
+    from documa.context import ContextContractError, ContextService, load_context_ir
+
+    try:
+        service = ContextService(load_context_ir(context_ir_path), token_counter=token_counting.get_token_counter())
+        return {
+            "status": "ok",
+            **service.search(
+                query,
+                expected_source_digest=expected_source_digest,
+                route=route,
+                intent=intent,
+                seed_block_ids=seed_block_ids,
+                target_block_ids=target_block_ids,
+                direction=direction,
+                allow_semantic_edges=allow_semantic_edges,
+                max_hops=max_hops,
+                max_graph_nodes=max_graph_nodes,
+                max_evidence_blocks=max_evidence_blocks,
+                max_navigation_tokens=max_navigation_tokens,
+                max_navigation_bytes=max_navigation_bytes,
+            ),
+        }
+    except ContextContractError as exc:
+        return {"status": "error", "code": exc.code, "message": str(exc)}
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return {"status": "error", "code": "CONTEXT_LOAD_FAILED", "message": str(exc)}
+
+
+def context_read_blocks_tool(
+    context_ir_path: str,
+    block_ids: list[str],
+    required_block_ids: list[str] | None = None,
+    expected_source_digest: str | None = None,
+    total_max_tokens: int | None = None,
+    total_max_bytes: int | None = None,
+) -> ToolPayload:
+    from documa.context import ContextContractError, ContextService, load_context_ir
+
+    try:
+        service = ContextService(load_context_ir(context_ir_path), token_counter=token_counting.get_token_counter())
+        return {
+            "status": "ok",
+            **service.read_blocks(
+                block_ids,
+                required_block_ids=required_block_ids,
+                expected_source_digest=expected_source_digest,
+                total_max_tokens=total_max_tokens,
+                total_max_bytes=total_max_bytes,
+            ),
+        }
+    except ContextContractError as exc:
+        return {"status": "error", "code": exc.code, "message": str(exc)}
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return {"status": "error", "code": "CONTEXT_LOAD_FAILED", "message": str(exc)}
+
+
 def load_skill_tool(
     task: str,
     skill_names: list[str] | None = None,
@@ -2190,6 +2317,9 @@ def _tool_registry() -> dict[str, Callable[..., ToolPayload]]:
         "documa_search_collection": search_collection_tool,
         "documa_list_documents": list_documents_tool,
         "documa_inspect_store": inspect_store_tool,
+        "documa_build_context": build_context_tool,
+        "documa_context_search": context_search_tool,
+        "documa_context_read_blocks": context_read_blocks_tool,
         "documa_load_skill": load_skill_tool,
         "documa_read_skill_resource": read_skill_resource_tool,
         "documa_sync_skills": sync_skills_tool,

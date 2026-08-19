@@ -815,6 +815,75 @@ def documa_tool_schemas(profile: str = "admin") -> list[dict[str, Any]]:
             },
         ]
     )
+    descriptors.extend(
+        [
+            {
+                "name": "documa_build_context",
+                "title": "Project a source into shared ContextIR",
+                "description": "Build a disposable, hash-bound ContextIR projection from a document IR, compiled skill, or explicit code files.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "source_kind": {"type": "string", "enum": ["document", "code", "skill"]},
+                        "source": {"type": "string"},
+                        "additional_sources": {"type": ["array", "null"], "items": {"type": "string"}},
+                        "context_id": {"type": ["string", "null"]},
+                        "store_dir": {"type": "string", "default": ".documa"},
+                        "output_path": {"type": ["string", "null"]},
+                    },
+                    "required": ["source_kind", "source"],
+                },
+                "outputSchema": {"type": "object", "properties": {"status": {"type": "string"}}, "required": ["status"]},
+                "annotations": {"readOnlyHint": False},
+            },
+            {
+                "name": "documa_context_search",
+                "title": "Search ContextIR with verified graph navigation",
+                "description": "Return navigation candidates from lexical search and bounded typed-relation traversal; graph output is never final evidence.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "context_ir_path": {"type": "string"},
+                        "query": {"type": "string"},
+                        "expected_source_digest": {"type": ["string", "null"]},
+                        "route": {"type": "string", "enum": ["auto", "lexical-first", "graph-first", "overview"], "default": "auto"},
+                        "intent": {"type": ["string", "null"], "enum": ["lookup", "explore", "impact", "trace", "overview", None]},
+                        "seed_block_ids": {"type": ["array", "null"], "items": {"type": "string"}},
+                        "target_block_ids": {"type": ["array", "null"], "items": {"type": "string"}},
+                        "direction": {"type": ["string", "null"], "enum": ["incoming", "outgoing", "both", None]},
+                        "allow_semantic_edges": {"type": "boolean", "default": False},
+                        "max_hops": {"type": "integer", "minimum": 0, "maximum": 2, "default": 1},
+                        "max_graph_nodes": {"type": "integer", "minimum": 1, "maximum": 100, "default": 12},
+                        "max_evidence_blocks": {"type": "integer", "minimum": 1, "maximum": 3, "default": 3},
+                        "max_navigation_tokens": {"type": ["integer", "null"], "minimum": 1},
+                        "max_navigation_bytes": {"type": ["integer", "null"], "minimum": 1},
+                    },
+                    "required": ["context_ir_path", "query"],
+                },
+                "outputSchema": {"type": "object", "properties": {"status": {"type": "string"}}, "required": ["status"]},
+                "annotations": {"readOnlyHint": True},
+            },
+            {
+                "name": "documa_context_read_blocks",
+                "title": "Read ContextIR evidence blocks",
+                "description": "Read one to three selected blocks plus required blocks, verifying body and source hashes under a shared byte or real-token budget.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "context_ir_path": {"type": "string"},
+                        "block_ids": {"type": "array", "minItems": 1, "maxItems": 3, "items": {"type": "string"}},
+                        "required_block_ids": {"type": ["array", "null"], "items": {"type": "string"}},
+                        "expected_source_digest": {"type": ["string", "null"]},
+                        "total_max_tokens": {"type": ["integer", "null"], "minimum": 1},
+                        "total_max_bytes": {"type": ["integer", "null"], "minimum": 1},
+                    },
+                    "required": ["context_ir_path", "block_ids"],
+                },
+                "outputSchema": {"type": "object", "properties": {"status": {"type": "string"}}, "required": ["status"]},
+                "annotations": {"readOnlyHint": True},
+            },
+        ]
+    )
     allowed = allowed_tool_names(profile)
     return [descriptor for descriptor in descriptors if descriptor["name"] in allowed]
 

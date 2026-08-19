@@ -247,6 +247,20 @@ bundle = load_skill_bundle("檢查發布流程", max_tokens=3000)
 
 Runtime 完全不呼叫 LLM。若團隊要提高同義詞或觸發條件召回，可在 `sync_skill_roots(..., enrichment_provider=provider)` 接入少量、可快取的離線 enrichment；其輸出只會成為 derived routing metadata，不能建立 instruction 或 dependency truth。
 
+### Shared ContextIR 與 HarnessFold
+
+Documa 可把 DocumentIR、compiled SkillIR 或明確指定的程式碼檔投影成可丟棄的 ContextIR 1.0。ContextIR 的 block 正文與 SHA-256 是取證依據；typed relations 只用於有界導航。來源 digest 不符時 graph 會停用並退回 lexical-only，`INFERRED`／`AMBIGUOUS` 邊預設不展開。
+
+```powershell
+documa context-build document out/report/documa.ir.json --out .documa/report.context.json
+documa context-build code src/app.py --additional-source src/service.py --out .documa/code.context.json
+documa context-build skill my-skill --store-dir .documa --out .documa/skill.context.json
+documa context-search .documa/code.context.json "誰呼叫 validate" --intent explore
+documa context-read .documa/code.context.json --block-id <block-id> --total-max-bytes 20000
+```
+
+這組進階工具也可經 MCP 使用：`documa_build_context`、`documa_context_search`、`documa_context_read_blocks`。它們不加入預設 `agent` profile，以免每次請求支付額外 tool-schema tokens；HarnessFold 透過固定啟動設定引用此契約，負責 folding／lifecycle，而不再複製 Documa 的文件、程式碼與 skill 閱讀權責。
+
 Release gates 可用 `scripts/evaluate_skill_loader.py` 驗證 explicit-name Top-1、held-out Recall@3、median context reduction 與選配的 agent pass-rate delta；已有 1,000-skill store 時，`scripts/benchmark_skill_loader.py` 會檢查 warm-load p95 是否低於 250 ms。
 
 ## 接進你的 agent

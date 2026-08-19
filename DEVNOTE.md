@@ -9,9 +9,10 @@
 ## 📌 SNAPSHOT — 當前狀態
 <!-- 這一整段每次 /devnote 會被覆寫，只反映「到目前為止的最新狀態」 -->
 
-**最後更新**：2026-08-18
+**最後更新**：2026-08-19
 
 ### 需求狀態
+- [x] 2026-08-19：新增跨來源 ContextIR 1.0 與 document／code／skill adapters、typed graph navigation、hash-bound evidence read、CLI/MCP/function tools；HarnessFold 已以固定 ContextIR 路徑接入 Documa CLI backend。Graph 只導航、stale digest lexical-only、soft edges opt-in、token hard cap 無真 counter 時 fail closed；進階工具不加入 agent profile，避免固定 schema token 成本
 - [x] `C:\Users\allan\.agents\skills` 已用逐 root `allow_native_scan_overlap=true` 顯式授權並全面預編譯：43 active、0 quarantined、25,332 blocks、50,858 edges、983 resources、6,816 terms；第二次 sync 為 43 unchanged／index no-op
 - [x] Dynamic Skill Loader v1：明確 roots 全體預編譯為獨立 Skill IR/SQLite sidecar，runtime 兩層 lexical + feature-hash HNSW routing、graph dependency closure 與真實 tokenizer budget materialization；來源指令不摘要、不改寫
 - [x] Codex plugin 新增唯一常駐 `documa-skill-loader` bootstrap；agent profile 只增加 load/read-resource，sync/status/graph 限 admin；deterministic Codex zip 已重建並通過 validator
@@ -93,6 +94,15 @@
 ---
 
 # 📜 HISTORY
+
+---
+
+## [2026-08-19] Documa-owned shared context runtime
+
+- 新增可丟棄 ContextIR 1.0 projection，DocumentIR、SkillIR 與 explicit code files 共用 block/hash/relation contract；Python 以 AST 產生 symbol／contains／calls，其他明確檔案保守退回 whole-file block。
+- 新增 `context-build`／`context-search`／`context-read` 及對應 Python、MCP、function schemas。EXTRACTED graph 只作 bounded navigation；來源 digest stale 時 lexical-only，證據讀取重驗正文 hash，soft edges 與 token hard cap 都採 opt-in/fail-closed。
+- HarnessFold 新增 Documa CLI backend 與 MCP 啟動設定，document／code／skill 閱讀權責回到 Documa；舊 HarnessFold SQLite backend 暫留 migration fallback。
+- 驗證：ContextIR 11 tests、既有 interfaces/schema/watchdog 28 tests、Ruff PASS；HarnessFold 94/94 tests，真實跨 repo build→search→read smoke PASS。
 
 ---
 

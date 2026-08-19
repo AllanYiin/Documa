@@ -36,6 +36,8 @@ ADVANCED_TOOLS = AGENT_TOOLS | {
     "documa_view",
     "documa_inspect_block",
     "documa_index_collection",
+    "documa_context_search",
+    "documa_context_read_blocks",
 }
 
 ADMIN_TOOLS = ADVANCED_TOOLS | {
@@ -48,6 +50,7 @@ ADMIN_TOOLS = ADVANCED_TOOLS | {
     "documa_sync_skills",
     "documa_skill_status",
     "documa_inspect_skill_graph",
+    "documa_build_context",
 }
 
 TOOL_PROFILES = {"agent": AGENT_TOOLS, "advanced": ADVANCED_TOOLS, "admin": ADMIN_TOOLS}

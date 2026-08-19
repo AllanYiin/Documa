@@ -15,8 +15,11 @@ from documa.interfaces import (
     benchmark_tool,
     block_tree_tool,
     block_xref_tool,
+    build_context_tool,
     cite_block_tool,
     cite_chunk_tool,
+    context_read_blocks_tool,
+    context_search_tool,
     delete_document_tool,
     doctor_tool,
     index_collection_tool,
@@ -266,6 +269,38 @@ def build_parser() -> argparse.ArgumentParser:
     skill_graph_cmd.add_argument("--limit", type=int, default=100)
     skill_graph_cmd.add_argument("--cursor", type=int, default=0)
     skill_graph_cmd.add_argument("--store-dir", default=".documa")
+
+    context_build_cmd = subparsers.add_parser("context-build", help="Project a document, code set, or skill into ContextIR.")
+    context_build_cmd.add_argument("source_kind", choices=["document", "code", "skill"])
+    context_build_cmd.add_argument("source")
+    context_build_cmd.add_argument("--additional-source", action="append", dest="additional_sources")
+    context_build_cmd.add_argument("--context-id")
+    context_build_cmd.add_argument("--store-dir", default=".documa")
+    context_build_cmd.add_argument("--out", dest="output_path")
+
+    context_search_cmd = subparsers.add_parser("context-search", help="Search ContextIR with bounded graph navigation.")
+    context_search_cmd.add_argument("context_ir_path")
+    context_search_cmd.add_argument("query")
+    context_search_cmd.add_argument("--expected-source-digest")
+    context_search_cmd.add_argument("--route", choices=["auto", "lexical-first", "graph-first", "overview"], default="auto")
+    context_search_cmd.add_argument("--intent", choices=["lookup", "explore", "impact", "trace", "overview"])
+    context_search_cmd.add_argument("--seed-block-id", action="append", dest="seed_block_ids")
+    context_search_cmd.add_argument("--target-block-id", action="append", dest="target_block_ids")
+    context_search_cmd.add_argument("--direction", choices=["incoming", "outgoing", "both"])
+    context_search_cmd.add_argument("--allow-semantic-edges", action="store_true")
+    context_search_cmd.add_argument("--max-hops", type=int, default=1)
+    context_search_cmd.add_argument("--max-graph-nodes", type=int, default=12)
+    context_search_cmd.add_argument("--max-evidence-blocks", type=int, default=3)
+    context_search_cmd.add_argument("--max-navigation-tokens", type=int)
+    context_search_cmd.add_argument("--max-navigation-bytes", type=int)
+
+    context_read_cmd = subparsers.add_parser("context-read", help="Read selected ContextIR evidence blocks.")
+    context_read_cmd.add_argument("context_ir_path")
+    context_read_cmd.add_argument("--block-id", action="append", dest="block_ids", required=True)
+    context_read_cmd.add_argument("--required-block-id", action="append", dest="required_block_ids")
+    context_read_cmd.add_argument("--expected-source-digest")
+    context_read_cmd.add_argument("--total-max-tokens", type=int)
+    context_read_cmd.add_argument("--total-max-bytes", type=int)
     benchmark_cmd = subparsers.add_parser("benchmark", help="Run Documa benchmark fixtures.")
     benchmark_cmd.add_argument("--manifest", default="fixtures/pdf/manifest.json", help="Path to fixture manifest JSON.")
     benchmark_cmd.add_argument("--fixtures-dir", default="fixtures/pdf", help="Directory containing fixture files.")
@@ -569,6 +604,47 @@ def main(argv: list[str] | None = None) -> int:
                 store_dir=args.store_dir,
             )
         return _emit_json(payload, exit_code=0 if payload.get("status") in {"ok", "warning"} else 1)
+
+    if args.command == "context-build":
+        payload = build_context_tool(
+            args.source_kind,
+            args.source,
+            additional_sources=args.additional_sources,
+            context_id=args.context_id,
+            store_dir=args.store_dir,
+            output_path=args.output_path,
+        )
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "context-search":
+        payload = context_search_tool(
+            args.context_ir_path,
+            args.query,
+            expected_source_digest=args.expected_source_digest,
+            route=args.route,
+            intent=args.intent,
+            seed_block_ids=args.seed_block_ids,
+            target_block_ids=args.target_block_ids,
+            direction=args.direction,
+            allow_semantic_edges=args.allow_semantic_edges,
+            max_hops=args.max_hops,
+            max_graph_nodes=args.max_graph_nodes,
+            max_evidence_blocks=args.max_evidence_blocks,
+            max_navigation_tokens=args.max_navigation_tokens,
+            max_navigation_bytes=args.max_navigation_bytes,
+        )
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "context-read":
+        payload = context_read_blocks_tool(
+            args.context_ir_path,
+            args.block_ids,
+            required_block_ids=args.required_block_ids,
+            expected_source_digest=args.expected_source_digest,
+            total_max_tokens=args.total_max_tokens,
+            total_max_bytes=args.total_max_bytes,
+        )
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
     if args.command == "benchmark":
         payload = benchmark_tool(
