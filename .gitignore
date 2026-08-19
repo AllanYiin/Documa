@@ -11,4 +11,6 @@ native/**/dist/
 *.egg-info/
 .coverage
 .playwright-mcp/
+.documa/
+token-economy.json
 
