@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.6.4 — Internal Rust parser distribution（2026-08-04）
+
+- **Dynamic Skill Loader v1**：新增獨立 `documa.skills` Skill IR、trusted-root incremental sync、兩層 lexical/HNSW routing、權威 dependency graph closure 與真實 tokenizer budget materialization；所有 instruction blocks 保留來源原文與 provenance，scripts/assets 不執行或注入。Codex plugin 新增精簡 loader bootstrap，agent MCP 僅增加 load/resource-read，管理工具限 admin。
+- **Native library 顯式接管**：Skill root 新增逐 root `allow_native_scan_overlap` opt-in；預設仍拒絕 Codex/shared native scan paths，但可由使用者明確授權既有 `.agents/skills` 進行全量預編譯。Compiler version 納入 generation，避免 parser policy 更新後錯誤沿用舊 IR。
+- **可選離線 routing enrichment**：sync 可接入具 provider/version 的 bounded enrichment，僅快取 derived synonyms、positive/negative triggers 與 topic tags；runtime 維持零 LLM，metadata 不成為 instruction 或 dependency truth。
+- **內建 PDF／Office Rust parsers**：rust-pdf-parser 0.2.0 與 rust-office-parser 0.1.0 已成為 Documa 的 `native/` 內部 source trees；單一 platform wheel 同時提供 `rust_pdf._native` 與 `rust_office._core`，不再要求使用者另裝兩個 parser wheel。
+- **共用 native binding 契約**：PDF／Office adapters 統一使用 identity、required calls、capabilities 與 JSON error envelope 驗證；core 仍只依賴 parser-neutral IR。
+- **來源與發布封裝**：sdist 保留兩個可建置 Cargo workspaces、授權與 deterministic fixtures，排除 Cargo target、WASM 預編譯產物及快取；Windows CPython 3.10 platform wheel 已完成五格式 smoke。
+
 ## v0.6.3 — Rust-first native providers（2026-08-02）
 
 - **LingXi 0.2.1 中文關鍵詞 provider**：文字葉節點的 `keyword_terms` 預設改由 LingXi TextRank 選取；既有 n-gram 僅保留祖先 support/new-word 補償與明確回滾，避免同一 evidence 在階層中重複命中。binding 嚴格驗證 0.2.1，缺失或版本不符時可觀測回退；provider 版本納入 IR metadata、source digest 與 tokenizer signature，升級後會重建舊 sidecar。

@@ -9,15 +9,19 @@
 ## 📌 SNAPSHOT — 當前狀態
 <!-- 這一整段每次 /devnote 會被覆寫，只反映「到目前為止的最新狀態」 -->
 
-**最後更新**：2026-08-02
+**最後更新**：2026-08-18
 
 ### 需求狀態
+- [x] `C:\Users\allan\.agents\skills` 已用逐 root `allow_native_scan_overlap=true` 顯式授權並全面預編譯：43 active、0 quarantined、25,332 blocks、50,858 edges、983 resources、6,816 terms；第二次 sync 為 43 unchanged／index no-op
+- [x] Dynamic Skill Loader v1：明確 roots 全體預編譯為獨立 Skill IR/SQLite sidecar，runtime 兩層 lexical + feature-hash HNSW routing、graph dependency closure 與真實 tokenizer budget materialization；來源指令不摘要、不改寫
+- [x] Codex plugin 新增唯一常駐 `documa-skill-loader` bootstrap；agent profile 只增加 load/read-resource，sync/status/graph 限 admin；deterministic Codex zip 已重建並通過 validator
+- [x] Skill lifecycle/security：generation supersede、missing/quarantined、incremental no-op、lock、safe YAML、symlink/path escape、binary/script/asset 隔離與 resource hash drift 均有測試
 - [x] Windows 安裝／升級加入 MCP lifecycle guard：先偵測與通知退出，逾時依登錄 PID 強制終止，並清理舊版 `documa-mcp.exe`；plugin 改用 `python -m documa.interfaces.mcp_server`
-- [x] v0.6.3 版本、runtime 與三個 plugin metadata 已同步；plugin README 鎖定 `documa==0.6.3`，Python sdist/wheel 與 plugin zip 已重建並驗證
+- [x] v0.6.4 runtime、三個 plugin metadata 與四份 install pin 已同步；Windows platform wheel、sdist、Claude/Codex deterministic zip 已重建並驗證
 - [x] `pip install documa` 改為完整非 OCR agent runtime；`documa[all]` 額外加入 OCR；細粒度 extras 保留相容
 - [x] 修正 v0.4 起 `documa_process(out=...)` 同步 sidecar 建置的 O(N²) 文字 map 回歸；真實 423 頁 IR 由約 168s 降至 3.687s
 - [x] 單文件 sidecar v2 新增 local feature-hash HNSW section ANN；只在 lexical coverage 不足時啟動，不呼叫 embedding／LLM／token counter
-- [x] 作用中 Python 的 Documa module/distribution metadata 已由重建 wheel 刷新為 0.6.3；LingXi distribution 為 0.2.1
+- [x] 隔離解包的 0.6.4 wheel 回報 module/distribution 皆為 0.6.4；內建 rust_pdf 0.2.0、rust_office 0.1.0，未覆寫全域 Python 安裝
 - [x] PDF 公開預設已改為 `auto` 的 Rust-first provider；`rust` 可嚴格指定、`pymupdf` 可回滾，Rust inferred order 在 pipeline 鎖定
 - [x] Rust Stage 6C2-E 使用真正 lazy `native_events_v2`；頁面即時釋放、finalization 逐頁 drain，舊 wheel fallback 保留
 - [x] Rust Stage 6D 預設 `compact_trace_v1`、verbose 可逆；三次 shadow RSS 1.056367x 通過 1.2x gate，focused 18/18、full 354/354、Ruff pass
@@ -29,8 +33,8 @@
 
 - [ ] Rust 尚未通過完整品質 provider gate：目前 quality gold 9/18 failed（reading order、table、footnote/image relation 等）；memory gate 已通過。預設雖為 Rust-first，品質敏感工作仍須 `pdf_provider="pymupdf"`。
 - [x] 2026-08-02 LingXi 已升至 0.2.1 exact binding 契約；保留 provider 回滾、leaf-only LingXi，並將 provider 版本納入 sidecar digest/signature 以強制安全重建。
-- [ ] v0.6.3 尚未 tag 或發布至 PyPI／plugin registry
-- [x] 2026-08-02 runtime 搜尋、MCP lifecycle 與 LingXi 0.2.1 已納入 0.6.3 wheel/sdist；Python 與 plugin artifacts SHA-256 已更新
+- [ ] v0.6.4 尚未 tag 或發布至 PyPI／plugin registry
+- [x] 2026-08-04 Rust PDF／Office 內部子模組與共用 binding 已納入 0.6.4 wheel/sdist；Python 與 plugin artifacts SHA-256 已更新
 - [x] v0.5.0 token economy 改造已 release 並推上 origin/main（`ac7c2e3`→`a479a89`）
 - [x] MCP 回應單份傳輸、短 block id、omit-empty、nav/auto-budget 預設、collection 排序訊號統一
 - [x] 三份 plugin skill 與 zip 已同步重建（package_plugins --check 通過）
@@ -45,6 +49,9 @@
 - **替換後能力邊界**：Rust PDF 不提供 renderer/OCR，human-order 與 private table/image gold 尚未完成；LingXi 若直接發布到所有祖先會造成階層重複命中，因此僅替換文字葉節點的關鍵詞選取，並保留 n-gram 邊界熵新詞、`term_freq`/`child_support` bottom-up 統計。仍須保留 `pdf_provider="pymupdf"`、`keyword_provider="ngram"` 回滾，provider/tokenizer 變更時強制重建 sidecar。
 
 ### 關鍵技術決策（當前有效）
+- **Native skill root overlap 只允許逐 root 顯式 opt-in**：預設仍拒絕 `.codex/skills`／`.agents/skills`，目前工作區僅對 `agents-local`（`C:\Users\allan\.agents\skills`）設定 `allow_native_scan_overlap=true`
+- **Skill 載入採全體 metadata 預編譯＋選中內容動態 materialize**：不把全部 SKILL.md 放進 context；可選離線 enrichment provider 只產生可快取 derived synonyms/positive/negative triggers/topic tags，runtime 仍為 0 LLM，graph truth 只來自來源結構與 lifecycle edges
+- **Skill IR 不修改 DocumentIR 0.2**：原始 skill files 是事實來源、各 generation JSON 是可驗證編譯物、SQLite/HNSW 是可刪除重建 sidecar；identity/scope/guardrails 與 explicit dependency closure 不可為了 budget 被裁掉
 - **升級入口必須先收斂 MCP lifecycle**：首次安裝可直接 pip；升級／重裝使用 `python -m documa.install`，持有 install lock、關閉／強制終止既有 server 後才呼叫 pip。plugin 不再以長駐 `documa-mcp.exe` 作為啟動 image
 > 歷史上做過的、目前仍然成立的決策摘要。被推翻的決策不列。
 - **回應層 token 慣例**：短 id + `block_id_prefix` 宣告、omit-empty、`page_ref_kind` 上提、citation 四欄收斂為單一 `page` label（詳見 HISTORY `[2026-07-23]`）
@@ -65,6 +72,7 @@
 - **替換採可逆 provider，不刪舊能力**：Rust 負責 PDF extraction，PyMuPDF 保留 renderer/OCR 與明確回退；LingXi 負責預設 `keyword_terms`，n-gram 保留為缺模型回退與新詞能力補償，直到等價的新詞／gold gate 通過。
 
 ### 已知地雷（仍需注意）
+- **Managed skill roots 不得位於 Codex 原生掃描路徑**：原生 loader 只應看見 plugin bootstrap，否則同一 skill 可能被原生與 Documa 重複注入；root 必須顯式設定 stable id/path/priority/enabled/trusted
 - **一般 pip/wheel 沒有可靠的 pre-install hook**：無法由「尚未安裝的新版程式碼」在 pip 覆寫舊 launcher 前自行關閉 MCP；首次安裝直接 pip，後續升級必須走 `python -m documa.install`
 - **`documa.install --force-reinstall` 會讓 pip 重新解析／重裝完整依賴樹**：共用全域 Python 可能因此升級其他專案的套件並產生 `pip check` 衝突；artifact smoke 優先使用隔離環境，或後續為 installer 補受控 `--no-deps` 能力
 > 踩過且未來仍可能重踩的坑的一句話提醒。已徹底不可能重現的不列。
@@ -75,6 +83,7 @@
 - **`document_block_text()` 每次都重建全文件 source-text map**——大量迴圈不可逐 block 呼叫；sidecar 必須一次建 map 並重用（詳見 HISTORY `[2026-07-24]`）
 - **`test_registry_locking` 在 Windows 全套跑偶發 `PermissionError` flake**，單獨重跑即過
 - **Source install 現在會編譯兩個 Rust extension**：需要 Rust 1.88+ 與平台 linker；預建 wheel 使用者不需要 toolchain。Windows CPython 3.10 wheel 已驗證，Linux/macOS wheel 仍需 CI 實跑
+- **Release tests 不得直接信任既有 `build/lib*`**：版本推進後舊 build cache 可能仍載入前版 Python 檔；以新 wheel 解包／隔離安裝後跑全套才是 artifact gate
 
 - **關閉 pytest plugin autoload 會拿掉 snapshot fixtures**：全套需顯式 `-p pytest_datadir.plugin -p pytest_regressions.plugin`
 - **Rust memory gate 已過但不可直接切換**：Stage 6D 完整 Documa 峰值 646,643,712 bytes（1.056367x PyMuPDF）；字元／tagged-order／私有 table-image gold 仍是 NO-GO
@@ -84,6 +93,22 @@
 ---
 
 # 📜 HISTORY
+
+---
+
+## [2026-08-17] Dynamic Skill Loader v1
+
+- 新增 `documa.skills`，涵蓋 safe parser、Skill IR、generation registry、全域 skill/block index、TF/DF/new-word/SimHash metadata、local feature-hash HNSW、兩層 ranking、dependency graph closure、token-bounded renderer 與 resource pagination。
+- 採混合策略：所有 configured roots 在 sync 時預編譯 metadata；runtime 只 materialize 最多 3 個入選 skills 的必要原文 blocks。可選 enrichment provider 依 provider/version/source digest 快取，不能建立權威 instructions/edges。
+- 新增 Python、CLI 與 MCP contracts；Codex plugin 加入 `documa-skill-loader` bootstrap，Claude Code/OpenClaw 行為不變。驗證：Ruff PASS、`tests/` 392 passed/4 skipped、1,000-skill warm-load p95 ≤250ms gate PASS、plugin/skill validator 與 deterministic zip check PASS。
+
+---
+
+## [2026-08-18] `.agents/skills` 全面預編譯
+
+- 新增 `SkillRoot.allow_native_scan_overlap`、CLI `--allow-native-scan-overlap` 與 MCP schema 欄位；預設拒絕 native roots 的安全邊界不變，只有使用者明確授權的 root 可重疊。
+- 設定 `agents-local` → `C:\Users\allan\.agents\skills`（priority 100、trusted/enabled），43/43 skills 編譯成功、0 quarantined；index v3 含 25,332 blocks、50,858 edges、983 resources、6,816 terms 與 43 個 HNSW skill nodes。
+- Compiler generation 納入 compiler version；reference resources 的 scope/guardrail 不再自動成為全域 mandatory，只有 `SKILL.md` 本體與 explicit required-resource closure 強制保留。`spec-organizer` minimum bundle 由 9,622 降至 6,446 tokens，7,000-token materialization PASS。
 
 ---
 
@@ -335,3 +360,13 @@
 - PDF workspace 僅將 `pdf-core` 與 Python binding 列為 build members；CLI／WASM source 只保留給既有 contract audit，未納入 Documa wheel 編譯。
 - 驗證：Rust fmt、workspace check/test、Clippy `-D warnings` 均 PASS；Python full suite 447/447；Windows CPython 3.10 platform wheel 內含兩個 native extension，PDF 與 DOCX/XLS/XLSX/PPTX 真實 smoke PASS。
 - 尚餘外部 gate：Linux/macOS platform wheel 與其他 Python ABI 需 CI 實跑；既有 0.6.3 pure-Python release artifacts／hashes 已被新的 platform wheel 模型取代，發布前必須重建。
+
+---
+
+## [2026-08-04] v0.6.4 native distribution artifacts
+
+- runtime `pyproject.toml`／`documa.__version__`、Claude Code／Codex／OpenClaw manifests 與四份 plugin install pin 同步推進至 `0.6.4`；CHANGELOG 新增 0.6.4 節點。
+- Python artifacts：`dist/documa-0.6.4-cp310-cp310-win_amd64.whl`（SHA-256 `2474ea6a4131ccb8281c56e62f198d23c0df0220bd54aefe6bfa499be3266a51`）；`dist/documa-0.6.4.tar.gz`（`fd194df5775e1b20c1b96990d9635481c6dd9c3332ba79da7fdbf2c91ffad6ad`）。
+- Plugin artifacts：Claude `plugins/claude-code-documa.zip`（SHA-256 `e1eb8305124459c085bd233df2db34cee0fdfe6ba96f3b2ab474656b1119e31a`）；Codex `plugins/codex-documa.zip`（`730a67c824bd84b429db48153adb5d2b42583137ca0c0f0d8d7ed2374f66d82d`）；OpenClaw 依既有慣例同步 source directory。
+- 驗證：wheel/sdist build PASS，且 wheel 從 sdist 再編譯 PASS；wheel 內含兩個 CPython 3.10 Windows `.pyd`；隔離 wheel full pytest 447/447；Twine 2/2、Ruff、doctor 8/8、fixture readiness 18/18、agent plugin validator、deterministic zip check、Codex skill package gate 全 PASS。package gate 的 live benchmark 維持 SKIPPED，未宣稱 live benchmark。
+- 尚餘外部 gate：Linux/macOS 與其他 Python ABI wheel 未實跑；0.6.4 尚未 tag、發布或安裝到全域 Python。

@@ -8,7 +8,7 @@
 
 它把 PDF、Word、PowerPoint、HTML、email、notebook、Markdown 與純文字轉成同一套結構化 IR，讓 agent 先看文件結構、按 block 搜尋，再只讀取真正需要的內容。文件處理、索引與搜尋都在本機完成，不呼叫 LLM 或 embedding API；agent 因此能用更少的 context tokens，更快找到可引用的證據。
 
-目前版本：**0.6.3**｜需要 Python **3.10+**
+目前版本：**0.6.4**｜需要 Python **3.10+**
 
 ## Overview：Documa 解決什麼問題？
 
@@ -42,6 +42,7 @@ Agent 不需要先吞下整份文件，而是讓每次工具呼叫只取回「�
 | **多文件理解** | 透過本機 collection index 跨 PDF、Word、Markdown 等文件搜尋、彙總與比較。 |
 | **可驗證引用** | block 可回溯到頁碼與 bbox；引用能由程式檢查是否指向真實存在的證據。 |
 | **Agent-ready 介面** | 同時提供 MCP、OpenAI function calling、CLI 與 Python API，回傳結構化結果。 |
+| **Dynamic Skill Loader** | 對所有明確設定的 skill roots 預編譯 metadata/graph，執行時只 materialize 任務需要且符合 token budget 的原文 blocks。 |
 
 > **「0 token」的精確含義**：Documa 的文件處理與檢索流程本身不會發出 LLM／embedding 請求，因此不消耗模型 API tokens。當 agent 接收搜尋結果、閱讀 block 或生成答案時，仍會使用主模型的 context／output tokens；Documa 的作用是把這部分縮到必要範圍。
 
@@ -72,10 +73,10 @@ PDF 0.2.0 與 Office 0.1.0 parser 原始碼都已放在 repository 的 `native/`
 python -m pip install -e ".[dev]"
 ```
 
-若 0.6.3 已發布到你使用的 package index，也可以直接安裝固定版本：
+若 0.6.4 已發布到你使用的 package index，也可以直接安裝固定版本：
 
 ```powershell
-python -m pip install "documa==0.6.3"
+python -m pip install "documa==0.6.4"
 ```
 
 先確認執行環境正常：
@@ -222,6 +223,32 @@ Collection 中穩定的讀取鍵是 `(document_id, block_id)`。若已鎖定少�
 
 > Collection search 目前是 lexical／statistical search，不會自動做同義詞、跨語言或語義相似度展開。零結果時，先改用文件原詞、縮寫或較短詞組；需要 semantic retrieval 時，可從預留的 hybrid／vector adapter 邊界接入外部 retriever。
 
+## Dynamic Skill Loader
+
+Skill loader 使用混合策略：sync 時編譯所有已授權 roots 的 `name`、`description`、triggers、blocks、resources 與權威 dependency edges；task 到來時先選最多三個 skills，再在其中選 blocks、補齊 ancestors／explicit dependencies，最後依真實 tokenizer budget 組成虛擬 `SKILL.md`。它不執行 scripts、不注入 binary assets，也不摘要或改寫來源指令。
+
+```powershell
+documa skills root-add managed D:\agent-skills --priority 10
+documa skills sync
+documa skills load "替這個專案做安全的發布檢查" --max-tokens 3000
+documa skills status
+```
+
+Managed root 應放在 Codex 原生 skill 掃描路徑之外；原生路徑只保留 plugin 內的精簡 `documa-skill-loader` bootstrap。Python API 可直接使用：
+
+若是明確要接管既有 native skill library，可使用 `--allow-native-scan-overlap` 顯式授權；預設仍拒絕重疊，避免無意間由兩個 loader 重複注入同一 skill。
+
+```python
+from documa.skills import load_skill_bundle, sync_skill_roots
+
+sync_skill_roots(store_dir=".documa")
+bundle = load_skill_bundle("檢查發布流程", max_tokens=3000)
+```
+
+Runtime 完全不呼叫 LLM。若團隊要提高同義詞或觸發條件召回，可在 `sync_skill_roots(..., enrichment_provider=provider)` 接入少量、可快取的離線 enrichment；其輸出只會成為 derived routing metadata，不能建立 instruction 或 dependency truth。
+
+Release gates 可用 `scripts/evaluate_skill_loader.py` 驗證 explicit-name Top-1、held-out Recall@3、median context reduction 與選配的 agent pass-rate delta；已有 1,000-skill store 時，`scripts/benchmark_skill_loader.py` 會檢查 warm-load p95 是否低於 250 ms。
+
 ## 接進你的 agent
 
 ### MCP
@@ -287,7 +314,7 @@ documa search-collection --help
 需要本機 CPU OCR 時：
 
 ```powershell
-python -m pip install "documa[all]==0.6.3"
+python -m pip install "documa[all]==0.6.4"
 documa process .\scan.pdf --ocr --out .\out\scan
 ```
 
@@ -319,7 +346,7 @@ documa process .\report.xlsx --office-provider rust --out .\out\report
 首次安裝可直接使用 pip。已安裝 Documa 且 MCP server 可能仍在執行時，請使用受控升級入口：
 
 ```powershell
-python -m documa.install --upgrade "documa==0.6.3"
+python -m documa.install --upgrade "documa==0.6.4"
 ```
 
 它會先協調既有 Documa MCP process 退出，再執行安裝，避免 Windows 上的 executable file lock。不要在 MCP server 仍連線時直接覆寫安裝。
