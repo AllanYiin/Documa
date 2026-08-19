@@ -10,10 +10,10 @@
 
 ```powershell
 # 首次安裝
-python -m pip install "documa==0.6.3"
+python -m pip install "documa==0.6.4"
 
 # 已安裝 Documa 時的升級／重裝：先斷開 MCP，再執行 pip
-python -m documa.install --upgrade "documa==0.6.3"
+python -m documa.install --upgrade "documa==0.6.4"
 ```
 
 共用整合契約：

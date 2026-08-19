@@ -1,0 +1,4 @@
+interface:
+  display_name: "Documa Skill Loader"
+  short_description: "動態載入精準、可追溯且省 token 的 skill 內容"
+  default_prompt: "Use $documa-skill-loader to load the smallest relevant skill context for this task."

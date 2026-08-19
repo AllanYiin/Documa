@@ -93,12 +93,17 @@ def validate_server_entry(entry: Any, context: str) -> None:
         raise ValidationError(f"{context}.env must be an object")
 
 
-def validate_skill(plugin_root: Path, plugin_name: str) -> None:
-    skill_path = plugin_root / "skills" / "documa-evidence" / "SKILL.md"
+def validate_skill(plugin_root: Path, plugin_name: str, skill_name: str = "documa-evidence") -> None:
+    skill_path = plugin_root / "skills" / skill_name / "SKILL.md"
     if not skill_path.exists():
-        raise ValidationError(f"{plugin_name} must include skills/documa-evidence/SKILL.md")
+        raise ValidationError(f"{plugin_name} must include skills/{skill_name}/SKILL.md")
     text = skill_path.read_text(encoding="utf-8")
-    for needle in ("documa_process", "documa_search_blocks", "documa_read_block"):
+    needles = (
+        ("documa_load_skill", "documa_read_skill_resource")
+        if skill_name == "documa-skill-loader"
+        else ("documa_process", "documa_search_blocks", "documa_read_block")
+    )
+    for needle in needles:
         if needle not in text:
             raise ValidationError(f"{skill_path.relative_to(ROOT)} must mention {needle}")
 
@@ -123,6 +128,10 @@ def validate_codex_plugin() -> None:
         raise ValidationError("Codex .mcp.json must define mcpServers.documa")
     validate_server_entry(servers["documa"], "codex-documa/.mcp.json mcpServers.documa")
     validate_skill(plugin_root, "codex-documa")
+    validate_skill(plugin_root, "codex-documa", "documa-skill-loader")
+    openai_yaml = plugin_root / "skills" / "documa-skill-loader" / "agents" / "openai.yaml"
+    if not openai_yaml.exists() or "$documa-skill-loader" not in openai_yaml.read_text(encoding="utf-8"):
+        raise ValidationError("Codex bootstrap skill must include agents/openai.yaml with its literal $skill prompt")
 
 
 def validate_claude_plugin() -> None:

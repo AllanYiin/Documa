@@ -2,6 +2,7 @@ import ast
 import json
 import re
 import unittest
+import zipfile
 from pathlib import Path
 
 
@@ -62,6 +63,7 @@ class PackagingContractTests(unittest.TestCase):
                 "nbformat",
                 "mcp",
                 "tiktoken",
+                "pyyaml",
             }.issubset(names)
         )
         self.assertNotIn("rapidocr-onnxruntime", names)
@@ -109,6 +111,12 @@ class PackagingContractTests(unittest.TestCase):
         )
         for path in readmes:
             self.assertIn(f"documa=={version}", path.read_text(encoding="utf-8"), path)
+
+    def test_codex_zip_contains_dynamic_skill_loader_bootstrap(self):
+        with zipfile.ZipFile(ROOT / "plugins" / "codex-documa.zip") as archive:
+            names = set(archive.namelist())
+        self.assertIn("skills/documa-skill-loader/SKILL.md", names)
+        self.assertIn("skills/documa-skill-loader/agents/openai.yaml", names)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 {
   "name": "codex-documa",
-  "version": "0.6.3",
-  "description": "透過 MCP 在 Codex 中使用 Documa 的文件理解能力。",
+  "version": "0.6.4",
+  "description": "透過 MCP 在 Codex 中使用 Documa 的文件理解與動態 skill 載入能力。",
   "author": {
     "name": "Documa 貢獻者"
   },
@@ -27,12 +27,14 @@
     "capabilities": [
       "MCP",
       "文件理解",
-      "證據搜尋"
+      "證據搜尋",
+      "動態 Skill Loader"
     ],
     "defaultPrompt": [
       "使用 Documa，依據這份文件中的證據回答問題。",
       "先搜尋 Documa 區塊，再讀取完整內容。",
-      "將這個檔案處理成 Documa IR 並檢查結果。"
+      "將這個檔案處理成 Documa IR 並檢查結果。",
+      "使用 Documa 動態載入這項任務所需的最小 skill context。"
     ]
   },
   "mcpServers": "./.mcp.json"

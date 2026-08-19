@@ -7,7 +7,7 @@
 This is a native OpenClaw tool plugin that wraps the installed `documa` CLI. It does not bundle Documa itself; install Documa in the environment visible to the OpenClaw Gateway first.
 
 ```powershell
-python -m pip install "documa==0.6.3"
+python -m pip install "documa==0.6.4"
 openclaw plugins install --link .\plugins\openclaw-documa
 openclaw plugins enable documa
 openclaw gateway restart

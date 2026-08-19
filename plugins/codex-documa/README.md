@@ -4,17 +4,17 @@
   <img src="assets/documa-logo.png" alt="Documa logo" width="320">
 </p>
 
-這個 plugin 透過 bundled MCP server config 與 reusable evidence workflow skill，把 Documa 暴露給 Codex。它不打包 Documa 本體；請先在 Codex 可見的 Python 環境安裝 Documa。
+這個 plugin 透過 bundled MCP server config、evidence workflows 與精簡 skill-loader bootstrap，把 Documa 暴露給 Codex。它不打包 Documa 本體；請先在 Codex 可見的 Python 環境安裝 Documa。
 
-Plugin 內含兩個邊界清楚的 skills：`documa-evidence` 負責日常文件問答，`documa-maintenance` 負責 doctor、index repair、benchmark、migration 與 release gates。MCP server 可用 `DOCUMA_MCP_PROFILE=agent|advanced|admin` 控制工具發現面；這是 Documa server policy，不是 MCP 標準 capability。
+Plugin 內含三個邊界清楚的 skills：`documa-skill-loader` 是唯一常駐的 managed-skill 路由層，`documa-evidence` 負責日常文件問答，`documa-maintenance` 負責 doctor、index repair、benchmark、migration 與 release gates。MCP server 可用 `DOCUMA_MCP_PROFILE=agent|advanced|admin` 控制工具發現面；這是 Documa server policy，不是 MCP 標準 capability。
 
 
 ```powershell
 # 首次安裝
-python -m pip install "documa==0.6.3"
+python -m pip install "documa==0.6.4"
 
 # 升級／重裝（會先偵測並斷開 MCP）
-python -m documa.install --upgrade "documa==0.6.3"
+python -m documa.install --upgrade "documa==0.6.4"
 ```
 
 使用 Codex local plugin flow 載入 `plugins/codex-documa`。啟用後，在 Codex 內用以下指令確認 MCP server：
@@ -48,9 +48,26 @@ enabled_tools = [
   "documa_render_citation",
   "documa_source_window",
   "documa_verify_citations",
-  "documa_doctor"
+  "documa_doctor",
+  # dynamic skill loading (agent profile)
+  "documa_load_skill",
+  "documa_read_skill_resource"
 ]
 ```
+
+### 設定 managed skill roots
+
+Managed roots 必須放在 Codex 原生 skill 掃描路徑之外，避免同一份 skill 同時被原生 loader 與 Documa 載入。設定與首次編譯使用 admin profile：
+
+```powershell
+documa skills root-add managed D:\agent-skills --priority 10
+documa skills sync
+documa skills status
+```
+
+若要明確接管既有 native skill library，可在 `root-add` 加上 `--allow-native-scan-overlap`；這是逐 root 的顯式授權，預設仍拒絕重疊。
+
+啟動 MCP 時若已有 `.documa/skills/config.json`，會先增量同步一次；之後 load 最多每 60 秒做一次 stale check，或以 `refresh=true` 強制同步。自然語句由本機 lexical metadata 與 feature-hash HNSW 路由；明確名稱可直接命中。可選的離線 enrichment 只增加 derived synonyms/triggers/tags，runtime 仍然不呼叫 LLM。
 
 Expected workflow / 預期流程：
 
@@ -58,6 +75,7 @@ Expected workflow / 預期流程：
 2. Multiple documents: `documa_ingest` per file (the collection index updates incrementally) → breadth via `documa_search_collection --group-by-document` → narrow with `document_ids` + `per_document_limit` → chain `read_ref` into `documa_read_block`.
 3. Follow each search response's `recommended_next` and `hints`; bound output with `max_chars`/`max_tokens`/`max_response_tokens`.
 4. Close out with `documa_cite_block`/`documa_verify_citations`, citing block ids, page/source metadata, and evidence boundaries.
+5. Managed skills: `documa_load_skill` → follow `rendered_skill_md` → call `documa_read_skill_resource` only for a returned `next_actions` reference.
 
 本地驗證：
 
