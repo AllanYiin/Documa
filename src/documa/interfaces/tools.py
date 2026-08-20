@@ -2215,7 +2215,7 @@ def context_read_blocks_tool(
 def load_skill_tool(
     task: str,
     skill_names: list[str] | None = None,
-    max_tokens: int = 3000,
+    max_tokens: int | None = None,
     max_skills: int = 3,
     store_dir: str = ".documa",
     refresh: bool = False,

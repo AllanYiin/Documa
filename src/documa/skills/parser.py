@@ -26,7 +26,7 @@ from documa.skills.models import (
 MAX_SKILL_FILE_BYTES = 2 * 1024 * 1024
 MAX_SKILL_PACKAGE_BYTES = 10 * 1024 * 1024
 MAX_DISCOVERY_DEPTH = 4
-SKILL_COMPILER_VERSION = "documa-skill-v1.1"
+SKILL_COMPILER_VERSION = "documa-skill-v1.2"
 _TEXT_SUFFIXES = {".md", ".markdown", ".mdp", ".txt", ".yaml", ".yml", ".json"}
 _INDEXED_PREFIXES = {"references", "reference"}
 _HIDDEN_SECRET_NAMES = {".env", ".npmrc", ".pypirc", ".netrc", "credentials", "secrets"}
@@ -39,7 +39,11 @@ _SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _LIST_RE = re.compile(r"^\s*(?:[-+*]|\d+[.)])\s+")
 _XML_TAG_RE = re.compile(r"^\s*</?[A-Za-z][^>]*>\s*$")
 _STEP_RE = re.compile(r"^(?:step|stage|phase|步驟|階段)\s*\d+", re.IGNORECASE)
-_REQUIRED_RE = re.compile(r"\b(?:must|required|always|before|read first)\b|必須|務必|一律|先讀|前置", re.IGNORECASE)
+_REQUIRED_RESOURCE_PREFIX_RE = re.compile(
+    r"(?:\b(?:must|required|always)\b.{0,24}|\b(?:read|load|consult)\b.{0,12}|"
+    r"(?:必須|務必|一律|前置).{0,12}|(?:先讀|先以|先依).{0,4})$",
+    re.IGNORECASE,
+)
 
 _ROLE_TERMS: list[tuple[SkillBlockRole, tuple[str, ...]]] = [
     (SkillBlockRole.GUARDRAIL, ("decision boundary", "guardrail", "global rules", "safety", "do not", "negative trigger", "禁止", "不得", "安全", "邊界", "全域規則")),
@@ -57,6 +61,13 @@ class SkillParseError(ValueError):
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
         self.code = code
+
+
+def _resource_reference_is_required(text: str, first_match: re.Match[str]) -> bool:
+    """Recognize directives that apply to the referenced resource, not unrelated prose."""
+
+    prefix = text[: first_match.start()].rstrip()
+    return bool(_REQUIRED_RESOURCE_PREFIX_RE.search(prefix[-64:]))
 
 
 def discover_skill_directories(root: Path) -> list[Path]:
@@ -477,7 +488,12 @@ def compile_skill_directory(skill_dir: Path, *, configured_root: Path, root_id: 
     for block in blocks:
         if block.resource_path != "SKILL.md":
             continue
-        for match in _RESOURCE_RE.finditer(block.text.raw_text):
+        resource_matches = list(_RESOURCE_RE.finditer(block.text.raw_text))
+        first_reference_required = bool(resource_matches) and _resource_reference_is_required(
+            block.text.raw_text, resource_matches[0]
+        )
+        for match in resource_matches:
+            required_reference = first_reference_required or _resource_reference_is_required(block.text.raw_text, match)
             target = (match.group("link") or match.group("code") or "").strip().replace("\\", "/")
             target = target.split("#", 1)[0]
             if "://" in target:
@@ -494,8 +510,15 @@ def compile_skill_directory(skill_dir: Path, *, configured_root: Path, root_id: 
                 block.metadata.setdefault("broken_resource_refs", []).append(normalized)
                 continue
             resource_node = f"resource:{resource.path}"
-            edges.append(SkillEdgeIR(SkillEdgeType.REFERENCES_RESOURCE, block.id, resource_node))
-            if _REQUIRED_RE.search(block.text.raw_text):
+            edges.append(
+                SkillEdgeIR(
+                    SkillEdgeType.REFERENCES_RESOURCE,
+                    block.id,
+                    resource_node,
+                    {"read_policy": "required" if required_reference else "on_demand"},
+                )
+            )
+            if required_reference:
                 targets = block_by_resource.get(resource.path.casefold()) or []
                 if targets:
                     edges.append(

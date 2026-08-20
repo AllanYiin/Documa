@@ -14,10 +14,10 @@ from documa.skills.models import SkillBlockIR, SkillBlockRole, SkillBundle, Skil
 from documa.skills.store import active_skill_entries, ensure_skill_store, load_skill_ir
 
 
-DEFAULT_BUNDLE_TOKENS = 3000
 MIN_BUNDLE_TOKENS = 256
 MAX_BUNDLE_TOKENS = 8000
 DEFAULT_RESOURCE_TOKENS = 1200
+MAX_RECOMMENDED_RESOURCES_PER_SKILL = 3
 
 
 def _entry_maps(store_dir: str | Path) -> tuple[dict[str, dict[str, Any]], dict[str, list[dict[str, Any]]]]:
@@ -139,6 +139,10 @@ def _block_closure(
         for edge in skill.edges:
             if edge.type != SkillEdgeType.REQUIRES_BLOCK or edge.from_id not in selected:
                 continue
+            if edge.metadata.get("reason") == "required_resource":
+                # Supporting resources stay outside the main bundle budget and are
+                # surfaced as explicit read actions instead of being materialized here.
+                continue
             if edge.to_id not in selected and edge.to_id in by_id:
                 selected.add(edge.to_id)
                 mandatory.add(edge.to_id)
@@ -187,19 +191,21 @@ def load_skill_bundle(
     task: str,
     skill_names: list[str] | None = None,
     *,
-    max_tokens: int = DEFAULT_BUNDLE_TOKENS,
+    max_tokens: int | None = None,
     max_skills: int = 3,
     store_dir: str | Path = ".documa",
     refresh: bool = False,
     render: bool = True,
 ) -> SkillBundle:
-    if not MIN_BUNDLE_TOKENS <= max_tokens <= MAX_BUNDLE_TOKENS:
+    if max_tokens is not None and not MIN_BUNDLE_TOKENS <= max_tokens <= MAX_BUNDLE_TOKENS:
         return SkillBundle(
             status="error",
             code="SKILL_BUDGET_INVALID",
             task=task,
             budget={"min_tokens": MIN_BUNDLE_TOKENS, "max_tokens": MAX_BUNDLE_TOKENS, "requested": max_tokens},
         )
+    budget_mode = "automatic" if max_tokens is None else "explicit"
+    effective_max_tokens = MAX_BUNDLE_TOKENS if max_tokens is None else max_tokens
     counter = token_counting.get_token_counter()
     if counter is None:
         return SkillBundle(status="error", code="TOKEN_COUNTER_REQUIRED", task=task)
@@ -225,7 +231,11 @@ def load_skill_bundle(
             next_actions=[
                 {
                     "tool": "documa_load_skill",
-                    "arguments": {"task": task, "skill_names": [item["qualified_name"]], "max_tokens": max_tokens},
+                    "arguments": {
+                        "task": task,
+                        "skill_names": [item["qualified_name"]],
+                        **({"max_tokens": max_tokens} if max_tokens is not None else {}),
+                    },
                 }
                 for item in candidates[:3]
             ],
@@ -246,9 +256,11 @@ def load_skill_bundle(
 
     mandatory_pairs: list[tuple[SkillIR, SkillBlockIR]] = []
     optional_pairs: list[tuple[float, SkillIR, SkillBlockIR]] = []
+    score_maps: dict[str, dict[str, float]] = {}
     graph_trace = list(dependency_trace)
     for skill in skills:
         mandatory, selected, trace, scores = _block_closure(skill, task, store_dir=store_dir)
+        score_maps[skill.skill_id] = scores
         graph_trace.extend(trace)
         for block in skill.blocks:
             if block.id not in selected:
@@ -277,7 +289,7 @@ def load_skill_bundle(
     mandatory_pairs = sorted(dict(((skill.skill_id, block.id), (skill, block)) for skill, block in mandatory_pairs).values(), key=source_order)
     mandatory_render = _render(skills, mandatory_pairs)
     minimum = counter.count(mandatory_render)
-    if minimum > max_tokens:
+    if minimum > effective_max_tokens:
         return SkillBundle(
             status="needs_narrowing",
             code="SKILL_BUDGET_TOO_SMALL",
@@ -286,7 +298,9 @@ def load_skill_bundle(
             graph_trace=graph_trace,
             candidates=candidates,
             budget={
-                "max_tokens": max_tokens,
+                "mode": budget_mode,
+                "requested_max_tokens": max_tokens,
+                "max_tokens": effective_max_tokens,
                 "minimum_required_tokens": minimum,
                 "token_counter": counter.name,
             },
@@ -303,13 +317,16 @@ def load_skill_bundle(
         if block.content_hash and block.content_hash in chosen_hashes:
             continue
         trial = sorted(chosen + [(skill, block)], key=source_order)
-        if counter.count(_render(skills, trial)) <= max_tokens:
+        if counter.count(_render(skills, trial)) <= effective_max_tokens:
             chosen = trial
             chosen_keys.add((skill.skill_id, block.id))
             if block.content_hash:
                 chosen_hashes.add(block.content_hash)
     rendered = _render(skills, chosen)
     spent = counter.count(rendered)
+    next_actions = _resource_actions(skills, chosen, score_maps)
+    resource_summary = _resource_summary(skills, chosen, next_actions)
+    resource_summary_by_skill = {item["skill_id"]: item for item in resource_summary["by_skill"]}
     block_payloads = []
     provenance = []
     for skill, block in chosen:
@@ -341,27 +358,38 @@ def load_skill_bundle(
     return SkillBundle(
         status="ok",
         task=task,
-        selected_skills=[_selected_skill(skill, candidates) for skill in skills],
+        selected_skills=[
+            _selected_skill(skill, candidates, resource_summary=resource_summary_by_skill[skill.skill_id])
+            for skill in skills
+        ],
         blocks=block_payloads,
         graph_trace=graph_trace,
         provenance=provenance,
         budget={
-            "max_tokens": max_tokens,
+            "mode": budget_mode,
+            "requested_max_tokens": max_tokens,
+            "max_tokens": effective_max_tokens,
             "spent_tokens": spent,
-            "remaining_tokens": max_tokens - spent,
+            "remaining_tokens": effective_max_tokens - spent,
             "minimum_required_tokens": minimum,
             "token_counter": counter.name,
         },
         warnings=warnings,
-        next_actions=_resource_actions(skills, chosen),
+        resource_summary=resource_summary,
+        next_actions=next_actions,
         candidates=candidates,
         rendered_skill_md=rendered if render else None,
     )
 
 
-def _selected_skill(skill: SkillIR, candidates: list[dict[str, Any]]) -> dict[str, Any]:
+def _selected_skill(
+    skill: SkillIR,
+    candidates: list[dict[str, Any]],
+    *,
+    resource_summary: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     candidate = next((item for item in candidates if item["skill_id"] == skill.skill_id), None)
-    return {
+    payload = {
         "skill_id": skill.skill_id,
         "qualified_name": skill.qualified_name,
         "name": skill.name,
@@ -371,16 +399,54 @@ def _selected_skill(skill: SkillIR, candidates: list[dict[str, Any]]) -> dict[st
         "score": candidate.get("score") if candidate else None,
         "route_source": candidate.get("route_source") if candidate else "dependency",
     }
+    if resource_summary is not None:
+        payload["resource_summary"] = resource_summary
+    return payload
 
 
-def _resource_actions(skills: list[SkillIR], chosen: list[tuple[SkillIR, SkillBlockIR]]) -> list[dict[str, Any]]:
+def _resource_actions(
+    skills: list[SkillIR],
+    chosen: list[tuple[SkillIR, SkillBlockIR]],
+    score_maps: dict[str, dict[str, float]],
+) -> list[dict[str, Any]]:
     chosen_ids = {(skill.skill_id, block.id) for skill, block in chosen}
     actions: list[dict[str, Any]] = []
     for skill in skills:
+        resources = {resource.path: resource for resource in skill.resources if resource.text_indexed}
+        referenced_by_path: dict[str, list[str]] = defaultdict(list)
+        required_paths: set[str] = set()
         for edge in skill.edges:
-            if edge.type != SkillEdgeType.REFERENCES_RESOURCE or (skill.skill_id, edge.from_id) not in chosen_ids:
+            if edge.type == SkillEdgeType.REFERENCES_RESOURCE:
+                referenced_by_path[edge.to_id.removeprefix("resource:")].append(edge.from_id)
+            elif edge.type == SkillEdgeType.REQUIRES_BLOCK and edge.metadata.get("reason") == "required_resource":
+                resource_path = edge.metadata.get("resource_path")
+                if resource_path:
+                    required_paths.add(str(resource_path))
+
+        scores = score_maps.get(skill.skill_id, {})
+        candidates: list[tuple[bool, bool, float, str]] = []
+        for path, source_ids in referenced_by_path.items():
+            resource = resources.get(path)
+            if resource is None:
                 continue
-            path = edge.to_id.removeprefix("resource:")
+            materialized_ids = {
+                block_id for block_id in resource.block_ids if (skill.skill_id, block_id) in chosen_ids
+            }
+            if resource.block_ids and len(materialized_ids) == len(resource.block_ids):
+                continue
+            source_selected = any((skill.skill_id, block_id) in chosen_ids for block_id in source_ids)
+            relevance = max(
+                [scores.get(block_id, 0.0) for block_id in [*resource.block_ids, *source_ids]] or [0.0]
+            )
+            required = path in required_paths
+            if required or source_selected or relevance > 0:
+                candidates.append((required, source_selected, relevance, path))
+
+        candidates.sort(key=lambda item: (-int(item[0]), -int(item[1]), -item[2], item[3]))
+        selected_candidates = [item for item in candidates if item[0]]
+        optional_slots = max(0, MAX_RECOMMENDED_RESOURCES_PER_SKILL - len(selected_candidates))
+        selected_candidates.extend([item for item in candidates if not item[0]][:optional_slots])
+        for _, _, _, path in selected_candidates:
             action = {
                 "tool": "documa_read_skill_resource",
                 "arguments": {"skill_id": skill.skill_id, "resource_path": path, "max_tokens": DEFAULT_RESOURCE_TOKENS},
@@ -388,6 +454,53 @@ def _resource_actions(skills: list[SkillIR], chosen: list[tuple[SkillIR, SkillBl
             if action not in actions:
                 actions.append(action)
     return actions
+
+
+def _resource_summary(
+    skills: list[SkillIR],
+    chosen: list[tuple[SkillIR, SkillBlockIR]],
+    actions: list[dict[str, Any]],
+) -> dict[str, Any]:
+    chosen_ids = {(skill.skill_id, block.id) for skill, block in chosen}
+    recommended = {
+        (action["arguments"]["skill_id"], action["arguments"]["resource_path"])
+        for action in actions
+        if action.get("tool") == "documa_read_skill_resource"
+    }
+    by_skill: list[dict[str, Any]] = []
+    for skill in skills:
+        resources = [resource for resource in skill.resources if resource.text_indexed]
+        materialized = 0
+        fully_materialized = 0
+        for resource in resources:
+            selected_count = sum((skill.skill_id, block_id) in chosen_ids for block_id in resource.block_ids)
+            if selected_count:
+                materialized += 1
+            if resource.block_ids and selected_count == len(resource.block_ids):
+                fully_materialized += 1
+        by_skill.append(
+            {
+                "skill_id": skill.skill_id,
+                "available_text_resources": len(resources),
+                "materialized_text_resources": materialized,
+                "partially_materialized_text_resources": materialized - fully_materialized,
+                "fully_materialized_text_resources": fully_materialized,
+                "recommended_resource_reads": sum(
+                    (skill.skill_id, resource.path) in recommended for resource in resources
+                ),
+            }
+        )
+    count_fields = (
+        "available_text_resources",
+        "materialized_text_resources",
+        "partially_materialized_text_resources",
+        "fully_materialized_text_resources",
+        "recommended_resource_reads",
+    )
+    return {
+        **{field: sum(item[field] for item in by_skill) for field in count_fields},
+        "by_skill": by_skill,
+    }
 
 
 def read_skill_resource(

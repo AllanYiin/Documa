@@ -483,7 +483,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
     def documa_load_skill(
         task: str,
         skill_names: list[str] | None = None,
-        max_tokens: int = 3000,
+        max_tokens: int | None = None,
         max_skills: int = 3,
         store_dir: str = ".documa",
         refresh: bool = False,

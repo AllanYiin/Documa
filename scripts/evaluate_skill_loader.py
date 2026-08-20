@@ -66,7 +66,7 @@ def main() -> int:
         if expected not in names:
             failures.append({"task": case["task"], "expected_skill": case["expected_skill"], "code": result.get("code")})
             continue
-        bundle = load_skill_bundle(str(case["task"]), max_tokens=3000, store_dir=args.store_dir)
+        bundle = load_skill_bundle(str(case["task"]), store_dir=args.store_dir)
         if bundle.status != "ok":
             continue
         full_tokens = 0

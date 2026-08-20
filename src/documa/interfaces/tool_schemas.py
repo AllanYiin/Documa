@@ -724,7 +724,13 @@ def documa_tool_schemas(profile: str = "admin") -> list[dict[str, Any]]:
                     "properties": {
                         "task": {"type": "string"},
                         "skill_names": {"type": ["array", "null"], "items": {"type": "string"}},
-                        "max_tokens": {"type": "integer", "minimum": 256, "maximum": 8000, "default": 3000},
+                        "max_tokens": {
+                            "type": ["integer", "null"],
+                            "minimum": 256,
+                            "maximum": 8000,
+                            "default": None,
+                            "description": "Optional explicit bundle budget; null uses Documa's automatic safe budget.",
+                        },
                         "max_skills": {"type": "integer", "minimum": 1, "maximum": 3, "default": 3},
                         "store_dir": {"type": "string", "default": ".documa"},
                         "refresh": {"type": "boolean", "default": False},

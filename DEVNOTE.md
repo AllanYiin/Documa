@@ -9,12 +9,14 @@
 ## 📌 SNAPSHOT — 當前狀態
 <!-- 這一整段每次 /devnote 會被覆寫，只反映「到目前為止的最新狀態」 -->
 
-**最後更新**：2026-08-19
+**最後更新**：2026-08-20
 
 ### 需求狀態
 - [x] 2026-08-19：新增跨來源 ContextIR 1.0 與 document／code／skill adapters、typed graph navigation、hash-bound evidence read、CLI/MCP/function tools；HarnessFold 已以固定 ContextIR 路徑接入 Documa CLI backend。Graph 只導航、stale digest lexical-only、soft edges opt-in、token hard cap 無真 counter 時 fail closed；進階工具不加入 agent profile，避免固定 schema token 成本
 - [x] `C:\Users\allan\.agents\skills` 已用逐 root `allow_native_scan_overlap=true` 顯式授權並全面預編譯：43 active、0 quarantined、25,332 blocks、50,858 edges、983 resources、6,816 terms；第二次 sync 為 43 unchanged／index no-op
 - [x] Dynamic Skill Loader v1：明確 roots 全體預編譯為獨立 Skill IR/SQLite sidecar，runtime 兩層 lexical + feature-hash HNSW routing、graph dependency closure 與真實 tokenizer budget materialization；來源指令不摘要、不改寫
+- [x] Dynamic Skill Loader supporting-resource 語義已釐清：compiler v1.2 只把真正套用於 resource 的「先讀／先以／先依／must read」標為 required；required supporting resources 留在主 bundle 預算外並回傳可執行 read action，另提供 available／partial／full／recommended 統計，已完整載入者不重複推薦
+- [x] Dynamic Skill Loader 已移除固定 3,000-token 預設：省略 `max_tokens` 時採 automatic mode 並使用既有 8,000-token 安全上限，顯式預算維持相容；Python／CLI／MCP schema／bootstrap／eval 已同步
 - [x] Codex plugin 新增唯一常駐 `documa-skill-loader` bootstrap；agent profile 只增加 load/read-resource，sync/status/graph 限 admin；deterministic Codex zip 已重建並通過 validator
 - [x] Skill lifecycle/security：generation supersede、missing/quarantined、incremental no-op、lock、safe YAML、symlink/path escape、binary/script/asset 隔離與 resource hash drift 均有測試
 - [x] Windows 安裝／升級加入 MCP lifecycle guard：先偵測與通知退出，逾時依登錄 PID 強制終止，並清理舊版 `documa-mcp.exe`；plugin 改用 `python -m documa.interfaces.mcp_server`
@@ -94,6 +96,24 @@
 ---
 
 # 📜 HISTORY
+
+---
+
+## [2026-08-20] 移除固定 3,000-token skill bundle 預設
+
+- `load_skill_bundle`／Python tool／MCP／CLI 的 `max_tokens` 預設改為 `None`；automatic mode 使用既有 8,000-token 安全上限，回應 budget 明載 `mode`、`requested_max_tokens` 與實際 `max_tokens`。呼叫者顯式傳入 256–8,000 的舊契約不變。
+- Tool schema 改為 nullable integer、bootstrap skill 改為預設省略參數、README 與 skill-loader eval 同步；低信心 retry action 在 automatic mode 不再偷偷注入固定預算。
+- 真實 `web-access-advanced`／`problem-decomposer`／`web-search-strategy` 省略預算後皆為 `status=ok`，實際 spent 3,115／4,089／4,424 tokens，且各回傳 3 個 supporting-resource reads。
+- 驗證：automatic-budget focused regression、skill-loader focused、完整 pytest、Ruff、doctor、plugin deterministic package gate（最終數字見當次驗證結果）；Codex plugin zip 已同步重建。
+
+---
+
+## [2026-08-19] Supporting-resource action 與顯示語義修正
+
+- `references_resource` edge 新增 `read_policy=required|on_demand`；required 判斷改為只看 resource 前方的局部 directive，避免「先讀使用者內容，再依 reference」把後者誤標為必讀，compiler 版本升至 `documa-skill-v1.2`。
+- required supporting resources 不再直接吃掉主 bundle token budget，改由 `documa_read_skill_resource` action 表達；一般 resources 依 task block score／已選來源排序，每 skill 最多建議 3 個，explicit required 不受此上限裁掉。
+- `SkillBundle.resource_summary` 與每個 `selected_skills[].resource_summary` 明確拆出 available、materialized、partial、full、recommended；完整 materialize 的資源不再重複建議，不可讀 script／asset 不會產生 read action。
+- 驗證：skill-loader focused 13/13、完整 pytest 405 passed／4 skipped、Ruff full PASS、doctor 7/7、`git diff --check` PASS；真實三 skill 在 8,000-token 預算下由建議 0 改為各 3，並正確回報 available/materialized 狀態。
 
 ---
 

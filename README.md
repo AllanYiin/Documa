@@ -242,7 +242,7 @@ Managed root 應放在 Codex 原生 skill 掃描路徑之外；原生路徑只�
 from documa.skills import load_skill_bundle, sync_skill_roots
 
 sync_skill_roots(store_dir=".documa")
-bundle = load_skill_bundle("檢查發布流程", max_tokens=3000)
+bundle = load_skill_bundle("檢查發布流程")
 ```
 
 Runtime 完全不呼叫 LLM。若團隊要提高同義詞或觸發條件召回，可在 `sync_skill_roots(..., enrichment_provider=provider)` 接入少量、可快取的離線 enrichment；其輸出只會成為 derived routing metadata，不能建立 instruction 或 dependency truth。

@@ -224,6 +224,39 @@ def test_bundle_keeps_guardrails_verbatim_and_reports_small_budget(tmp_path: Pat
     assert bundle.rendered_skill_md == load_skill_bundle(
         "release", ["release"], max_tokens=2000, store_dir=store
     ).rendered_skill_md
+    assert bundle.budget["mode"] == "explicit"
+    assert bundle.budget["requested_max_tokens"] == 2000
+
+
+def test_automatic_bundle_budget_is_not_fixed_at_3000_tokens(tmp_path: Path):
+    roots = tmp_path / "roots"
+    guardrail = "AUTOMATIC-BUDGET-GUARDRAIL " + ("x" * 3600)
+    _write_skill(
+        roots,
+        "large-safe-skill",
+        name="large-safe-skill",
+        description="Load a large mandatory safety policy",
+        body=f"# Scope\nSafety policy only.\n\n# Guardrails\n{guardrail}\n",
+    )
+    store = tmp_path / "store"
+    sync_skill_roots([SkillRoot("local", str(roots))], store_dir=store)
+
+    fixed = load_skill_bundle(
+        "large mandatory safety policy",
+        ["large-safe-skill"],
+        max_tokens=3000,
+        store_dir=store,
+    )
+    assert fixed.status == "needs_narrowing"
+    assert fixed.code == "SKILL_BUDGET_TOO_SMALL"
+
+    automatic = load_skill_bundle("large mandatory safety policy", ["large-safe-skill"], store_dir=store)
+    assert automatic.status == "ok"
+    assert automatic.budget["mode"] == "automatic"
+    assert automatic.budget["requested_max_tokens"] is None
+    assert automatic.budget["max_tokens"] == 8000
+    assert automatic.budget["spent_tokens"] > 3000
+    assert guardrail in automatic.rendered_skill_md
 
 
 def test_resource_pagination_and_script_refusal(tmp_path: Path):
@@ -256,6 +289,91 @@ def test_resource_pagination_and_script_refusal(tmp_path: Path):
     assert graph["status"] == "ok" and graph["resources"]
 
 
+def test_required_resource_actions_and_summary_distinguish_resource_states(tmp_path: Path):
+    roots = tmp_path / "roots"
+    skill = _write_skill(
+        roots,
+        "research",
+        name="research",
+        description="Research official sources",
+        body="""# Scope
+Research only.
+
+# Instructions
+先以 `references/playbook.md` 作為查詢設計基準。
+
+# Notes
+先讀使用者提供的內容，再依 `references/optional.md` 補充背景。
+
+# Resources
+- `scripts/check.py`
+""",
+    )
+    (skill / "references").mkdir()
+    (skill / "references" / "playbook.md").write_text(
+        "# Official source playbook\n\n"
+        + "\n\n".join(f"## Rule {index}\nUse authoritative official sources. " + ("x" * 120) for index in range(20)),
+        encoding="utf-8",
+    )
+    (skill / "references" / "optional.md").write_text("# Optional\n\nUnrelated background.\n", encoding="utf-8")
+    (skill / "scripts").mkdir()
+    (skill / "scripts" / "check.py").write_text("raise SystemExit\n", encoding="utf-8")
+    store = tmp_path / "store"
+    sync_skill_roots([SkillRoot("local", str(roots))], store_dir=store)
+
+    ir = load_skill_ir(active_skill_entries(store)[0], store)
+    required_paths = {
+        edge.metadata["resource_path"]
+        for edge in ir.edges
+        if edge.type.value == "requires_block" and edge.metadata.get("reason") == "required_resource"
+    }
+    assert required_paths == {"references/playbook.md"}
+
+    bundle = load_skill_bundle(
+        "research official authoritative sources",
+        ["research"],
+        max_tokens=2000,
+        store_dir=store,
+    )
+    assert bundle.status == "ok"
+    recommended_paths = {
+        action["arguments"]["resource_path"]
+        for action in bundle.next_actions
+        if action["tool"] == "documa_read_skill_resource"
+    }
+    assert recommended_paths == {"references/playbook.md"}
+    assert bundle.resource_summary["available_text_resources"] == 2
+    assert bundle.resource_summary["materialized_text_resources"] == 1
+    assert bundle.resource_summary["partially_materialized_text_resources"] == 1
+    assert bundle.resource_summary["fully_materialized_text_resources"] == 0
+    assert bundle.resource_summary["recommended_resource_reads"] == 1
+    assert bundle.selected_skills[0]["resource_summary"] == bundle.resource_summary["by_skill"][0]
+
+
+def test_fully_materialized_resource_is_reported_without_recommending_a_duplicate_read(tmp_path: Path):
+    roots = tmp_path / "roots"
+    skill = _write_skill(
+        roots,
+        "reader",
+        name="reader",
+        description="Read a short note",
+        body="# Scope\nRead notes only.\n\n# Instructions\nRead [the note](references/note.md) first.\n",
+    )
+    (skill / "references").mkdir()
+    (skill / "references" / "note.md").write_text("Short note.\n", encoding="utf-8")
+    store = tmp_path / "store"
+    sync_skill_roots([SkillRoot("local", str(roots))], store_dir=store)
+
+    bundle = load_skill_bundle("Short note", ["reader"], max_tokens=4000, store_dir=store)
+    assert bundle.status == "ok"
+    assert bundle.next_actions == []
+    assert bundle.resource_summary["available_text_resources"] == 1
+    assert bundle.resource_summary["materialized_text_resources"] == 1
+    assert bundle.resource_summary["partially_materialized_text_resources"] == 0
+    assert bundle.resource_summary["fully_materialized_text_resources"] == 1
+    assert bundle.resource_summary["recommended_resource_reads"] == 0
+
+
 def test_token_counter_is_required(tmp_path: Path):
     token_counting.set_token_counter(None)
     bundle = load_skill_bundle("anything", store_dir=tmp_path / "store")
@@ -277,6 +395,10 @@ def test_mcp_profile_contract_keeps_agent_surface_compact():
     sync_schema = next(item for item in documa_tool_schemas(profile="admin") if item["name"] == "documa_sync_skills")
     root_properties = sync_schema["inputSchema"]["properties"]["roots"]["items"]["properties"]
     assert root_properties["allow_native_scan_overlap"]["default"] is False
+    load_schema = next(item for item in documa_tool_schemas(profile="agent") if item["name"] == "documa_load_skill")
+    max_tokens_schema = load_schema["inputSchema"]["properties"]["max_tokens"]
+    assert max_tokens_schema["default"] is None
+    assert max_tokens_schema["type"] == ["integer", "null"]
 
 
 def test_malicious_yaml_untrusted_roots_and_lock_contention_are_isolated(tmp_path: Path, monkeypatch):

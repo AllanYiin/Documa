@@ -248,7 +248,12 @@ def build_parser() -> argparse.ArgumentParser:
     skill_load_cmd = skills_subparsers.add_parser("load", help="Materialize a bounded skill bundle for a task.")
     skill_load_cmd.add_argument("task", help="Task description used for deterministic routing.")
     skill_load_cmd.add_argument("--skill", action="append", dest="skill_names", help="Exact skill name or qualified root:name; repeatable.")
-    skill_load_cmd.add_argument("--max-tokens", type=int, default=3000)
+    skill_load_cmd.add_argument(
+        "--max-tokens",
+        type=int,
+        default=None,
+        help="Optional explicit bundle budget; omitted uses Documa's automatic safe budget.",
+    )
     skill_load_cmd.add_argument("--max-skills", type=int, default=3)
     skill_load_cmd.add_argument("--store-dir", default=".documa")
     skill_load_cmd.add_argument("--refresh", action="store_true")

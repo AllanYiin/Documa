@@ -121,6 +121,7 @@ class SkillBundle:
     provenance: list[dict[str, Any]] = field(default_factory=list)
     budget: dict[str, Any] = field(default_factory=dict)
     warnings: list[dict[str, Any]] = field(default_factory=list)
+    resource_summary: dict[str, Any] = field(default_factory=dict)
     next_actions: list[dict[str, Any]] = field(default_factory=list)
     candidates: list[dict[str, Any]] = field(default_factory=list)
     rendered_skill_md: str | None = None
