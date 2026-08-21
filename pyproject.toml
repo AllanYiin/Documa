@@ -67,6 +67,9 @@ documents = [
 mcp = ["mcp>=1.0,<2"]
 # Real token counting for query budgets: chars/4-style heuristics are banned.
 tokens = ["tiktoken>=0.7"]
+# Optional multi-language code graph adapters. Python's authoritative AST
+# analyzer remains dependency-free in the base runtime.
+code = ["tree-sitter>=0.25,<0.26", "protobuf>=5"]
 # The public full-install path: default runtime plus local CPU OCR.
 all = ["rapidocr-onnxruntime>=1.3"]
 anthropic-tokens = ["anthropic>=0.30"]
