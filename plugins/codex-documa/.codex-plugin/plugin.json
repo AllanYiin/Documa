@@ -1,7 +1,7 @@
 {
   "name": "codex-documa",
   "version": "0.6.4",
-  "description": "透過 MCP 在 Codex 中使用 Documa 的文件理解與動態 skill 載入能力。",
+  "description": "透過 MCP 在 Codex 中使用 Documa 的文件理解、repository graph 與動態 skill 載入能力。",
   "author": {
     "name": "Documa 貢獻者"
   },
@@ -12,13 +12,14 @@
     "document-understanding",
     "evidence",
     "mcp",
-    "rag"
+    "rag",
+    "code-graph"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Documa",
-    "shortDescription": "用 Documa IR 與區塊證據閱讀文件。",
-    "longDescription": "加入 Documa MCP 工具與證據優先工作流程，協助處理文件、搜尋區塊，並只讀取選定的證據。",
+    "shortDescription": "用 Documa 證據閱讀文件與程式碼圖譜。",
+    "longDescription": "加入 Documa MCP 工具與證據優先工作流程，協助處理文件、搜尋區塊，以及以來源 hash 驗證 repository graph 路徑。",
     "developerName": "Documa 貢獻者",
     "composerIcon": "./assets/documa-logo.png",
     "logo": "./assets/documa-logo.png",
@@ -28,13 +29,15 @@
       "MCP",
       "文件理解",
       "證據搜尋",
-      "動態 Skill Loader"
+      "動態 Skill Loader",
+      "Repository Graph"
     ],
     "defaultPrompt": [
       "使用 Documa，依據這份文件中的證據回答問題。",
       "先搜尋 Documa 區塊，再讀取完整內容。",
       "將這個檔案處理成 Documa IR 並檢查結果。",
-      "使用 Documa 動態載入這項任務所需的最小 skill context。"
+      "使用 Documa 動態載入這項任務所需的最小 skill context。",
+      "使用 Documa 追蹤這個方法的 callers、dependencies 與變更影響。"
     ]
   },
   "mcpServers": "./.mcp.json"

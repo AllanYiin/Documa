@@ -20,6 +20,8 @@ from documa.interfaces import (
     cite_chunk_tool,
     context_read_blocks_tool,
     context_search_tool,
+    query_code_graph_tool,
+    read_code_evidence_tool,
     delete_document_tool,
     doctor_tool,
     index_collection_tool,
@@ -44,6 +46,7 @@ from documa.interfaces import (
     source_window_tool,
     skill_status_tool,
     sync_skills_tool,
+    sync_code_graph_tool,
     view_document_tool,
 )
 
@@ -306,6 +309,41 @@ def build_parser() -> argparse.ArgumentParser:
     context_read_cmd.add_argument("--expected-source-digest")
     context_read_cmd.add_argument("--total-max-tokens", type=int)
     context_read_cmd.add_argument("--total-max-bytes", type=int)
+
+    code_sync_cmd = subparsers.add_parser("code-graph-sync", help="Incrementally index a Python repository graph.")
+    code_sync_cmd.add_argument("root")
+    code_sync_cmd.add_argument("--source-root", action="append", dest="source_roots")
+    code_sync_cmd.add_argument("--include", action="append")
+    code_sync_cmd.add_argument("--exclude", action="append")
+    code_sync_cmd.add_argument("--analysis-profile", choices=["hybrid", "syntax"], default="hybrid")
+    code_sync_cmd.add_argument("--store-dir", default=".documa")
+
+    code_query_cmd = subparsers.add_parser("code-graph-query", help="Query code, dependency, call, cycle, or impact paths.")
+    code_query_cmd.add_argument("workspace_id")
+    code_query_cmd.add_argument("query", nargs="?")
+    code_query_cmd.add_argument(
+        "--intent",
+        choices=["lookup", "dependencies", "callers", "callees", "trace", "impact", "cycles", "overview", "diff"],
+        default="lookup",
+    )
+    code_query_cmd.add_argument("--symbol", action="append", dest="symbols")
+    code_query_cmd.add_argument("--target", action="append", dest="targets")
+    code_query_cmd.add_argument("--max-hops", type=int, default=2)
+    code_query_cmd.add_argument("--max-nodes", type=int, default=12)
+    code_query_cmd.add_argument("--max-evidence-blocks", type=int, default=3)
+    code_query_cmd.add_argument("--include-possible", action="store_true")
+    code_query_cmd.add_argument("--expected-generation")
+    code_query_cmd.add_argument("--max-navigation-tokens", type=int)
+    code_query_cmd.add_argument("--max-navigation-bytes", type=int)
+    code_query_cmd.add_argument("--store-dir", default=".documa")
+
+    code_read_cmd = subparsers.add_parser("code-graph-read", help="Read hash-verified code evidence blocks.")
+    code_read_cmd.add_argument("workspace_id")
+    code_read_cmd.add_argument("--block-id", action="append", dest="block_ids", required=True)
+    code_read_cmd.add_argument("--expected-generation")
+    code_read_cmd.add_argument("--total-max-tokens", type=int)
+    code_read_cmd.add_argument("--total-max-bytes", type=int)
+    code_read_cmd.add_argument("--store-dir", default=".documa")
     benchmark_cmd = subparsers.add_parser("benchmark", help="Run Documa benchmark fixtures.")
     benchmark_cmd.add_argument("--manifest", default="fixtures/pdf/manifest.json", help="Path to fixture manifest JSON.")
     benchmark_cmd.add_argument("--fixtures-dir", default="fixtures/pdf", help="Directory containing fixture files.")
@@ -648,6 +686,46 @@ def main(argv: list[str] | None = None) -> int:
             expected_source_digest=args.expected_source_digest,
             total_max_tokens=args.total_max_tokens,
             total_max_bytes=args.total_max_bytes,
+        )
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "code-graph-sync":
+        payload = sync_code_graph_tool(
+            args.root,
+            source_roots=args.source_roots,
+            include=args.include,
+            exclude=args.exclude,
+            analysis_profile=args.analysis_profile,
+            store_dir=args.store_dir,
+        )
+        return _emit_json(payload, exit_code=0 if payload.get("status") in {"ok", "warning"} else 1)
+
+    if args.command == "code-graph-query":
+        payload = query_code_graph_tool(
+            args.workspace_id,
+            query=args.query,
+            intent=args.intent,
+            symbols=args.symbols,
+            targets=args.targets,
+            max_hops=args.max_hops,
+            max_nodes=args.max_nodes,
+            max_evidence_blocks=args.max_evidence_blocks,
+            include_possible=args.include_possible,
+            expected_generation=args.expected_generation,
+            max_navigation_tokens=args.max_navigation_tokens,
+            max_navigation_bytes=args.max_navigation_bytes,
+            store_dir=args.store_dir,
+        )
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "code-graph-read":
+        payload = read_code_evidence_tool(
+            args.workspace_id,
+            args.block_ids,
+            expected_generation=args.expected_generation,
+            total_max_tokens=args.total_max_tokens,
+            total_max_bytes=args.total_max_bytes,
+            store_dir=args.store_dir,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 

@@ -29,6 +29,7 @@ AGENT_TOOLS = {
     "documa_verify_citations",
     "documa_load_skill",
     "documa_read_skill_resource",
+    "documa_code_context",
 }
 
 ADVANCED_TOOLS = AGENT_TOOLS | {
@@ -38,6 +39,8 @@ ADVANCED_TOOLS = AGENT_TOOLS | {
     "documa_index_collection",
     "documa_context_search",
     "documa_context_read_blocks",
+    "documa_query_code_graph",
+    "documa_read_code_evidence",
 }
 
 ADMIN_TOOLS = ADVANCED_TOOLS | {
@@ -51,6 +54,7 @@ ADMIN_TOOLS = ADVANCED_TOOLS | {
     "documa_skill_status",
     "documa_inspect_skill_graph",
     "documa_build_context",
+    "documa_sync_code_graph",
 }
 
 TOOL_PROFILES = {"agent": AGENT_TOOLS, "advanced": ADVANCED_TOOLS, "admin": ADMIN_TOOLS}

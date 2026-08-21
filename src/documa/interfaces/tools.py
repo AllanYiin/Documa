@@ -2285,6 +2285,142 @@ def inspect_skill_graph_tool(
     return inspect_skill_graph(skill_id, limit=limit, cursor=cursor, store_dir=store_dir)
 
 
+def sync_code_graph_tool(
+    root: str,
+    source_roots: list[str] | None = None,
+    include: list[str] | None = None,
+    exclude: list[str] | None = None,
+    analysis_profile: str = "hybrid",
+    store_dir: str = ".documa",
+) -> ToolPayload:
+    from documa.codegraph import CodeGraphError, sync_code_graph
+
+    try:
+        return sync_code_graph(
+            root,
+            source_roots=source_roots,
+            include=include,
+            exclude=exclude,
+            analysis_profile=analysis_profile,
+            store_dir=store_dir,
+        )
+    except CodeGraphError as exc:
+        return {"status": "error", "code": exc.code, "message": str(exc)}
+    except OSError as exc:
+        return {"status": "error", "code": "CODE_GRAPH_SYNC_FAILED", "message": str(exc)}
+
+
+def query_code_graph_tool(
+    workspace_id: str,
+    query: str | None = None,
+    intent: str = "lookup",
+    symbols: list[str] | None = None,
+    targets: list[str] | None = None,
+    max_hops: int = 2,
+    max_nodes: int = 12,
+    max_evidence_blocks: int = 3,
+    include_possible: bool = False,
+    expected_generation: str | None = None,
+    max_navigation_tokens: int | None = None,
+    max_navigation_bytes: int | None = None,
+    store_dir: str = ".documa",
+) -> ToolPayload:
+    from documa.codegraph import CodeGraphError, query_code_graph
+
+    try:
+        return {
+            "status": "ok",
+            **query_code_graph(
+                workspace_id,
+                query=query,
+                intent=intent,
+                symbols=symbols,
+                targets=targets,
+                max_hops=max_hops,
+                max_nodes=max_nodes,
+                max_evidence_blocks=max_evidence_blocks,
+                include_possible=include_possible,
+                expected_generation=expected_generation,
+                max_navigation_tokens=max_navigation_tokens,
+                max_navigation_bytes=max_navigation_bytes,
+                token_counter=token_counting.get_token_counter(),
+                store_dir=store_dir,
+            ),
+        }
+    except CodeGraphError as exc:
+        return {"status": "error", "code": exc.code, "message": str(exc)}
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return {"status": "error", "code": "CODE_GRAPH_QUERY_FAILED", "message": str(exc)}
+
+
+def read_code_evidence_tool(
+    workspace_id: str,
+    block_ids: list[str],
+    expected_generation: str | None = None,
+    total_max_tokens: int | None = None,
+    total_max_bytes: int | None = None,
+    store_dir: str = ".documa",
+) -> ToolPayload:
+    from documa.codegraph import CodeGraphError, read_code_evidence
+
+    try:
+        return {
+            "status": "ok",
+            **read_code_evidence(
+                workspace_id,
+                block_ids,
+                expected_generation=expected_generation,
+                total_max_tokens=total_max_tokens,
+                total_max_bytes=total_max_bytes,
+                token_counter=token_counting.get_token_counter(),
+                store_dir=store_dir,
+            ),
+        }
+    except CodeGraphError as exc:
+        return {"status": "error", "code": exc.code, "message": str(exc)}
+    except (OSError, UnicodeDecodeError) as exc:
+        return {"status": "error", "code": "CODE_GRAPH_READ_FAILED", "message": str(exc)}
+
+
+def code_context_tool(
+    workspace_id: str,
+    query: str,
+    intent: str = "lookup",
+    symbols: list[str] | None = None,
+    targets: list[str] | None = None,
+    max_hops: int = 2,
+    include_possible: bool = False,
+    expected_generation: str | None = None,
+    total_max_tokens: int | None = 2000,
+    total_max_bytes: int | None = None,
+    store_dir: str = ".documa",
+) -> ToolPayload:
+    from documa.codegraph import CodeGraphError, code_context
+
+    try:
+        return {
+            "status": "ok",
+            **code_context(
+                workspace_id,
+                query,
+                intent=intent,
+                symbols=symbols,
+                targets=targets,
+                max_hops=max_hops,
+                include_possible=include_possible,
+                expected_generation=expected_generation,
+                total_max_tokens=total_max_tokens,
+                total_max_bytes=total_max_bytes,
+                token_counter=token_counting.get_token_counter(),
+                store_dir=store_dir,
+            ),
+        }
+    except CodeGraphError as exc:
+        return {"status": "error", "code": exc.code, "message": str(exc)}
+    except (OSError, ValueError, UnicodeDecodeError) as exc:
+        return {"status": "error", "code": "CODE_CONTEXT_FAILED", "message": str(exc)}
+
+
 def list_documa_tools(profile: str = "admin") -> list[dict[str, Any]]:
     return documa_tool_schemas(profile=profile)
 
@@ -2320,6 +2456,10 @@ def _tool_registry() -> dict[str, Callable[..., ToolPayload]]:
         "documa_build_context": build_context_tool,
         "documa_context_search": context_search_tool,
         "documa_context_read_blocks": context_read_blocks_tool,
+        "documa_sync_code_graph": sync_code_graph_tool,
+        "documa_query_code_graph": query_code_graph_tool,
+        "documa_read_code_evidence": read_code_evidence_tool,
+        "documa_code_context": code_context_tool,
         "documa_load_skill": load_skill_tool,
         "documa_read_skill_resource": read_skill_resource_tool,
         "documa_sync_skills": sync_skills_tool,

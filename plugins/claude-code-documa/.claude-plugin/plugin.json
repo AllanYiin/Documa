@@ -1,7 +1,7 @@
 {
   "name": "claude-code-documa",
   "displayName": "Documa",
-  "description": "Use Documa MCP document understanding for large PDFs, long documents, block evidence search, and citation-ready answers.",
+  "description": "Use Documa MCP for document understanding and evidence-bound repository code, dependency, call, and impact graphs.",
   "version": "0.6.4",
   "author": {
     "name": "Documa contributors"
@@ -17,7 +17,10 @@
     "mcp",
     "pdf",
     "rag",
-    "retrieval"
+    "retrieval",
+    "code-graph",
+    "dependency-graph",
+    "call-graph"
   ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json"

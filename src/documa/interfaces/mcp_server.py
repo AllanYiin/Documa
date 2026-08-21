@@ -15,8 +15,11 @@ from documa.interfaces.tools import (
     block_xref_tool,
     build_context_tool,
     cite_block_tool,
+    code_context_tool,
     context_read_blocks_tool,
     context_search_tool,
+    query_code_graph_tool,
+    read_code_evidence_tool,
     doctor_tool,
     export_document_tool,
     index_collection_tool,
@@ -39,6 +42,7 @@ from documa.interfaces.tools import (
     source_window_tool,
     skill_status_tool,
     sync_skills_tool,
+    sync_code_graph_tool,
     verify_citations_tool,
     view_document_tool,
 )
@@ -77,6 +81,10 @@ _MCP_REGISTERED_TOOLS = {
     "documa_build_context",
     "documa_context_search",
     "documa_context_read_blocks",
+    "documa_sync_code_graph",
+    "documa_query_code_graph",
+    "documa_read_code_evidence",
+    "documa_code_context",
 }
 
 
@@ -618,6 +626,110 @@ def create_mcp_server(profile: str | None = None) -> Any:
             expected_source_digest=expected_source_digest,
             total_max_tokens=total_max_tokens,
             total_max_bytes=total_max_bytes,
+        )
+
+    @_documa_tool
+    def documa_sync_code_graph(
+        root: str,
+        source_roots: list[str] | None = None,
+        include: list[str] | None = None,
+        exclude: list[str] | None = None,
+        analysis_profile: str = "hybrid",
+        store_dir: str = ".documa",
+    ) -> dict[str, Any]:
+        """Incrementally synchronize a local Python repository graph."""
+
+        return sync_code_graph_tool(
+            root,
+            source_roots=source_roots,
+            include=include,
+            exclude=exclude,
+            analysis_profile=analysis_profile,
+            store_dir=store_dir,
+        )
+
+    @_documa_tool
+    def documa_query_code_graph(
+        workspace_id: str,
+        query: str | None = None,
+        intent: str = "lookup",
+        symbols: list[str] | None = None,
+        targets: list[str] | None = None,
+        max_hops: int = 2,
+        max_nodes: int = 12,
+        max_evidence_blocks: int = 3,
+        include_possible: bool = False,
+        expected_generation: str | None = None,
+        max_navigation_tokens: int | None = None,
+        max_navigation_bytes: int | None = None,
+        store_dir: str = ".documa",
+    ) -> dict[str, Any]:
+        """Query code, dependency, call, cycle, impact, or generation-diff paths."""
+
+        return query_code_graph_tool(
+            workspace_id,
+            query=query,
+            intent=intent,
+            symbols=symbols,
+            targets=targets,
+            max_hops=max_hops,
+            max_nodes=max_nodes,
+            max_evidence_blocks=max_evidence_blocks,
+            include_possible=include_possible,
+            expected_generation=expected_generation,
+            max_navigation_tokens=max_navigation_tokens,
+            max_navigation_bytes=max_navigation_bytes,
+            store_dir=store_dir,
+        )
+
+    @_documa_tool
+    def documa_read_code_evidence(
+        workspace_id: str,
+        block_ids: list[str],
+        expected_generation: str | None = None,
+        total_max_tokens: int | None = None,
+        total_max_bytes: int | None = None,
+        store_dir: str = ".documa",
+    ) -> dict[str, Any]:
+        """Read source-hash verified repository symbols after graph navigation."""
+
+        return read_code_evidence_tool(
+            workspace_id,
+            block_ids,
+            expected_generation=expected_generation,
+            total_max_tokens=total_max_tokens,
+            total_max_bytes=total_max_bytes,
+            store_dir=store_dir,
+        )
+
+    @_documa_tool
+    def documa_code_context(
+        workspace_id: str,
+        query: str,
+        intent: str = "lookup",
+        symbols: list[str] | None = None,
+        targets: list[str] | None = None,
+        max_hops: int = 2,
+        include_possible: bool = False,
+        expected_generation: str | None = None,
+        total_max_tokens: int | None = 2000,
+        total_max_bytes: int | None = None,
+        store_dir: str = ".documa",
+    ) -> dict[str, Any]:
+        """Return bounded proof paths and verified code evidence in one agent call."""
+
+        return code_context_tool(
+            workspace_id,
+            query,
+            intent=intent,
+            symbols=symbols,
+            targets=targets,
+            max_hops=max_hops,
+            include_possible=include_possible,
+            expected_generation=expected_generation,
+            total_max_tokens=total_max_tokens,
+            total_max_bytes=total_max_bytes,
+            store_dir=store_dir,
         )
 
     @_documa_tool

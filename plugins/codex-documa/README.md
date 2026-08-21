@@ -6,7 +6,7 @@
 
 這個 plugin 透過 bundled MCP server config、evidence workflows 與精簡 skill-loader bootstrap，把 Documa 暴露給 Codex。它不打包 Documa 本體；請先在 Codex 可見的 Python 環境安裝 Documa。
 
-Plugin 內含三個邊界清楚的 skills：`documa-skill-loader` 是唯一常駐的 managed-skill 路由層，`documa-evidence` 負責日常文件問答，`documa-maintenance` 負責 doctor、index repair、benchmark、migration 與 release gates。MCP server 可用 `DOCUMA_MCP_PROFILE=agent|advanced|admin` 控制工具發現面；這是 Documa server policy，不是 MCP 標準 capability。
+Plugin 內含四個邊界清楚的 skills：`documa-skill-loader` 是唯一常駐的 managed-skill 路由層，`documa-evidence` 負責日常文件問答，`documa-codegraph` 負責程式碼、相依、呼叫與影響取證，`documa-maintenance` 負責 doctor、index repair、benchmark、migration 與 release gates。MCP server 可用 `DOCUMA_MCP_PROFILE=agent|advanced|admin` 控制工具發現面；這是 Documa server policy，不是 MCP 標準 capability。
 
 
 ```powershell
@@ -51,7 +51,8 @@ enabled_tools = [
   "documa_doctor",
   # dynamic skill loading (agent profile)
   "documa_load_skill",
-  "documa_read_skill_resource"
+  "documa_read_skill_resource",
+  "documa_code_context"
 ]
 ```
 
@@ -76,6 +77,7 @@ Expected workflow / 預期流程：
 3. Follow each search response's `recommended_next` and `hints`; bound output with `max_chars`/`max_tokens`/`max_response_tokens`.
 4. Close out with `documa_cite_block`/`documa_verify_citations`, citing block ids, page/source metadata, and evidence boundaries.
 5. Managed skills: `documa_load_skill` → follow `rendered_skill_md` → call `documa_read_skill_resource` only for a returned `next_actions` reference.
+6. Repository graph: `documa code-graph-sync <root>` once, then `documa_code_context` with an exact symbol and one intent; report proof paths only with the returned hash-verified source blocks and uncertainty receipt.
 
 本地驗證：
 

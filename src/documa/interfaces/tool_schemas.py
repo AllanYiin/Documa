@@ -890,6 +890,106 @@ def documa_tool_schemas(profile: str = "admin") -> list[dict[str, Any]]:
             },
         ]
     )
+    descriptors.extend(
+        [
+            {
+                "name": "documa_sync_code_graph",
+                "title": "Synchronize a repository code graph",
+                "description": "Incrementally index Python symbols, imports, calls, cycles, metrics, and source-hash evidence into a local SQLite sidecar.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "root": {"type": "string"},
+                        "source_roots": {"type": ["array", "null"], "items": {"type": "string"}},
+                        "include": {"type": ["array", "null"], "items": {"type": "string"}},
+                        "exclude": {"type": ["array", "null"], "items": {"type": "string"}},
+                        "analysis_profile": {"type": "string", "enum": ["hybrid", "syntax"], "default": "hybrid"},
+                        "store_dir": {"type": "string", "default": ".documa"},
+                    },
+                    "required": ["root"],
+                },
+                "outputSchema": {"type": "object", "properties": {"status": {"type": "string"}}, "required": ["status"]},
+                "annotations": {"readOnlyHint": False},
+            },
+            {
+                "name": "documa_query_code_graph",
+                "title": "Query a proof-carrying repository graph",
+                "description": "Navigate code, dependency, call, cycle, impact, and generation-diff paths. Graph paths remain navigation until source evidence is read.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "workspace_id": {"type": "string"},
+                        "query": {"type": ["string", "null"]},
+                        "intent": {
+                            "type": "string",
+                            "enum": ["lookup", "dependencies", "callers", "callees", "trace", "impact", "cycles", "overview", "diff"],
+                            "default": "lookup",
+                        },
+                        "symbols": {"type": ["array", "null"], "items": {"type": "string"}},
+                        "targets": {"type": ["array", "null"], "items": {"type": "string"}},
+                        "max_hops": {"type": "integer", "minimum": 0, "maximum": 5, "default": 2},
+                        "max_nodes": {"type": "integer", "minimum": 1, "maximum": 100, "default": 12},
+                        "max_evidence_blocks": {"type": "integer", "minimum": 1, "maximum": 3, "default": 3},
+                        "include_possible": {"type": "boolean", "default": False},
+                        "expected_generation": {"type": ["string", "null"]},
+                        "max_navigation_tokens": {"type": ["integer", "null"], "minimum": 1},
+                        "max_navigation_bytes": {"type": ["integer", "null"], "minimum": 1},
+                        "store_dir": {"type": "string", "default": ".documa"},
+                    },
+                    "required": ["workspace_id"],
+                },
+                "outputSchema": {"type": "object", "properties": {"status": {"type": "string"}}, "required": ["status"]},
+                "annotations": {"readOnlyHint": True},
+            },
+            {
+                "name": "documa_read_code_evidence",
+                "title": "Read hash-verified code evidence",
+                "description": "Read one to three indexed symbols from their authoritative source files and reject generation, file, or body hash drift.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "workspace_id": {"type": "string"},
+                        "block_ids": {"type": "array", "minItems": 1, "maxItems": 3, "items": {"type": "string"}},
+                        "expected_generation": {"type": ["string", "null"]},
+                        "total_max_tokens": {"type": ["integer", "null"], "minimum": 1},
+                        "total_max_bytes": {"type": ["integer", "null"], "minimum": 1},
+                        "store_dir": {"type": "string", "default": ".documa"},
+                    },
+                    "required": ["workspace_id", "block_ids"],
+                },
+                "outputSchema": {"type": "object", "properties": {"status": {"type": "string"}}, "required": ["status"]},
+                "annotations": {"readOnlyHint": True},
+            },
+            {
+                "name": "documa_code_context",
+                "title": "Retrieve bounded repository code context",
+                "description": "Agent-oriented one-call graph navigation plus hash-verified evidence, with exact edges by default and an explicit uncertainty receipt.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "workspace_id": {"type": "string"},
+                        "query": {"type": "string"},
+                        "intent": {
+                            "type": "string",
+                            "enum": ["lookup", "dependencies", "callers", "callees", "trace", "impact", "cycles", "overview", "diff"],
+                            "default": "lookup",
+                        },
+                        "symbols": {"type": ["array", "null"], "items": {"type": "string"}},
+                        "targets": {"type": ["array", "null"], "items": {"type": "string"}},
+                        "max_hops": {"type": "integer", "minimum": 0, "maximum": 5, "default": 2},
+                        "include_possible": {"type": "boolean", "default": False},
+                        "expected_generation": {"type": ["string", "null"]},
+                        "total_max_tokens": {"type": ["integer", "null"], "minimum": 1, "default": 2000},
+                        "total_max_bytes": {"type": ["integer", "null"], "minimum": 1},
+                        "store_dir": {"type": "string", "default": ".documa"},
+                    },
+                    "required": ["workspace_id", "query"],
+                },
+                "outputSchema": {"type": "object", "properties": {"status": {"type": "string"}}, "required": ["status"]},
+                "annotations": {"readOnlyHint": True},
+            },
+        ]
+    )
     allowed = allowed_tool_names(profile)
     return [descriptor for descriptor in descriptors if descriptor["name"] in allowed]
 
