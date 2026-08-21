@@ -2,6 +2,8 @@
 
 ## v0.6.4 — Internal Rust parser distribution（2026-08-04）
 
+- **Rust LingXi 抽取式摘要成為一級能力**：新增公開 `summarize_text`／`summarize_document`、`documa summarize` CLI、`documa_summarize` MCP/function tool 與 agent profile schema。結果只選取原文子句，保留 offset、block/source/page refs、TextRank／可解釋性／新穎性／事實訊號，固定回報零 LLM 呼叫；長文採來源可逆的階層視窗。LingXi 0.2.1 關鍵詞相容保留，0.3.0 同時提供關鍵詞與摘要。
+- **Repository Intelligence Graph v1**：新增 Python-first、SQLite 持久化的 Code／Dependency／Call Graph，支援 generation 原子切換、file-hash 增量同步、typed/resolution-aware edges、Tarjan cycles、coupling metrics、proof-carrying query、hash-bound evidence read、generation diff、impact/test recommendation 與 uncertainty receipt。Python、CLI、MCP 與 Codex／Claude plugin skills 已接入；既有 ContextIR 1.0 與 `context_from_code()` wire contract 保持不變。
 - **Dynamic Skill Loader v1**：新增獨立 `documa.skills` Skill IR、trusted-root incremental sync、兩層 lexical/HNSW routing、權威 dependency graph closure 與真實 tokenizer budget materialization；所有 instruction blocks 保留來源原文與 provenance，scripts/assets 不執行或注入。Codex plugin 新增精簡 loader bootstrap，agent MCP 僅增加 load/resource-read，管理工具限 admin。
 - **Native library 顯式接管**：Skill root 新增逐 root `allow_native_scan_overlap` opt-in；預設仍拒絕 Codex/shared native scan paths，但可由使用者明確授權既有 `.agents/skills` 進行全量預編譯。Compiler version 納入 generation，避免 parser policy 更新後錯誤沿用舊 IR。
 - **可選離線 routing enrichment**：sync 可接入具 provider/version 的 bounded enrichment，僅快取 derived synonyms、positive/negative triggers 與 topic tags；runtime 維持零 LLM，metadata 不成為 instruction 或 dependency truth。

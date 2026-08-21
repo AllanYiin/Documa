@@ -38,6 +38,7 @@ Agent 不需要先吞下整份文件，而是讓每次工具呼叫只取回「�
 | **按 block 搜尋** | 以章節、段落、表格等文件結構為單位定位證據，不只回傳無上下文的命中行。 |
 | **內部機制 0 LLM tokens** | process、索引、lexical ranking 與 local feature-hash ANN routing 都不呼叫模型或 embedding API。 |
 | **節省主模型 context** | 搜尋先回 compact navigation result，確認候選後才有界讀取原文，避免把整份文件送進 prompt。 |
+| **零 LLM 抽取式摘要** | Rust LingXi 直接選取原文子句，保留 block／page 證據與逐句分數；摘要計算本身不送出 prompt。 |
 | **單文件理解** | 已知答案在哪份文件時，快速定位、讀取並引用其中的 block。 |
 | **多文件理解** | 透過本機 collection index 跨 PDF、Word、Markdown 等文件搜尋、彙總與比較。 |
 | **可驗證引用** | block 可回溯到頁碼與 bbox；引用能由程式檢查是否指向真實存在的證據。 |
@@ -94,6 +95,14 @@ documa process .\report.pdf --out .\out\report --export-format block-json
 ```
 
 成功後，`.\out\report\documa.ir.json` 是後續搜尋、讀取與引用使用的 parser-neutral IR。
+
+若已安裝具 `extract_summary()` 能力的 LingXi 0.3.0+ wheel，可直接產生不呼叫 LLM 的來源連結摘要：
+
+```powershell
+documa summarize .\out\report\documa.ir.json --top-k 8
+```
+
+`top_k` 是一般候選的軟上限；LingXi 為保留條列、日期、數字等可稽核事實，可能回傳更多子句。每一句都保留摘要輸入投影內的 Unicode code-point offset、block id、source block id、page label、TextRank 權重與可解釋性訊號。預設使用獨立保存的 normalized text；`--text-form raw` 可明確改選原始文字，兩者不互相覆寫。
 
 ### 3. 搜尋相關 blocks
 
@@ -223,6 +232,19 @@ Collection 中穩定的讀取鍵是 `(document_id, block_id)`。若已鎖定少�
 
 > Collection search 目前是 lexical／statistical search，不會自動做同義詞、跨語言或語義相似度展開。零結果時，先改用文件原詞、縮寫或較短詞組；需要 semantic retrieval 時，可從預留的 hybrid／vector adapter 邊界接入外部 retriever。
 
+### 不呼叫 LLM 的抽取式摘要
+
+摘要是獨立的 derived view，不會寫回或覆蓋 `DocumentIR` 原文。Python API 同時支援純文字與整份／單一 subtree 文件摘要：
+
+```python
+from documa import SummaryOptions, summarize_document, summarize_text
+
+plain = summarize_text("第一句。第二句。", SummaryOptions(top_k=1))
+document_summary = summarize_document(document, SummaryOptions(top_k=8), scope_block_id=None)
+```
+
+CLI、MCP 與 function calling 使用同一個 `documa_summarize` 契約。回應固定宣告 `extractive: true`、`uses_llm: false`、`llm_tokens_used: 0`；若本機有 tiktoken，也會報告摘要前後的 context token 數與可避免傳入主模型的 tokens。長文件會先按安全字元邊界做本機階層式抽取，再從候選原句中選出全域摘要，不生成新句子。
+
 ## Dynamic Skill Loader
 
 Skill loader 使用混合策略：sync 時編譯所有已授權 roots 的 `name`、`description`、triggers、blocks、resources 與權威 dependency edges；task 到來時先選最多三個 skills，再在其中選 blocks、補齊 ancestors／explicit dependencies，最後依真實 tokenizer budget 組成虛擬 `SKILL.md`。它不執行 scripts、不注入 binary assets，也不摘要或改寫來源指令。
@@ -260,6 +282,36 @@ documa context-read .documa/code.context.json --block-id <block-id> --total-max-
 ```
 
 這組進階工具也可經 MCP 使用：`documa_build_context`、`documa_context_search`、`documa_context_read_blocks`。它們不加入預設 `agent` profile，以免每次請求支付額外 tool-schema tokens；HarnessFold 透過固定啟動設定引用此契約，負責 folding／lifecycle，而不再複製 Documa 的文件、程式碼與 skill 閱讀權責。
+
+### Repository Intelligence Graph
+
+Documa 的持久化 CodeGraphIndex 會在本機 SQLite sidecar 中記錄 Python workspace、file、module、class、function、method、imports、calls、inheritance、cycles 與 coupling metrics；完整原始碼不寫入 index。每條關係保留 resolver、`EXACT`／`RESOLVED`／`POSSIBLE` resolution、來源位置與檔案 hash，動態呼叫、star import、reflection 等未解析區域則列入 uncertainty receipt。
+
+```powershell
+documa code-graph-sync . --store-dir .documa
+documa code-graph-query <workspace-id> --intent impact --symbol documa.context.ContextService.search
+documa code-graph-read <workspace-id> --block-id <node-id> --expected-generation <generation>
+```
+
+```python
+from documa.codegraph import query_code_graph, read_code_evidence, sync_code_graph
+
+sync = sync_code_graph(".", store_dir=".documa")
+impact = query_code_graph(
+    sync["workspace_id"],
+    intent="impact",
+    symbols=["documa.context.ContextService.search"],
+    store_dir=".documa",
+)
+evidence = read_code_evidence(
+    sync["workspace_id"],
+    [impact["nodes"][0]["nodeId"]],
+    expected_generation=sync["generation"],
+    store_dir=".documa",
+)
+```
+
+MCP 的 `documa_sync_code_graph` 屬 admin profile；`documa_query_code_graph`／`documa_read_code_evidence` 屬 advanced。預設 agent profile 只增加單一 `documa_code_context`，在一次呼叫內回傳 bounded proof path、uncertainty receipt 與最多三個經 hash 驗證的 evidence blocks。ContextIR 1.0 與既有 `context_from_code()` 行為不變。
 
 Release gates 可用 `scripts/evaluate_skill_loader.py` 驗證 explicit-name Top-1、held-out Recall@3、median context reduction 與選配的 agent pass-rate delta；已有 1,000-skill store 時，`scripts/benchmark_skill_loader.py` 會檢查 warm-load p95 是否低於 250 ms。
 
@@ -342,7 +394,8 @@ documa process .\report.xlsx --office-provider rust --out .\out\report
 
 ## PDF 與中文處理
 
-- 中文關鍵詞預設使用 **LingXi 0.2.1**；native binding 無法使用時會明確回退至 n-gram provider。
+- 中文關鍵詞支援 **LingXi 0.2.1／0.3.0**；native binding 無法使用時會明確回退至 n-gram provider。
+- `documa summarize` 與 Python `summarize_*` 需要具 `extract_summary()` 的 **LingXi 0.3.0+**。Documa 驗證版本、方法與逐句 offset 契約；缺少 provider 時回傳 `SUMMARY_PROVIDER_UNAVAILABLE`，不會以未標示的替代算法偽裝成功。
 - PDF extraction 的 `auto` 模式會在可用時選擇 Rust provider，否則回退至 PyMuPDF。
 - Rust PDF provider 仍在擴大版面品質驗證範圍。對表格、caption、footnote 或複雜版面特別敏感時，建議明確使用 `--pdf-provider pymupdf` 比較結果。
 - OCR 產物會標記 `origin: "ocr"` 與 confidence，不會冒充原生文字。

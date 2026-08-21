@@ -81,6 +81,13 @@ class PackagingContractTests(unittest.TestCase):
         for name in ("pdf", "ocr", "docx", "pptx", "html", "msg", "ipynb", "documents", "mcp", "tokens"):
             self.assertTrue(_array(self.optional, name), name)
 
+    def test_code_extra_only_adds_optional_multilanguage_adapters(self):
+        requirements = _array(self.optional, "code")
+        self.assertEqual(
+            {_distribution_name(item) for item in requirements},
+            {"tree-sitter", "protobuf"},
+        )
+
     def test_plugin_mcp_launch_avoids_locked_console_script(self):
         configs = (
             ROOT / "plugins" / "claude-code-documa" / ".mcp.json",
@@ -117,6 +124,12 @@ class PackagingContractTests(unittest.TestCase):
             names = set(archive.namelist())
         self.assertIn("skills/documa-skill-loader/SKILL.md", names)
         self.assertIn("skills/documa-skill-loader/agents/openai.yaml", names)
+        self.assertIn("skills/documa-codegraph/SKILL.md", names)
+
+    def test_claude_zip_contains_codegraph_skill(self):
+        with zipfile.ZipFile(ROOT / "plugins" / "claude-code-documa.zip") as archive:
+            names = set(archive.namelist())
+        self.assertIn("skills/documa-codegraph/SKILL.md", names)
 
 
 if __name__ == "__main__":

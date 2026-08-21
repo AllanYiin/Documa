@@ -9,9 +9,12 @@
 ## 📌 SNAPSHOT — 當前狀態
 <!-- 這一整段每次 /devnote 會被覆寫，只反映「到目前為止的最新狀態」 -->
 
-**最後更新**：2026-08-20
+**最後更新**：2026-08-22
 
 ### 需求狀態
+- [x] 2026-08-22：Rust LingXi 0.3.0 抽取式摘要成為 Documa 一級能力；Python／CLI／MCP／function schema／agent profile 共用來源保留契約，逐句映射 block/source/page，長文採階層視窗，明載 `uses_llm=false`／`llm_tokens_used=0`；DocumentIR 0.2 不變
+- [x] 2026-08-22：全域 `D:\Python310` 已由 LingXi 0.2.1 替換為目前 Rust source 重建的 0.3.0 ABI3 wheel；原生關鍵詞與摘要、Documa CLI 皆實測 PASS，doctor 9/9
+- [x] 2026-08-21：Repository Intelligence Graph v1 完成。Python-first SQLite sidecar 提供 symbols/imports/calls/cycles/metrics/generations、hash 增量同步、proof-carrying query、stale-safe evidence read、impact/diff/test recommendation 與 uncertainty receipt；Python／CLI／MCP／Codex＋Claude plugins 已接入，ContextIR 1.0 行為不變
 - [x] 2026-08-19：新增跨來源 ContextIR 1.0 與 document／code／skill adapters、typed graph navigation、hash-bound evidence read、CLI/MCP/function tools；HarnessFold 已以固定 ContextIR 路徑接入 Documa CLI backend。Graph 只導航、stale digest lexical-only、soft edges opt-in、token hard cap 無真 counter 時 fail closed；進階工具不加入 agent profile，避免固定 schema token 成本
 - [x] `C:\Users\allan\.agents\skills` 已用逐 root `allow_native_scan_overlap=true` 顯式授權並全面預編譯：43 active、0 quarantined、25,332 blocks、50,858 edges、983 resources、6,816 terms；第二次 sync 為 43 unchanged／index no-op
 - [x] Dynamic Skill Loader v1：明確 roots 全體預編譯為獨立 Skill IR/SQLite sidecar，runtime 兩層 lexical + feature-hash HNSW routing、graph dependency closure 與真實 tokenizer budget materialization；來源指令不摘要、不改寫
@@ -52,6 +55,7 @@
 - **替換後能力邊界**：Rust PDF 不提供 renderer/OCR，human-order 與 private table/image gold 尚未完成；LingXi 若直接發布到所有祖先會造成階層重複命中，因此僅替換文字葉節點的關鍵詞選取，並保留 n-gram 邊界熵新詞、`term_freq`/`child_support` bottom-up 統計。仍須保留 `pdf_provider="pymupdf"`、`keyword_provider="ngram"` 回滾，provider/tokenizer 變更時強制重建 sidecar。
 
 ### 關鍵技術決策（當前有效）
+- **摘要是可丟棄 derived view，不是原文 mutation**：LingXi 只選摘要輸入投影的原句；Documa 明載 `text_form=raw|normalized` 與 Unicode code-point offset space、驗證 offset/text 一致並附 block/page refs。`top_k` 為 soft limit，保留數字／日期／條列事實可超出；遠端 token counter 不參與零 LLM 摘要路徑
 - **Native skill root overlap 只允許逐 root 顯式 opt-in**：預設仍拒絕 `.codex/skills`／`.agents/skills`，目前工作區僅對 `agents-local`（`C:\Users\allan\.agents\skills`）設定 `allow_native_scan_overlap=true`
 - **Skill 載入採全體 metadata 預編譯＋選中內容動態 materialize**：不把全部 SKILL.md 放進 context；可選離線 enrichment provider 只產生可快取 derived synonyms/positive/negative triggers/topic tags，runtime 仍為 0 LLM，graph truth 只來自來源結構與 lifecycle edges
 - **Skill IR 不修改 DocumentIR 0.2**：原始 skill files 是事實來源、各 generation JSON 是可驗證編譯物、SQLite/HNSW 是可刪除重建 sidecar；identity/scope/guardrails 與 explicit dependency closure 不可為了 budget 被裁掉
@@ -96,6 +100,21 @@
 ---
 
 # 📜 HISTORY
+
+---
+
+## [2026-08-22] Rust LingXi 零 LLM 抽取式摘要一級化
+
+- 新增 `documa.summarization` 公開 API 與 LingXi 0.3.0+ capability contract；純文字與 DocumentIR subtree 都可摘要，輸出保留原文 offset、逐句排名診斷與證據 refs，無任何生成／改寫。
+- `documa_summarize` 已接 Python tool registry、CLI、MCP、OpenAI schema 與 agent profile；回應固定明載 extractive／uses_llm／llm_tokens_used，只有本機 token counter 才附 context reduction 數據。
+- 超過 `max_window_chars` 的文字先分窗抽取，再對原句候選做第二階段 TextRank；最終 offset 重新映回原始輸入。LingXi 0.2.1 關鍵詞仍可用，0.3.0 可同時提供關鍵詞與摘要。
+- 真實 native smoke 以目前 Rust source、`--locked`、隔離 target 重建 0.3.0 wheel：Python API 與 CLI 均 PASS，逐句 source span 完全一致，fixture context 226→80 tokens；舊的同版 pre-summary wheel 因缺 method 被 capability gate 正確拒絕。驗證：`tests/` 422 passed／4 skipped、Ruff full PASS、doctor 8 passed／1 optional warning、fixture readiness 18/18、plugin validator／deterministic zip／`git diff --check` PASS。
+
+## [2026-08-22] 全域 LingXi 0.3.0 啟用
+
+- 以目前 `D:\PycharmProjects\rust_Lingxi` source 與 locked dependency graph 重建 `lingxi-0.3.0-cp39-abi3-win_amd64.whl`（SHA-256 `4b05aa81cb9cb2da4390f5332a3df1f4dc482b0e062efdff04fe1f5b4034065f`），先以 workspace target 隔離安裝與 smoke，再使用 `--force-reinstall --no-deps` 將全域 `D:\Python310` 由 0.2.1 替換為 0.3.0，未觸動其他 dependency。
+- 真實 binding 驗證：distribution 0.3.0、`Segmenter.extract_summary` available、關鍵詞可用；Documa Python 與 CLI 皆回報 `lingxi/0.3.0`、`uses_llm=false`、`llm_tokens_used=0`，摘要句與 source offsets 完全一致。
+- 驗證：`tests/test_summarization.py tests/test_keyword_provider.py` 12 passed；doctor 9 passed／0 warnings；fixture readiness 18/18。pytest 只有 workspace `.pytest_cache` ACL warning；pip 仍回報既存 `~ocuma` invalid-distribution warning，兩者都非 LingXi 安裝失敗。
 
 ---
 
@@ -400,3 +419,15 @@
 - Plugin artifacts：Claude `plugins/claude-code-documa.zip`（SHA-256 `e1eb8305124459c085bd233df2db34cee0fdfe6ba96f3b2ab474656b1119e31a`）；Codex `plugins/codex-documa.zip`（`730a67c824bd84b429db48153adb5d2b42583137ca0c0f0d8d7ed2374f66d82d`）；OpenClaw 依既有慣例同步 source directory。
 - 驗證：wheel/sdist build PASS，且 wheel 從 sdist 再編譯 PASS；wheel 內含兩個 CPython 3.10 Windows `.pyd`；隔離 wheel full pytest 447/447；Twine 2/2、Ruff、doctor 8/8、fixture readiness 18/18、agent plugin validator、deterministic zip check、Codex skill package gate 全 PASS。package gate 的 live benchmark 維持 SKIPPED，未宣稱 live benchmark。
 - 尚餘外部 gate：Linux/macOS 與其他 Python ABI wheel 未實跑；0.6.4 尚未 tag、發布或安裝到全域 Python。
+
+---
+
+## [2026-08-21] Repository Intelligence Graph v1
+
+- 新增 `documa.codegraph`：versioned SQLite derived index、stable IDs、Python AST/symbol resolver、typed structural/import/call edges、EXACT／RESOLVED／POSSIBLE／UNRESOLVED receipt、Tarjan SCC 與 coupling metrics；source files 維持唯一權威，DB 不保存完整原文。
+- sync 使用 file hash 做 add/update/delete/no-op 與 generation 原子切換；失敗檔案標 unavailable 並撤除舊 hard edges。保留 active／previous generation 供 diff 與 evidence-bound impact。
+- 新增 Python API、`code-graph-sync/query/read` CLI、admin/advanced MCP 工具，以及 agent profile 單一 `documa_code_context`；query/read 提供 proof path、source span/hash、uncertainty、候選 tests 與 byte/token-bounded evidence。
+- 新增 `CodeLanguageAdapter` 與 decoded SCIP import adapter；Python analyzer 為 authoritative，Tree-sitter／protobuf 僅列入 `documa[code]` optional extra。選配 summary enrichment 存獨立 derived table，不得改 graph facts。
+- Codex／Claude plugin 新增 `documa-codegraph` skill 並重建 deterministic zip；既有 ContextIR 1.0 與 `context_from_code()` 未更動。
+- 驗證：`tests/` 416 passed／4 skipped；Python resolver gold 的 hard-edge precision／recall 均為 100%；Ruff full PASS；plugin validator、兩份 skill validator、deterministic zip check 與 `git diff --check` PASS。合成 1,000,001 行 corpus：cold 11.04s、no-op 0.172s、單檔增量 0.353s、bounded query 18ms、peak RSS 56.5MB，皆通過既定 gate。全套曾遇一次既有 registry Windows concurrent replace 暫態失敗，該案例單獨重跑與其後全套皆 PASS。
+- Source-tree 根目錄直接收集 `native/` 測試仍需已編譯的 `rust_pdf._native`／`rust_office._core`；本次完整產品測試限定 `tests/`，未把缺少 native build 視為 graph 回歸。wheel/sdist smoke 亦未宣稱通過：非隔離建置缺 `setuptools-rust`，隔離建置停在 build dependency 準備且無輸出，有限等待後中止。
