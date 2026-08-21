@@ -5,7 +5,7 @@ archetype: workflow
 primary_structure_pattern: evidence-first-mcp-workflow
 lifecycle:
   created_at: "2026-07-12"
-  updated_at: "2026-07-13"
+  updated_at: "2026-08-22"
   next_review_due: "2026-10-12"
   review_cadence: quarterly
   review_interval_days: 92
@@ -30,6 +30,7 @@ dependencies:
     - documa_list_blocks
     - documa_read_block
     - documa_block_tree
+    - documa_summarize
     - documa_block_xref
     - documa_inspect_block
     - documa_source_window
@@ -47,4 +48,3 @@ governance:
   release_claims:
     - Draft-ready only after local release gate passes.
     - No ROI, live integration, or cross-host quality claim without benchmark evidence.
-

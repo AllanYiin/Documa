@@ -161,6 +161,68 @@ def documa_tool_schemas(profile: str = "admin") -> list[dict[str, Any]]:
             "annotations": {"readOnlyHint": True},
         },
         {
+            "name": "documa_summarize",
+            "title": "Create a local extractive document summary",
+            "description": (
+                "Select exact source clauses with Rust LingXi TextRank without invoking an LLM. "
+                "Each clause retains block and page evidence; top_k is a soft limit because LingXi may "
+                "preserve structured or numeric facts beyond it."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "ir_path": {"type": "string"},
+                    "scope_block_id": {"type": ["string", "null"]},
+                    "top_k": {"type": "integer", "minimum": 1, "maximum": 100, "default": 8},
+                    "provider": {"type": "string", "enum": ["lingxi"], "default": "lingxi"},
+                    "similarity": {"type": "string", "enum": ["bm25", "lexical"], "default": "bm25"},
+                    "min_explainability": {
+                        "type": ["number", "null"],
+                        "minimum": 0,
+                        "maximum": 1,
+                        "default": 0.35,
+                    },
+                    "redundancy_threshold": {
+                        "type": ["number", "null"],
+                        "minimum": 0,
+                        "maximum": 1,
+                        "default": 0.8,
+                    },
+                    "min_sentence_chars": {"type": "integer", "minimum": 1, "default": 8},
+                    "max_window_chars": {
+                        "type": "integer",
+                        "minimum": 1000,
+                        "maximum": 200000,
+                        "default": 40000,
+                    },
+                    "text_form": {
+                        "type": "string",
+                        "enum": ["raw", "normalized"],
+                        "default": "normalized",
+                        "description": "Select the preserved raw source text or Documa's separately stored normalized text.",
+                    },
+                },
+                "required": ["ir_path"],
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "document_id": {"type": "string"},
+                    "summary": {"type": "string"},
+                    "sentences": {"type": "array"},
+                    "provider": {"type": "string"},
+                    "provider_version": {"type": "string"},
+                    "uses_llm": {"type": "boolean"},
+                    "llm_tokens_used": {"type": "integer"},
+                    "text_form": {"type": "string"},
+                    "offset_space": {"type": "string"},
+                },
+                "required": ["status"],
+            },
+            "annotations": {"readOnlyHint": True},
+        },
+        {
             "name": "documa_view",
             "title": "Build Documa universal viewer",
             "description": (

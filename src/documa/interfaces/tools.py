@@ -40,6 +40,7 @@ from documa.pipeline.page_refs import document_page_ref_kind, ensure_page_citati
 from documa.viewer import VIEWER_FORMATS, ViewerOptions, build_universal_viewer, render_viewer
 from documa.quality import BenchmarkOptions, DoctorOptions, run_doctor, run_fixture_benchmark
 from documa.search.sidecar import build_search_sidecar, route_sections, section_sketches, sidecar_path, source_digest
+from documa.summarization import SummaryError, SummaryOptions, summarize_document
 
 
 ToolPayload = dict[str, Any]
@@ -2140,6 +2141,74 @@ def build_context_tool(
     return payload
 
 
+def summarize_document_tool(
+    ir_path: str,
+    scope_block_id: str | None = None,
+    top_k: int = 8,
+    provider: str = "lingxi",
+    similarity: str = "bm25",
+    min_explainability: float | None = 0.35,
+    redundancy_threshold: float | None = 0.8,
+    min_sentence_chars: int = 8,
+    max_window_chars: int = 40_000,
+    text_form: str = "normalized",
+) -> ToolPayload:
+    """Return a source-linked extractive summary without invoking an LLM."""
+
+    try:
+        document = load_document(ir_path)
+        _ensure_document_blocks(document)
+        by_id = _block_index(document)
+        prefix = _block_id_prefix(document)
+        canonical_scope = None
+        if scope_block_id is not None:
+            canonical_scope = _canonical_block_id(scope_block_id, prefix, by_id)
+            if canonical_scope not in by_id:
+                return {
+                    "status": "error",
+                    "code": "SUMMARY_SCOPE_NOT_FOUND",
+                    "message": f"Unknown scope_block_id: {scope_block_id}",
+                }
+        counter = token_counting.get_token_counter()
+        # Reporting context reduction must not turn a zero-LLM summary into a
+        # remote token-counting request. Local/custom counters are safe; the
+        # built-in Anthropic counter is deliberately excluded here.
+        if counter is not None and str(counter.name).startswith("anthropic:"):
+            counter = None
+        result = summarize_document(
+            document,
+            SummaryOptions(
+                top_k=top_k,
+                similarity=similarity,
+                min_explainability=min_explainability,
+                redundancy_threshold=redundancy_threshold,
+                min_sentence_chars=min_sentence_chars,
+                max_window_chars=max_window_chars,
+                text_form=text_form,
+            ),
+            scope_block_id=canonical_scope,
+            provider=provider,
+            token_counter=counter,
+        )
+    except SummaryError as exc:
+        return {"status": "error", "code": exc.code, "message": str(exc)}
+    except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
+        return {"status": "error", "code": "SUMMARY_INPUT_INVALID", "message": str(exc)}
+
+    payload = to_plain_data(result)
+    for sentence in payload["sentences"]:
+        sentence["block_ids"] = [_short_block_id(block_id, prefix) for block_id in sentence["block_ids"]]
+    payload["scope_block_id"] = _short_block_id(payload.get("scope_block_id"), prefix)
+    return _drop_empty_fields(
+        {
+            "status": "ok",
+            **({"block_id_prefix": emitted} if (emitted := _emitted_block_id_prefix(document)) else {}),
+            "page_ref_kind": document_page_ref_kind(document),
+            **payload,
+        }
+    )
+
+
 def context_search_tool(
     context_ir_path: str,
     query: str,
@@ -2432,6 +2501,7 @@ def _tool_registry() -> dict[str, Callable[..., ToolPayload]]:
         "documa_ingest_mailbox": ingest_mailbox_tool,
         "documa_export": export_document_tool,
         "documa_inspect": inspect_document_tool,
+        "documa_summarize": summarize_document_tool,
         "documa_view": view_document_tool,
         "documa_list_blocks": list_blocks_tool,
         "documa_inspect_block": inspect_block_tool,

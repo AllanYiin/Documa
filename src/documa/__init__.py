@@ -17,6 +17,14 @@ from documa.core.ir import (
     TableIR,
     TextContent,
 )
+from documa.summarization import (
+    SummaryError,
+    SummaryOptions,
+    SummaryResult,
+    SummarySentence,
+    summarize_document,
+    summarize_text,
+)
 
 __all__ = [
     "BlockIR",
@@ -34,6 +42,12 @@ __all__ = [
     "SpanIR",
     "TableIR",
     "TextContent",
+    "SummaryError",
+    "SummaryOptions",
+    "SummaryResult",
+    "SummarySentence",
+    "summarize_document",
+    "summarize_text",
 ]
 
 __version__ = "0.6.4"

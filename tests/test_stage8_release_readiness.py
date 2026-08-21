@@ -39,6 +39,7 @@ class Stage8ReleaseReadinessTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(output["status"], "ok")
         self.assertIn("python_version", {check["name"] for check in output["checks"]})
+        self.assertIn("summary_provider:lingxi", {check["name"] for check in output["checks"]})
 
     def test_tool_schema_lists_doctor(self):
         schema = {tool["name"]: tool for tool in list_documa_tools()}["documa_doctor"]
@@ -49,4 +50,3 @@ class Stage8ReleaseReadinessTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

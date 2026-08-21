@@ -50,7 +50,10 @@ def _document():
 
 def test_lingxi_is_default_and_preserves_ngram_new_word_metadata():
     _load_lingxi_segmenter.cache_clear()
-    with patch("documa.pipeline.block_keywords._load_lingxi_segmenter", return_value=_FakeLingxi()):
+    with patch(
+        "documa.pipeline.block_keywords._load_lingxi_segmenter",
+        return_value=(_FakeLingxi(), "0.2.1"),
+    ):
         document = _document()
         result = BlockKeywordExtractionStage().run(document)
     leaf = next(block for block in document.document_blocks if block.id == "leaf-1")
@@ -78,10 +81,10 @@ def test_missing_lingxi_falls_back_to_ngram_and_reports_reason():
     assert result.report["keyword_provider_fallback"].startswith("ImportError:")
 
 
-def test_lingxi_loader_requires_0_2_1_distribution():
+def test_lingxi_loader_rejects_unsupported_distribution():
     _load_lingxi_segmenter.cache_clear()
     with patch("documa.pipeline.block_keywords.distribution_version", return_value="0.2.0"):
-        with pytest.raises(ImportError, match="LingXi 0.2.1 is required; found 0.2.0"):
+        with pytest.raises(ImportError, match="LingXi 0.2.1 or 0.3.0 is required; found 0.2.0"):
             _load_lingxi_segmenter()
     _load_lingxi_segmenter.cache_clear()
 
@@ -98,7 +101,10 @@ def test_explicit_ngram_remains_available_for_rollback():
 
 def test_sidecar_digest_changes_with_keyword_provider_and_terms():
     lingxi_document = _document()
-    with patch("documa.pipeline.block_keywords._load_lingxi_segmenter", return_value=_FakeLingxi()):
+    with patch(
+        "documa.pipeline.block_keywords._load_lingxi_segmenter",
+        return_value=(_FakeLingxi(), "0.2.1"),
+    ):
         BlockKeywordExtractionStage().run(lingxi_document)
     ngram_document = _document()
     BlockKeywordExtractionStage().run(
@@ -110,10 +116,16 @@ def test_sidecar_digest_changes_with_keyword_provider_and_terms():
 
 def test_sidecar_digest_changes_with_lingxi_version():
     current_document = _document()
-    with patch("documa.pipeline.block_keywords._load_lingxi_segmenter", return_value=_FakeLingxi()):
+    with patch(
+        "documa.pipeline.block_keywords._load_lingxi_segmenter",
+        return_value=(_FakeLingxi(), "0.2.1"),
+    ):
         BlockKeywordExtractionStage().run(current_document)
     previous_document = _document()
-    with patch("documa.pipeline.block_keywords._load_lingxi_segmenter", return_value=_FakeLingxi()):
+    with patch(
+        "documa.pipeline.block_keywords._load_lingxi_segmenter",
+        return_value=(_FakeLingxi(), "0.2.1"),
+    ):
         BlockKeywordExtractionStage().run(previous_document)
     for block in previous_document.document_blocks:
         if block.metadata["keyword_provider"] == "lingxi":

@@ -40,6 +40,7 @@ from documa.interfaces.tools import (
     search_blocks_tool,
     search_collection_tool,
     source_window_tool,
+    summarize_document_tool,
     skill_status_tool,
     sync_skills_tool,
     sync_code_graph_tool,
@@ -55,6 +56,7 @@ _MCP_REGISTERED_TOOLS = {
     "documa_ingest_mailbox",
     "documa_export",
     "documa_inspect",
+    "documa_summarize",
     "documa_view",
     "documa_list_blocks",
     "documa_inspect_block",
@@ -219,6 +221,34 @@ def create_mcp_server(profile: str | None = None) -> Any:
         """Inspect a Documa IR file."""
 
         return inspect_document_tool(ir_path=ir_path)
+
+    @_documa_tool
+    def documa_summarize(
+        ir_path: str,
+        scope_block_id: str | None = None,
+        top_k: int = 8,
+        provider: str = "lingxi",
+        similarity: str = "bm25",
+        min_explainability: float | None = 0.35,
+        redundancy_threshold: float | None = 0.8,
+        min_sentence_chars: int = 8,
+        max_window_chars: int = 40_000,
+        text_form: str = "normalized",
+    ) -> dict[str, Any]:
+        """Select source-linked clauses locally with Rust LingXi; no LLM is invoked."""
+
+        return summarize_document_tool(
+            ir_path=ir_path,
+            scope_block_id=scope_block_id,
+            top_k=top_k,
+            provider=provider,
+            similarity=similarity,
+            min_explainability=min_explainability,
+            redundancy_threshold=redundancy_threshold,
+            min_sentence_chars=min_sentence_chars,
+            max_window_chars=max_window_chars,
+            text_form=text_form,
+        )
 
     @_documa_tool
     def documa_view(

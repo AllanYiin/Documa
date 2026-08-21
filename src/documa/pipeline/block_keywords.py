@@ -20,6 +20,8 @@ _MIXED_TOKEN = re.compile(r"(?:[A-Za-z0-9]+[\u4e00-\u9fff]+|[\u4e00-\u9fff]+[A-Z
 _SENTENCE_SPLIT = re.compile(r"[，。！？；：、,.!?;:\n\r\t ]+")
 DEFAULT_KEYWORD_PROVIDER = "lingxi"
 REQUIRED_LINGXI_VERSION = "0.2.1"
+SUPPORTED_LINGXI_VERSIONS = ("0.2.1", "0.3.0")
+PREFERRED_LINGXI_VERSION = "0.3.0"
 
 
 def _is_cjk(ch: str) -> bool:
@@ -152,13 +154,13 @@ def _load_lingxi_segmenter():
         installed_version = distribution_version("lingxi")
     except PackageNotFoundError as exc:
         raise ImportError(f"LingXi {REQUIRED_LINGXI_VERSION} is not installed") from exc
-    if installed_version != REQUIRED_LINGXI_VERSION:
+    if installed_version not in SUPPORTED_LINGXI_VERSIONS:
         raise ImportError(
-            f"LingXi {REQUIRED_LINGXI_VERSION} is required; found {installed_version}"
+            f"LingXi {' or '.join(SUPPORTED_LINGXI_VERSIONS)} is required; found {installed_version}"
         )
     import lingxi
 
-    return lingxi.load()
+    return lingxi.load(), installed_version
 
 
 def _rank_new_words(
@@ -241,10 +243,11 @@ class BlockKeywordExtractionStage(PipelineStage):
         if requested_provider not in {"lingxi", "ngram"}:
             raise ValueError(f"Unsupported keyword_provider: {requested_provider}")
         segmenter = None
+        lingxi_version = None
         provider_fallback_reason = None
         if requested_provider == "lingxi":
             try:
-                segmenter = _load_lingxi_segmenter()
+                segmenter, lingxi_version = _load_lingxi_segmenter()
             except Exception as exc:
                 provider_fallback_reason = f"{type(exc).__name__}: {exc}"
         by_id = {block.id: block for block in document.document_blocks}
@@ -336,11 +339,11 @@ class BlockKeywordExtractionStage(PipelineStage):
             block.metadata["keyword_provider"] = block_provider
             block.metadata["keyword_provider_requested"] = requested_provider
             if block_provider == "lingxi":
-                block.metadata["keyword_provider_version"] = REQUIRED_LINGXI_VERSION
+                block.metadata["keyword_provider_version"] = lingxi_version
             else:
                 block.metadata.pop("keyword_provider_version", None)
             if requested_provider == "lingxi":
-                block.metadata["keyword_provider_requested_version"] = REQUIRED_LINGXI_VERSION
+                block.metadata["keyword_provider_requested_version"] = lingxi_version or PREFERRED_LINGXI_VERSION
             else:
                 block.metadata.pop("keyword_provider_requested_version", None)
             if requested_provider == "lingxi" and block_provider != "lingxi":

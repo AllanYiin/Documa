@@ -44,6 +44,7 @@ from documa.interfaces import (
     search_blocks_tool,
     search_collection_tool,
     source_window_tool,
+    summarize_document_tool,
     skill_status_tool,
     sync_skills_tool,
     sync_code_graph_tool,
@@ -118,6 +119,21 @@ def build_parser() -> argparse.ArgumentParser:
 
     inspect_cmd = subparsers.add_parser("inspect", help="Inspect a Documa IR document.")
     inspect_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
+
+    summarize_cmd = subparsers.add_parser(
+        "summarize",
+        help="Create a source-linked extractive summary locally with Rust LingXi.",
+    )
+    summarize_cmd.add_argument("ir_path", help="Path to documa.ir.json.")
+    summarize_cmd.add_argument("--scope-block-id", help="Restrict the summary to one block subtree.")
+    summarize_cmd.add_argument("--top-k", type=int, default=8, help="Soft limit for ordinary selected clauses.")
+    summarize_cmd.add_argument("--provider", choices=["lingxi"], default="lingxi")
+    summarize_cmd.add_argument("--similarity", choices=["bm25", "lexical"], default="bm25")
+    summarize_cmd.add_argument("--min-explainability", type=float, default=0.35)
+    summarize_cmd.add_argument("--redundancy-threshold", type=float, default=0.8)
+    summarize_cmd.add_argument("--min-sentence-chars", type=int, default=8)
+    summarize_cmd.add_argument("--max-window-chars", type=int, default=40_000)
+    summarize_cmd.add_argument("--text-form", choices=["raw", "normalized"], default="normalized")
 
     view_cmd = subparsers.add_parser("view", help="Build a universal human viewer for any Documa-supported document.")
     view_cmd.add_argument("target", help="Source document path, or documa.ir.json when --from-ir is set.")
@@ -466,6 +482,21 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "inspect":
         payload = inspect_document_tool(args.ir_path)
+        return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
+
+    if args.command == "summarize":
+        payload = summarize_document_tool(
+            ir_path=args.ir_path,
+            scope_block_id=args.scope_block_id,
+            top_k=args.top_k,
+            provider=args.provider,
+            similarity=args.similarity,
+            min_explainability=args.min_explainability,
+            redundancy_threshold=args.redundancy_threshold,
+            min_sentence_chars=args.min_sentence_chars,
+            max_window_chars=args.max_window_chars,
+            text_form=args.text_form,
+        )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
     if args.command == "view":

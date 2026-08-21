@@ -24,7 +24,8 @@ Trigger and fallback rules:
 
 | Question shape | Route |
 | --- | --- |
-| Structure / overview / "summarize" for one document | `documa_block_tree` with `max_depth=2-3, include_sketches=true` — sections come back with a precomputed one-glance `sketch` and `read_cost_chars`, often enough to answer without any reads. Descend with `documa_list_blocks` `parent_id` + `limit`/`offset`. |
+| Structure / outline for one document | `documa_block_tree` with `max_depth=2-3, include_sketches=true` — sections come back with a precomputed one-glance `sketch` and `read_cost_chars`. Descend with `documa_list_blocks` `parent_id` + `limit`/`offset`. |
+| Source-preserving summary for one document or subtree | `documa_summarize` — local Rust LingXi selects exact source clauses and returns block/page refs without invoking an LLM. Treat `top_k` as a soft limit; on a provider error, fall back explicitly to tree/search/read. |
 | Specific fact in one document | Start `documa_search_blocks` with `limit=6, max_snippets_per_block=1`. Use only 2-4 discriminative lexical literals or quoted phrases in `query`; put non-duplicative synonyms/spelling variants in `any_of`. For 3+ literals, refine a top `coverage=1/N` or non-body hit before reading. Re-search under `scope_block_id` instead of widening terms. |
 | Breadth across documents ("which documents mention X") | `documa_search_collection` with `group_by_document=true` — each rollup has an exact `hit_count`, best snippet, and read-ready `top_refs`. |
 | Specific fact across documents | `documa_search_collection` flat — rows carry `(document_id, block_id)`; read via `documa_read_block` with `ir_path=document_id`. Narrow follow-ups with `document_ids=[...]` + `per_document_limit`. |

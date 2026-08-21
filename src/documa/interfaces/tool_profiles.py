@@ -13,6 +13,7 @@ from __future__ import annotations
 AGENT_TOOLS = {
     "documa_parse",
     "documa_process",
+    "documa_summarize",
     "documa_ingest",
     "documa_list_documents",
     "documa_block_tree",
