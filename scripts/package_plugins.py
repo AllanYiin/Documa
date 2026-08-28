@@ -69,11 +69,14 @@ def _archive_payload(path: Path) -> bytes:
 
 def build_zip_bytes(plugin_dir: Path) -> bytes:
     buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+    # Stored entries avoid zlib-version-dependent DEFLATE output. Most archive
+    # bytes are already-compressed PNG assets, so compression saved little while
+    # making byte-for-byte checks differ between Windows and Linux runners.
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_STORED) as archive:
         for path in _plugin_files(plugin_dir):
             relative = path.relative_to(plugin_dir).as_posix()
             info = zipfile.ZipInfo(relative, date_time=_FIXED_DATE_TIME)
-            info.compress_type = zipfile.ZIP_DEFLATED
+            info.compress_type = zipfile.ZIP_STORED
             info.external_attr = 0o644 << 16
             archive.writestr(info, _archive_payload(path))
     return buffer.getvalue()

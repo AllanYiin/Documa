@@ -12,7 +12,7 @@
 **最後更新**：2026-08-28
 
 ### 需求狀態
-- [x] 2026-08-28：修正 GitHub Actions 長期失敗：plugin deterministic ZIP 不再受 Windows CRLF／Linux LF checkout 差異影響；文字 payload 打包前正規化為 LF、binary 保持原 bytes，並新增跨換行回歸測試與重建兩份 tracked plugin ZIP
+- [x] 2026-08-28：修正 GitHub Actions 長期失敗：plugin deterministic ZIP 不再受 Windows CRLF／Linux LF checkout 與跨平台 zlib 輸出差異影響；文字 payload 正規化為 LF、binary 保持原 bytes、entries 採無壓縮儲存，並新增回歸測試與重建兩份 tracked plugin ZIP
 - [x] 2026-08-22：Rust LingXi 0.3.0 抽取式摘要成為 Documa 一級能力；Python／CLI／MCP／function schema／agent profile 共用來源保留契約，逐句映射 block/source/page，長文採階層視窗，明載 `uses_llm=false`／`llm_tokens_used=0`；DocumentIR 0.2 不變
 - [x] 2026-08-22：全域 `D:\Python310` 已由 LingXi 0.2.1 替換為目前 Rust source 重建的 0.3.0 ABI3 wheel；原生關鍵詞與摘要、Documa CLI 皆實測 PASS，doctor 9/9
 - [x] 2026-08-21：Repository Intelligence Graph v1 完成。Python-first SQLite sidecar 提供 symbols/imports/calls/cycles/metrics/generations、hash 增量同步、proof-carrying query、stale-safe evidence read、impact/diff/test recommendation 與 uncertainty receipt；Python／CLI／MCP／Codex＋Claude plugins 已接入，ContextIR 1.0 行為不變
@@ -107,7 +107,7 @@
 ## [2026-08-28] GitHub Actions plugin ZIP 跨平台確定性修正
 
 - GitHub Actions run 22–35 的共同阻斷點為 `scripts/package_plugins.py --check`：Windows `core.autocrlf=true` 產生的 tracked ZIP 含 CRLF，Ubuntu checkout 的相同 source 為 LF，byte-level freshness gate 因而把兩份 ZIP 都判為過期。
-- `package_plugins.py` 現在對已知 UTF-8 text suffix 在寫入 ZIP 前統一 CRLF／CR 為 LF；PNG 等 binary payload 不變。新增 CRLF／LF checkout 產生 byte-identical ZIP 且 binary 原樣保留的回歸測試，並重建 Claude Code／Codex ZIP。
+- `package_plugins.py` 現在對已知 UTF-8 text suffix 在寫入 ZIP 前統一 CRLF／CR 為 LF；PNG 等 binary payload 不變。ZIP entries 改用 `ZIP_STORED`，排除不同 runner zlib／DEFLATE 實作造成的 byte drift。新增 CRLF／LF checkout 產生 byte-identical ZIP、無壓縮且 binary 原樣保留的回歸測試，並重建 Claude Code／Codex ZIP。
 - 驗證：schema check、agent plugin validation、plugin ZIP `--check`、`tests/` 423 passed／4 skipped、doctor 9/9、Ruff changed files PASS。
 
 ---
