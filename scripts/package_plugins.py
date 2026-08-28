@@ -29,6 +29,15 @@ ZIPPED_PLUGINS = ["claude-code-documa", "codex-documa"]
 # Deterministic metadata: fixed DOS timestamp and regular-file permissions.
 _FIXED_DATE_TIME = (1980, 1, 1, 0, 0, 0)
 _SKIP_NAMES = {"__pycache__", ".DS_Store"}
+_TEXT_SUFFIXES = {
+    ".json",
+    ".md",
+    ".py",
+    ".toml",
+    ".txt",
+    ".yaml",
+    ".yml",
+}
 
 
 def _plugin_files(plugin_dir: Path) -> list[Path]:
@@ -42,6 +51,22 @@ def _plugin_files(plugin_dir: Path) -> list[Path]:
     return files
 
 
+def _archive_payload(path: Path) -> bytes:
+    """Return checkout-independent bytes for one archive entry.
+
+    Git may materialize tracked text as CRLF on Windows and LF on Linux.  The
+    plugin archives are checked byte-for-byte in CI, so package text with a
+    canonical LF representation while leaving binary assets untouched.
+    """
+
+    payload = path.read_bytes()
+    if path.suffix.lower() not in _TEXT_SUFFIXES:
+        return payload
+
+    text = payload.decode("utf-8")
+    return text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+
+
 def build_zip_bytes(plugin_dir: Path) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
@@ -50,7 +75,7 @@ def build_zip_bytes(plugin_dir: Path) -> bytes:
             info = zipfile.ZipInfo(relative, date_time=_FIXED_DATE_TIME)
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o644 << 16
-            archive.writestr(info, path.read_bytes())
+            archive.writestr(info, _archive_payload(path))
     return buffer.getvalue()
 
 
