@@ -41,11 +41,14 @@ _TEXT_SUFFIXES = {
 
 
 def _plugin_files(plugin_dir: Path) -> list[Path]:
-    files = [
+    files = sorted(
+        (
         path
-        for path in sorted(plugin_dir.rglob("*"))
+        for path in plugin_dir.rglob("*")
         if path.is_file() and not (_SKIP_NAMES & set(path.relative_to(plugin_dir).parts))
-    ]
+        ),
+        key=lambda path: path.relative_to(plugin_dir).as_posix(),
+    )
     if not files:
         raise SystemExit(f"no files found under {plugin_dir}")
     return files
@@ -76,6 +79,7 @@ def build_zip_bytes(plugin_dir: Path) -> bytes:
         for path in _plugin_files(plugin_dir):
             relative = path.relative_to(plugin_dir).as_posix()
             info = zipfile.ZipInfo(relative, date_time=_FIXED_DATE_TIME)
+            info.create_system = 3  # Unix; otherwise ZipInfo inherits the host OS.
             info.compress_type = zipfile.ZIP_STORED
             info.external_attr = 0o644 << 16
             archive.writestr(info, _archive_payload(path))

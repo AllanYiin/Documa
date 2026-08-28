@@ -33,6 +33,8 @@ def test_plugin_zip_is_identical_for_lf_and_crlf_checkouts(tmp_path: Path) -> No
 
     assert lf_zip == crlf_zip
     with zipfile.ZipFile(io.BytesIO(crlf_zip)) as archive:
+        assert archive.namelist() == ["README.md", "asset.bin", "manifest.json"]
+        assert all(info.create_system == 3 for info in archive.infolist())
         assert all(info.compress_type == zipfile.ZIP_STORED for info in archive.infolist())
         assert b"\r" not in archive.read("README.md")
         assert b"\r" not in archive.read("manifest.json")
