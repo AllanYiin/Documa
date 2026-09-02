@@ -1,0 +1,21 @@
+{
+  "name": "rust-Lingxi",
+  "version": "0.4.5",
+  "source_commit": "e3d2aa59c441709f5383d1c498187d74da82e6c0",
+  "source_worktree_clean": true,
+  "python_namespace": "documa._vendor.lingxi",
+  "license": "MIT",
+  "model_authorization": "ASSETS.md (upstream maintainer approval by SHA-256)",
+  "local_changes": [
+    "Cargo workspace reduced to lingxi-core and lingxi-py; upstream lockfile pruned by Cargo",
+    "PyO3 module exposes compiled CARGO_PKG_VERSION as __version__",
+    "Python wrapper re-exports compiled __version__; extension uses Documa private namespace",
+    "Only required approved models included; optional affect.bin omitted",
+    "External corpus, training tools, CLI/WASM/FFI, integration fixtures and build caches omitted"
+  ],
+  "models": {
+    "dict.bin": "8b29d53505374518b81db1481f658b078068c4909b3feacdfc9f0a4e1b1db056",
+    "hmm_bmes.bin": "d15f411f506b68300eebb343a10c70268ca6dc389c3d6a439ff61abbcc30fafa",
+    "hmm_pos.bin": "791ebb87cdb13d9cd0beb53b1d2e5e4ba3b2a284eb8be0e8279529080e7499e2"
+  }
+}

@@ -228,7 +228,7 @@ def test_long_text_uses_hierarchical_windows_without_losing_source_offsets():
 
 def test_lingxi_summary_loader_rejects_pre_summary_binding():
     load_lingxi_summary_provider.cache_clear()
-    with patch("documa.summarization.distribution_version", return_value="0.2.1"):
+    with patch("documa.summarization.lingxi_binding", return_value=(None, "0.2.1")):
         with pytest.raises(SummaryError, match="LingXi >= 0.3.0") as exc_info:
             load_lingxi_summary_provider()
     assert exc_info.value.code == "SUMMARY_PROVIDER_VERSION_UNSUPPORTED"

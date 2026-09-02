@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.8.0 — Bundled rust-Lingxi 0.4.5（2026-08-31）
+
+- **自帶 Lingxi**：私有 `documa._vendor.lingxi._core` 原生模組與三個核准模型納入 wheel/sdist，不依賴 Lingxi 的公開 index 或執行期下載，不覆蓋獨立 `lingxi` 安裝；build gate 驗證模型 SHA-256 與精確檔案集合。
+- **摘要 v2 相容**：Lingxi 結構化 blocks/selected spans 轉為既有 Documa 摘要列，嚴格轉換 UTF-8 byte offset 至 Unicode code point、拒絕來源不符、去除階層重複片段，保留 block/page 引用與零 LLM 契約；長文二階選取可跨候選而不失去原文映射。
+- **版本與插件**：Python runtime／metadata／lockfile 與 Codex、Claude Code、Hermes、OpenClaw wrappers 同步為 0.8.0。插件仍共用另外安裝的 Documa wheel；本機交付不代表已發布至 PyPI 或宿主 registry。
+
 ## v0.7.0
 
 - **MCP 2 相容性**：MCP server 同時支援 1.x 的 `FastMCP` 與 2.x 更名後的 `MCPServer` API；base dependency 與向前相容的 `mcp` extra 接受 `mcp>=1.0,<3`，避免已安裝 MCP 2.1.1 時出現 resolver 衝突或啟動失敗。

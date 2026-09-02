@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "documa"
-version = "0.7.0"
+version = "0.8.0"
 description = "LLM-ready document understanding package."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -14,6 +14,8 @@ license-files = [
   "native/office/LICENSE",
   "native/pdf/LICENSE",
   "native/pdf/THIRD_PARTY_NOTICES.md",
+  "native/lingxi/LICENSE",
+  "native/lingxi/ASSETS.md",
 ]
 authors = [{ name = "Documa contributors" }]
 keywords = ["pdf", "document-understanding", "rag", "mcp", "llm"]
@@ -85,6 +87,9 @@ Documentation = "https://github.com/AllanYiin/Documa#readme"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"documa._vendor.lingxi" = ["assets/*.bin"]
 
 [tool.pytest.ini_options]
 markers = [

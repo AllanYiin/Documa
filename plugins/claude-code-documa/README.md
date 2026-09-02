@@ -8,10 +8,13 @@
 
 ```powershell
 # 首次安裝
-python -m pip install "documa==0.7.0"
+# 本次交付先使用隨附的 Windows CPython 3.10 x64 wheel：
+python -m pip install .\documa-0.8.0-cp310-cp310-win_amd64.whl
+# 僅當目標 package index 已發布此版本時使用：
+python -m pip install "documa==0.8.0"
 
 # 升級／重裝（會先偵測並斷開 MCP）
-python -m documa.install --upgrade "documa==0.7.0"
+python -m documa.install --upgrade "documa==0.8.0"
 claude --plugin-dir .\plugins\claude-code-documa
 ```
 

@@ -1,6 +1,8 @@
 graft native
 prune native/pdf/target
 prune native/office/target
+prune native/lingxi/target
+recursive-include src/documa/_vendor/lingxi/assets *.bin
 prune native/pdf/bindings/wasm/pkg-*
 prune native/pdf/bindings/wasm/pkg
 global-exclude __pycache__ *.py[cod]

@@ -9,8 +9,10 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from functools import lru_cache
-from importlib.metadata import PackageNotFoundError, version as distribution_version
+from types import SimpleNamespace
 from typing import Any, Protocol
+
+from documa.adapters.lingxi_binding import lingxi_binding, load_segmenter
 
 from documa.core.ir import DocumentIR
 from documa.pipeline.page_refs import ensure_page_citation_map, page_citation_metadata
@@ -40,6 +42,13 @@ _SIGNAL_FIELDS = (
     "number_count",
     "quantity_count",
     "acronym_count",
+    "model_proper_noun_count",
+    "money_count",
+    "provider_schema_version",
+    "provider_block_kind",
+    "provider_decision",
+    "score_available",
+    "forced_by_negation",
 )
 _SAFE_BREAK = re.compile(r"[\n\r。！？!?；;]", re.MULTILINE)
 
@@ -202,7 +211,64 @@ class _LingxiProvider:
         self.version = version
 
     def extract_summary(self, text: str, top_k: int, **options: Any) -> list[Any]:
-        return self._segmenter.extract_summary(text, top_k, **options)
+        result = self._segmenter.extract_summary(text, top_k, **options)
+        if isinstance(result, list):
+            return result  # LingXi 0.3 legacy binding.
+        return _lingxi_v2_clauses(result, text)
+
+
+def _lingxi_v2_clauses(result: Any, text: str) -> list[Any]:
+    """Adapt schema v2's exact UTF-8 spans to the stable Documa row contract.
+
+    v2 scores map final_score -> weight and signal -> explainability. Unranked
+    preserved/context blocks have zero scores and score_available=False, not
+    fabricated confidence. Child entries duplicate top-level list items in v2;
+    evidence is deduplicated by its exact source span.
+    """
+    if getattr(result, "schema_version", None) != 2 or not isinstance(getattr(result, "blocks", None), list):
+        raise SummaryError("SUMMARY_PROVIDER_CONTRACT_MISMATCH", "Expected LingXi summary schema v2 blocks.")
+    byte_to_char = {0: 0}
+    cursor = 0
+    for index, char in enumerate(text, 1):
+        cursor += len(char.encode("utf-8"))
+        byte_to_char[cursor] = index
+    rows = []
+    seen = set()
+    pending = list(reversed(result.blocks))
+    while pending:
+        block = pending.pop()
+        pending.extend(reversed(block.children))
+        if block.decision == "omit":
+            continue
+        spans = block.selected_spans
+        if not spans and block.decision == "context_only" and block.output_text:
+            spans = [(block.source_text, block.byte_start, block.byte_end, False)]
+        if not spans and block.output_text:
+            raise SummaryError("SUMMARY_PROVIDER_CONTRACT_MISMATCH", "LingXi output has no source spans.")
+        for clause_index, (value, byte_start, byte_end, forced) in enumerate(spans):
+            if byte_start not in byte_to_char or byte_end not in byte_to_char or byte_end <= byte_start:
+                raise SummaryError("SUMMARY_PROVIDER_CONTRACT_MISMATCH", "Invalid LingXi UTF-8 source boundary.")
+            start, end = byte_to_char[byte_start], byte_to_char[byte_end]
+            if text[start:end] != value:
+                raise SummaryError("SUMMARY_PROVIDER_CONTRACT_MISMATCH", "LingXi v2 span text differs from source.")
+            if (start, end) in seen:
+                continue
+            seen.add((start, end))
+            score = block.score
+            signals = {name: getattr(block.signals, name) for name in _SIGNAL_FIELDS if hasattr(block.signals, name)}
+            signals.update(
+                provider_schema_version=2, provider_block_kind=block.kind,
+                provider_decision=block.decision, score_available=score is not None,
+                forced_by_negation=forced,
+            )
+            rows.append(SimpleNamespace(
+                text=value, start=start, end=end, index=block.index, clause_index=clause_index,
+                weight=score.final_score if score else 0.0,
+                explainability=score.signal if score else 0.0,
+                novelty=score.novelty if score else 0.0,
+                coverage_gain=score.coverage_gain if score else 0.0, **signals,
+            ))
+    return rows
 
 
 def _numeric_version(value: str) -> tuple[int, ...]:
@@ -215,11 +281,11 @@ def load_lingxi_summary_provider() -> SummaryProvider:
     """Load and validate the local LingXi extractive-summary capability."""
 
     try:
-        installed_version = distribution_version("lingxi")
-    except PackageNotFoundError as exc:
+        lingxi, installed_version = lingxi_binding()
+    except Exception as exc:
         raise SummaryError(
             "SUMMARY_PROVIDER_UNAVAILABLE",
-            "LingXi with extract_summary() is not installed.",
+            f"LingXi with extract_summary() is unavailable: {exc}",
         ) from exc
     if _numeric_version(installed_version) < _numeric_version(MINIMUM_LINGXI_SUMMARY_VERSION):
         raise SummaryError(
@@ -228,9 +294,7 @@ def load_lingxi_summary_provider() -> SummaryProvider:
             f"found {installed_version}.",
         )
     try:
-        import lingxi
-
-        segmenter = lingxi.load()
+        segmenter = load_segmenter(lingxi)
     except Exception as exc:
         raise SummaryError("SUMMARY_PROVIDER_UNAVAILABLE", f"LingXi could not be loaded: {exc}") from exc
     if not callable(getattr(segmenter, "extract_summary", None)):
@@ -365,18 +429,19 @@ def _extract_hierarchical(
     final_rows = _extract_once(candidate_text, provider, options)
     selected = []
     for final in final_rows:
-        matches = [item for start, end, item in candidate_spans if final.start < end and final.end > start]
-        if len(matches) != 1:
+        matches = [(start, end, item) for start, end, item in candidate_spans if final.start < end and final.end > start]
+        if not matches:
             raise SummaryError(
                 "SUMMARY_PROVIDER_CONTRACT_MISMATCH",
-                "Hierarchical summary clause does not map to exactly one source clause.",
+                "Hierarchical summary clause does not map to a source clause.",
             )
-        original = matches[0]
-        selected.append(
-            _SelectedClause(
-                text=original.text,
-                start=original.start,
-                end=original.end,
+        for start, end, original in matches:
+            source_start = original.start + max(0, final.start - start)
+            source_end = original.start + min(end, final.end) - start
+            selected.append(_SelectedClause(
+                text=text[source_start:source_end],
+                start=source_start,
+                end=source_end,
                 sentence_index=original.sentence_index,
                 clause_index=original.clause_index,
                 weight=final.weight,
@@ -384,8 +449,8 @@ def _extract_hierarchical(
                 novelty=final.novelty,
                 coverage_gain=final.coverage_gain,
                 signals=final.signals,
-            )
-        )
+            ))
+    selected = list({(item.start, item.end): item for item in selected}.values())
     if options.preserve_order:
         selected.sort(key=lambda item: (item.start, item.end))
     return selected, "hierarchical_windows", len(windows)

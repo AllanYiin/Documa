@@ -7,8 +7,9 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 from functools import lru_cache
-from importlib.metadata import PackageNotFoundError, version as distribution_version
 from typing import Any
+
+from documa.adapters.lingxi_binding import lingxi_binding, load_segmenter
 
 from documa.core.ir import DocumentBlockIR, DocumentBlockType, DocumentIR
 from documa.pipeline.base import PipelineContext, PipelineStage, StageResult
@@ -20,8 +21,8 @@ _MIXED_TOKEN = re.compile(r"(?:[A-Za-z0-9]+[\u4e00-\u9fff]+|[\u4e00-\u9fff]+[A-Z
 _SENTENCE_SPLIT = re.compile(r"[，。！？；：、,.!?;:\n\r\t ]+")
 DEFAULT_KEYWORD_PROVIDER = "lingxi"
 REQUIRED_LINGXI_VERSION = "0.2.1"
-SUPPORTED_LINGXI_VERSIONS = ("0.2.1", "0.3.0")
-PREFERRED_LINGXI_VERSION = "0.3.0"
+SUPPORTED_LINGXI_VERSIONS = ("0.2.1", "0.3.0", "0.4.5")
+PREFERRED_LINGXI_VERSION = "0.4.5"
 
 
 def _is_cjk(ch: str) -> bool:
@@ -150,17 +151,12 @@ def _rank_weighted_terms(
 
 @lru_cache(maxsize=1)
 def _load_lingxi_segmenter():
-    try:
-        installed_version = distribution_version("lingxi")
-    except PackageNotFoundError as exc:
-        raise ImportError(f"LingXi {REQUIRED_LINGXI_VERSION} is not installed") from exc
+    lingxi, installed_version = lingxi_binding()
     if installed_version not in SUPPORTED_LINGXI_VERSIONS:
         raise ImportError(
             f"LingXi {' or '.join(SUPPORTED_LINGXI_VERSIONS)} is required; found {installed_version}"
         )
-    import lingxi
-
-    return lingxi.load(), installed_version
+    return load_segmenter(lingxi), installed_version
 
 
 def _rank_new_words(

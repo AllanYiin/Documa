@@ -1,6 +1,6 @@
 {
   "name": "codex-documa",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "透過 MCP 在 Codex 中使用 Documa 的文件理解、repository graph 與動態 skill 載入能力。",
   "author": {
     "name": "Documa 貢獻者"

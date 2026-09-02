@@ -2,7 +2,7 @@
   "name": "claude-code-documa",
   "displayName": "Documa",
   "description": "Use Documa MCP for document understanding and evidence-bound repository code, dependency, call, and impact graphs.",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "author": {
     "name": "Documa contributors"
   },

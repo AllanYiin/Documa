@@ -83,8 +83,8 @@ def test_missing_lingxi_falls_back_to_ngram_and_reports_reason():
 
 def test_lingxi_loader_rejects_unsupported_distribution():
     _load_lingxi_segmenter.cache_clear()
-    with patch("documa.pipeline.block_keywords.distribution_version", return_value="0.2.0"):
-        with pytest.raises(ImportError, match="LingXi 0.2.1 or 0.3.0 is required; found 0.2.0"):
+    with patch("documa.pipeline.block_keywords.lingxi_binding", return_value=(None, "0.2.0")):
+        with pytest.raises(ImportError, match="LingXi 0.2.1 or 0.3.0 or 0.4.5 is required; found 0.2.0"):
             _load_lingxi_segmenter()
     _load_lingxi_segmenter.cache_clear()
 

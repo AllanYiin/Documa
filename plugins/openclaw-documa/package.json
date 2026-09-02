@@ -1,6 +1,6 @@
 {
   "name": "@documa/openclaw-documa",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "type": "module",
   "description": "OpenClaw tool plugin for Documa document understanding.",
   "license": "MIT",
@@ -17,4 +17,3 @@
     "openclaw": ">=2026.3.24-beta.2"
   }
 }
-

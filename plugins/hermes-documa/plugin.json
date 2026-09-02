@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "documa",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Evidence-first document understanding and repository graph tools for Hermes Agent.",
   "author": {
     "name": "Documa contributors"
