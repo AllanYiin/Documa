@@ -189,6 +189,14 @@ python benchmarks\token_economy\run_agent_benchmark.py
 
 兩種模式使用相同的 IR、block search、bounded read 與 citation 能力，差別只在搜尋範圍。
 
+### Metadata 提供的篩選訊號
+
+Documa 的 metadata 分成文件、結構、語意、來源定位、內容品質與檢索衍生層。除了 `document_id`、`source_name`、block 階層、`page_refs`／`bbox_refs`，每個文件區塊還可帶有 `keyword_terms`、`new_word_terms`、`search_terms`、confidence、OCR／reading-order trace 與 `content_hash`。搜尋時會再衍生 `doc_region`、answer tags、數字／日期／表格 flags、鄰接 block、去重鍵與建議讀取成本，供 agent 在載入原文前選擇候選證據。
+
+目前公開介面已提供 `document_ids`、`scope_block_id`、`granularity`、`search_body`、`query`／`any_of`、`group_by_document` 與分頁配額等搜尋收斂參數。`block_type`、頁面範圍、`doc_region`、answer tags、confidence、OCR origin、language 與內容類型 flags 已有資料基礎，但目前主要用於排序、診斷或讀取後判斷，尚未成為通用 filter predicates。
+
+完整欄位、排序權重、引用／去重設計與目前能力邊界，請見 [Documa metadata 與後續篩選設計](docs/documa/metadata-and-filtering.md)。
+
 ### 單文件：已知答案在哪份文件
 
 適合「這份報告如何定義 X？」或「這份合約的違約金是多少？」：
@@ -436,6 +444,7 @@ documa benchmark --mode quality
 | 主題 | 文件 |
 | --- | --- |
 | 架構分層與設計 | [docs/documa/architecture.md](docs/documa/architecture.md) |
+| Metadata 與後續篩選 | [docs/documa/metadata-and-filtering.md](docs/documa/metadata-and-filtering.md) |
 | IR 相容性契約 | [docs/spec/ir-compatibility.md](docs/spec/ir-compatibility.md) |
 | PDF gold fixtures 與品質門檻 | [fixtures/pdf/gold/README.md](fixtures/pdf/gold/README.md) |
 | Token economy benchmark | [benchmarks/token_economy/](benchmarks/token_economy/run_agent_benchmark.py) |
