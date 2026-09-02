@@ -9,9 +9,11 @@
 ## 📌 SNAPSHOT — 當前狀態
 <!-- 這一整段每次 /devnote 會被覆寫，只反映「到目前為止的最新狀態」 -->
 
-**最後更新**：2026-08-30
+**最後更新**：2026-08-31
 
 ### 需求狀態
+- [x] 2026-08-31 本機安裝：依使用者要求，以 `codex plugin add codex-documa@documa-local --json` 安裝並啟用原樣 0.8.0（快取與交付 ZIP 完全一致，未重打 cachebuster）；`D:\Python310` 經 guarded installer 離線／no-deps 升至 Documa 0.8.0，其他依賴未變。以安裝快取 MCP config 實測 19 tools、idle 4.5 秒後 process→summary/source refs PASS，內建 Lingxi 0.4.5；新開 Codex task 載入新版 skills/tools。
+- [x] 2026-08-31：Documa／四宿主 plugins 同步 0.8.0；私有 `documa._vendor.lingxi._core` 內建 rust-Lingxi 0.4.5（upstream `e3d2aa5`）與三個核准模型，wheel/sdist 不需下載或另裝 Lingxi。摘要 schema v2 byte spans 轉接至既有 Unicode/source evidence 契約。隔離 wheel 全套 443 passed／5 skipped、Lingxi core 57 passed、doctor 9/9、MCP stdio idle→process→summary PASS；本機封裝，未發布或全域安裝。
 - [x] 2026-08-30：新增 Hermes Agent Portable Agent Plugins v1 wrapper（`plugin.json`／`mcp.json`／4 skills／deterministic ZIP），並同步全體 plugin metadata、runtime `__version__` 與 install pins 至 0.7.0；Hermes v0.20.0 原生 loader 實讀為 4 skills、1 MCP、0 diagnostics
 - [x] 2026-08-29：修正 MCP SDK 2.x 在 Windows claim stdio 時將 fd 0 導向 NUL，導致 Documa orphan watchdog 誤判斷線並於約 2 秒後 `os._exit(0)`；watchdog 現在監控安裝時複製的原始 stdin pipe，且只將 Windows 109／233 視為真正斷線。Codex／Claude Code 使用的全域 0.7.0 runtime 已經 guarded installer 重建安裝，127 頁真實 PDF 與安裝後 smoke 均保持連線
 - [x] 2026-08-28：修正 GitHub Actions 長期失敗：plugin deterministic ZIP 不再受 checkout 換行、zlib、Path 排序與 ZIP creator OS 差異影響；文字 payload 正規化為 LF、binary 保持原 bytes、entry 採固定 POSIX path 順序／Unix metadata／無壓縮儲存，並新增回歸測試與重建兩份 tracked plugin ZIP
@@ -82,6 +84,8 @@
 - **替換採可逆 provider，不刪舊能力**：Rust 負責 PDF extraction，PyMuPDF 保留 renderer/OCR 與明確回退；LingXi 負責預設 `keyword_terms`，n-gram 保留為缺模型回退與新詞能力補償，直到等價的新詞／gold gate 通過。
 
 ### 已知地雷（仍需注意）
+- **Lingxi 0.4.5 不是舊版摘要 list**：schema v2 回傳結構化 blocks 與 UTF-8 byte spans；必須經 adapter 驗證與轉成 Unicode code point。內建 namespace 避開外部 `lingxi` distribution，且不受全域 `LINGXI_ASSETS` 影響。`native/lingxi/VENDOR.json`／`ASSETS.md` 是模型雜湊與來源核准依據，打包不得混入舊模型、corpus 或 training artifacts。
+- **隔離 artifact 全套測試的 Windows 啟動差異**：venv redirector PID 不等於真正 Python PID；guarded-install 測試需使用 base Python 加 `-S`，只 `site.addsitedir(test-env/Lib/site-packages)` 載入隔離 wheel 與 dependencies。pytest temp 不可放 `build/`（code graph 會排除）；MCP asyncio named pipe 在 sandbox 可能需單次 scoped escalation。
 - **Managed skill roots 不得位於 Codex 原生掃描路徑**：原生 loader 只應看見 plugin bootstrap，否則同一 skill 可能被原生與 Documa 重複注入；root 必須顯式設定 stable id/path/priority/enabled/trusted
 - **一般 pip/wheel 沒有可靠的 pre-install hook**：無法由「尚未安裝的新版程式碼」在 pip 覆寫舊 launcher 前自行關閉 MCP；首次安裝直接 pip，後續升級必須走 `python -m documa.install`
 - **`documa.install --force-reinstall` 會讓 pip 重新解析／重裝完整依賴樹**：共用全域 Python 可能因此升級其他專案的套件並產生 `pip check` 衝突；artifact smoke 優先使用隔離環境，或後續為 installer 補受控 `--no-deps` 能力
@@ -103,6 +107,24 @@
 ---
 
 # 📜 HISTORY
+
+---
+
+## [2026-08-31] 本機 Codex 安裝 0.8.0
+
+- 使用既有 `documa-local` local marketplace，不新增／改寫市集。CLI 確認 `codex-documa@documa-local` 為 installed, enabled, 0.8.0，安裝位置 `C:\Users\allan\.codex\plugins\cache\documa-local\codex-documa\0.8.0`。
+- 先確認 base dependencies 全符合，再以 `PIP_NO_DEPS=1`、`PIP_NO_INDEX=1` 呼叫既有 `documa.install --upgrade` 安裝已核對 SHA-256 的 wheel；原本 distribution 0.7.0/runtime 0.6.4 不一致已收斂為兩者 0.8.0。未偵測到需中斷的既有 MCP，未更動獨立 Lingxi 或其他 Python dependencies。
+- 快取 byte-equivalent release ZIP、4 skills、doctor(no-benchmark) 8/8、實際快取設定的 MCP stdio 19 tools／idle 4.5 秒／process→summary/source refs 全部 PASS。安裝 smoke 證據：`build/release-0.8.0/codex-installed-smoke.json`。既有封裝產物不變，未發布 registry。
+
+---
+
+## [2026-08-31] Documa 0.8.0 自帶 rust-Lingxi 0.4.5
+
+- Vendored 本機乾淨 commit `e3d2aa59c441709f5383d1c498187d74da82e6c0` 的 core/PyO3 binding；只改 workspace 範圍與 compiled version export。三個必要模型共 160,863,469 bytes，雜湊符合上游 ASSETS.md 核准清單；optional affect、corpus、training、CLI/WASM/FFI 不打包。
+- setuptools-rust 增加私有 extension，wheel/sdist 自帶模型與授權；build-time fail-closed model hash gate。既有外部 0.2.1/0.3.0 source-checkout compatibility 保留，正式 wheel 優先使用精確 0.4.5，絕不覆寫獨立 Lingxi。
+- 摘要 v2 對 exact selected spans 做 byte→code-point 轉換、source-text 驗證、巢狀去重與長文跨候選回映；保留 Documa API/IR，分數映射及 unranked score_available=false 明載於 README。
+- 驗證：隔離 wheel 443 passed／5 skipped／29 subtests；Rust core 57/57；doctor 9/9；MCP 19 agent tools、閒置 4.5 秒後 process→summarize 與 source refs PASS；source/schema/plugin/hash gates PASS。`scripts/verify_release_artifacts.py` 與 `scripts/smoke_installed_release.py` 可重跑。
+- 交付在 `dist/`：Windows CPython 3.10 x64 wheel、sdist、四宿主 plugins 與合併 bundle；舊 artifacts、既有 dirty changes 及全域安裝保留。Linux/macOS wheel、新版四宿主 live loading、registry publish 均未執行，不能宣稱跨平台 production release PASS。
 
 ---
 
