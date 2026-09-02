@@ -143,6 +143,22 @@ class TokenBudgetTests(unittest.TestCase):
         self.assertTrue(was_truncated)
         self.assertLessEqual(counter.count(truncated_text), count // 2)
 
+    def test_auto_detection_retries_after_transient_counter_failure(self):
+        expected = _CharCounter()
+        token_counting.reset_token_counter()
+        with (
+            mock.patch.dict("os.environ", {}, clear=False),
+            mock.patch.object(
+                token_counting,
+                "TiktokenCounter",
+                side_effect=[RuntimeError("transient startup failure"), expected],
+            ) as counter_factory,
+        ):
+            with mock.patch.dict("os.environ", {"DOCUMA_TOKEN_COUNTER": ""}):
+                self.assertIsNone(token_counting.get_token_counter())
+                self.assertIs(token_counting.get_token_counter(), expected)
+        self.assertEqual(counter_factory.call_count, 2)
+
     def test_tiktoken_budget_counts_final_serialized_payload(self):
         try:
             counter = token_counting.TiktokenCounter()

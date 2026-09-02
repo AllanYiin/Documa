@@ -9,9 +9,10 @@
 ## 📌 SNAPSHOT — 當前狀態
 <!-- 這一整段每次 /devnote 會被覆寫，只反映「到目前為止的最新狀態」 -->
 
-**最後更新**：2026-08-31
+**最後更新**：2026-09-01
 
 ### 需求狀態
+- [x] 2026-09-01：修正 Codex code context 連續回 `TOKEN_COUNTER_UNAVAILABLE`。三個 stdio plugin config 明確設定 `DOCUMA_TOKEN_COUNTER=tiktoken:o200k_base`，runtime 不再永久快取暫態 auto-detection `None`；focused 48 passed、Ruff／deterministic plugin ZIP／Codex plugin validator／diff check PASS。本機 Codex plugin 以 cachebuster `0.8.0+codex.20260901052822` 重裝，安裝快取 counter smoke 為 `tiktoken:o200k_base`；需新 task 才載入新版 MCP。
 - [x] 2026-08-31 本機安裝：依使用者要求，以 `codex plugin add codex-documa@documa-local --json` 安裝並啟用原樣 0.8.0（快取與交付 ZIP 完全一致，未重打 cachebuster）；`D:\Python310` 經 guarded installer 離線／no-deps 升至 Documa 0.8.0，其他依賴未變。以安裝快取 MCP config 實測 19 tools、idle 4.5 秒後 process→summary/source refs PASS，內建 Lingxi 0.4.5；新開 Codex task 載入新版 skills/tools。
 - [x] 2026-08-31：Documa／四宿主 plugins 同步 0.8.0；私有 `documa._vendor.lingxi._core` 內建 rust-Lingxi 0.4.5（upstream `e3d2aa5`）與三個核准模型，wheel/sdist 不需下載或另裝 Lingxi。摘要 schema v2 byte spans 轉接至既有 Unicode/source evidence 契約。隔離 wheel 全套 443 passed／5 skipped、Lingxi core 57 passed、doctor 9/9、MCP stdio idle→process→summary PASS；本機封裝，未發布或全域安裝。
 - [x] 2026-08-30：新增 Hermes Agent Portable Agent Plugins v1 wrapper（`plugin.json`／`mcp.json`／4 skills／deterministic ZIP），並同步全體 plugin metadata、runtime `__version__` 與 install pins 至 0.7.0；Hermes v0.20.0 原生 loader 實讀為 4 skills、1 MCP、0 diagnostics

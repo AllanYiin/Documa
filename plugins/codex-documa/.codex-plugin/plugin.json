@@ -1,9 +1,9 @@
 {
   "name": "codex-documa",
-  "version": "0.8.0",
-  "description": "透過 MCP 在 Codex 中使用 Documa 的文件理解、repository graph 與動態 skill 載入能力。",
+  "version": "0.8.0+codex.20260901052822",
+  "description": "\u900f\u904e MCP \u5728 Codex \u4e2d\u4f7f\u7528 Documa \u7684\u6587\u4ef6\u7406\u89e3\u3001repository graph \u8207\u52d5\u614b skill \u8f09\u5165\u80fd\u529b\u3002",
   "author": {
-    "name": "Documa 貢獻者"
+    "name": "Documa \u8ca2\u737b\u8005"
   },
   "homepage": "https://github.com/AllanYiin/Documa",
   "repository": "https://github.com/AllanYiin/Documa",
@@ -18,26 +18,26 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Documa",
-    "shortDescription": "用 Documa 證據閱讀文件與程式碼圖譜。",
-    "longDescription": "加入 Documa MCP 工具與證據優先工作流程，協助處理文件、搜尋區塊，以及以來源 hash 驗證 repository graph 路徑。",
-    "developerName": "Documa 貢獻者",
+    "shortDescription": "\u7528 Documa \u8b49\u64da\u95b1\u8b80\u6587\u4ef6\u8207\u7a0b\u5f0f\u78bc\u5716\u8b5c\u3002",
+    "longDescription": "\u52a0\u5165 Documa MCP \u5de5\u5177\u8207\u8b49\u64da\u512a\u5148\u5de5\u4f5c\u6d41\u7a0b\uff0c\u5354\u52a9\u8655\u7406\u6587\u4ef6\u3001\u641c\u5c0b\u5340\u584a\uff0c\u4ee5\u53ca\u4ee5\u4f86\u6e90 hash \u9a57\u8b49 repository graph \u8def\u5f91\u3002",
+    "developerName": "Documa \u8ca2\u737b\u8005",
     "composerIcon": "./assets/documa-logo.png",
     "logo": "./assets/documa-logo.png",
     "logoDark": "./assets/documa-logo.png",
     "category": "Productivity",
     "capabilities": [
       "MCP",
-      "文件理解",
-      "證據搜尋",
-      "動態 Skill Loader",
+      "\u6587\u4ef6\u7406\u89e3",
+      "\u8b49\u64da\u641c\u5c0b",
+      "\u52d5\u614b Skill Loader",
       "Repository Graph"
     ],
     "defaultPrompt": [
-      "使用 Documa，依據這份文件中的證據回答問題。",
-      "先搜尋 Documa 區塊，再讀取完整內容。",
-      "將這個檔案處理成 Documa IR 並檢查結果。",
-      "使用 Documa 動態載入這項任務所需的最小 skill context。",
-      "使用 Documa 追蹤這個方法的 callers、dependencies 與變更影響。"
+      "\u4f7f\u7528 Documa\uff0c\u4f9d\u64da\u9019\u4efd\u6587\u4ef6\u4e2d\u7684\u8b49\u64da\u56de\u7b54\u554f\u984c\u3002",
+      "\u5148\u641c\u5c0b Documa \u5340\u584a\uff0c\u518d\u8b80\u53d6\u5b8c\u6574\u5167\u5bb9\u3002",
+      "\u5c07\u9019\u500b\u6a94\u6848\u8655\u7406\u6210 Documa IR \u4e26\u6aa2\u67e5\u7d50\u679c\u3002",
+      "\u4f7f\u7528 Documa \u52d5\u614b\u8f09\u5165\u9019\u9805\u4efb\u52d9\u6240\u9700\u7684\u6700\u5c0f skill context\u3002",
+      "\u4f7f\u7528 Documa \u8ffd\u8e64\u9019\u500b\u65b9\u6cd5\u7684 callers\u3001dependencies \u8207\u8b8a\u66f4\u5f71\u97ff\u3002"
     ]
   },
   "mcpServers": "./.mcp.json"

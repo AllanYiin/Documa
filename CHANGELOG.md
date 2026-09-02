@@ -2,6 +2,7 @@
 
 ## v0.8.0 — Bundled rust-Lingxi 0.4.5（2026-08-31）
 
+- **MCP token counter 啟動修正**：Codex、Claude Code 與 Hermes plugin 明確以 `tiktoken:o200k_base` 啟動 Documa MCP，避免宿主繼承環境或啟動期自動偵測失敗讓預設 code-context hard cap 持續回傳 `TOKEN_COUNTER_UNAVAILABLE`；自動偵測的暫態失敗不再永久快取於 server process。
 - **自帶 Lingxi**：私有 `documa._vendor.lingxi._core` 原生模組與三個核准模型納入 wheel/sdist，不依賴 Lingxi 的公開 index 或執行期下載，不覆蓋獨立 `lingxi` 安裝；build gate 驗證模型 SHA-256 與精確檔案集合。
 - **摘要 v2 相容**：Lingxi 結構化 blocks/selected spans 轉為既有 Documa 摘要列，嚴格轉換 UTF-8 byte offset 至 Unicode code point、拒絕來源不符、去除階層重複片段，保留 block/page 引用與零 LLM 契約；長文二階選取可跨候選而不失去原文映射。
 - **版本與插件**：Python runtime／metadata／lockfile 與 Codex、Claude Code、Hermes、OpenClaw wrappers 同步為 0.8.0。插件仍共用另外安裝的 Documa wheel；本機交付不代表已發布至 PyPI 或宿主 registry。

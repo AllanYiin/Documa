@@ -98,6 +98,7 @@ class PackagingContractTests(unittest.TestCase):
             entry = json.loads(path.read_text(encoding="utf-8"))["mcpServers"]["documa"]
             self.assertEqual(entry["command"], "python", path)
             self.assertEqual(entry["args"], ["-m", "documa.interfaces.mcp_server"], path)
+            self.assertEqual(entry["env"]["DOCUMA_TOKEN_COUNTER"], "tiktoken:o200k_base", path)
 
     def test_plugin_versions_and_install_pins_match_runtime(self):
         version = _string(self.project, "version")

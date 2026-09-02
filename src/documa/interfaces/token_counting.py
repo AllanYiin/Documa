@@ -164,5 +164,13 @@ def get_token_counter() -> TokenCounter | None:
     if _override is not _UNSET:
         return _override
     if _resolved is _UNSET:
-        _resolved = _resolve()
+        candidate = _resolve()
+        # Cache successful resolution and an explicit opt-out.  An import or
+        # tokenizer initialization failure can be transient during host/MCP
+        # startup, so do not poison the process for its entire lifetime by
+        # caching an automatically detected ``None`` result.
+        spec = os.environ.get("DOCUMA_TOKEN_COUNTER", "").strip()
+        if candidate is not None or spec.partition(":")[0].casefold() == "none":
+            _resolved = candidate
+        return candidate
     return _resolved

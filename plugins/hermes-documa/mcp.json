@@ -9,7 +9,8 @@
         "documa.interfaces.mcp_server"
       ],
       "env": {
-        "DOCUMA_MCP_PROFILE": "agent"
+        "DOCUMA_MCP_PROFILE": "agent",
+        "DOCUMA_TOKEN_COUNTER": "tiktoken:o200k_base"
       }
     }
   }
