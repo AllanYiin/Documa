@@ -8,10 +8,10 @@
 
 ```powershell
 # 首次安裝
-python -m pip install "documa==0.6.4"
+python -m pip install "documa==0.7.0"
 
 # 升級／重裝（會先偵測並斷開 MCP）
-python -m documa.install --upgrade "documa==0.6.4"
+python -m documa.install --upgrade "documa==0.7.0"
 claude --plugin-dir .\plugins\claude-code-documa
 ```
 

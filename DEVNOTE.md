@@ -9,9 +9,10 @@
 ## 📌 SNAPSHOT — 當前狀態
 <!-- 這一整段每次 /devnote 會被覆寫，只反映「到目前為止的最新狀態」 -->
 
-**最後更新**：2026-08-29
+**最後更新**：2026-08-30
 
 ### 需求狀態
+- [x] 2026-08-30：新增 Hermes Agent Portable Agent Plugins v1 wrapper（`plugin.json`／`mcp.json`／4 skills／deterministic ZIP），並同步全體 plugin metadata、runtime `__version__` 與 install pins 至 0.7.0；Hermes v0.20.0 原生 loader 實讀為 4 skills、1 MCP、0 diagnostics
 - [x] 2026-08-29：修正 MCP SDK 2.x 在 Windows claim stdio 時將 fd 0 導向 NUL，導致 Documa orphan watchdog 誤判斷線並於約 2 秒後 `os._exit(0)`；watchdog 現在監控安裝時複製的原始 stdin pipe，且只將 Windows 109／233 視為真正斷線。Codex／Claude Code 使用的全域 0.7.0 runtime 已經 guarded installer 重建安裝，127 頁真實 PDF 與安裝後 smoke 均保持連線
 - [x] 2026-08-28：修正 GitHub Actions 長期失敗：plugin deterministic ZIP 不再受 checkout 換行、zlib、Path 排序與 ZIP creator OS 差異影響；文字 payload 正規化為 LF、binary 保持原 bytes、entry 採固定 POSIX path 順序／Unix metadata／無壓縮儲存，並新增回歸測試與重建兩份 tracked plugin ZIP
 - [x] 2026-08-22：Rust LingXi 0.3.0 抽取式摘要成為 Documa 一級能力；Python／CLI／MCP／function schema／agent profile 共用來源保留契約，逐句映射 block/source/page，長文採階層視窗，明載 `uses_llm=false`／`llm_tokens_used=0`；DocumentIR 0.2 不變
@@ -102,6 +103,15 @@
 ---
 
 # 📜 HISTORY
+
+---
+
+## [2026-08-30] Hermes Agent Portable Plugin v1
+
+- 新增 `plugins/hermes-documa`，依 Agent Plugins 1.0.0 固定位置提供 root `plugin.json`、明確 `type: stdio` 的 `mcp.json`、文件證據／code graph／maintenance／managed skill loader 四個 skills 與 `hermes-documa.zip`；插件與 MCP server 都使用短名稱 `documa`，降低 Hermes portable namespace 造成 MCP tool name 過長的風險。
+- Hermes skills 採最小 Agent Skills frontmatter，不使用目前 v0.20.0 portable loader 尚未接受的巢狀 `metadata.hermes`；實際以本機 Hermes Agent v0.20.0 `load_agent_plugin` 讀取，得到 4 skills、1 個 `documa` MCP server、0 diagnostics。
+- `validate_agent_plugins.py` 新增 portable closed-manifest／MCP schema／stdio／reserved env／skill description gates；deterministic packaging 納入 Hermes ZIP。同步 Claude Code、Codex、OpenClaw metadata、四份 install pins與 `documa.__version__` 至 0.7.0。
+- 驗證：source-truth `PYTHONPATH=src python -m pytest tests -q` 為 425 passed／4 skipped；agent plugin validator、plugin ZIP `--check`、OpenClaw `node --check`、`git diff --check` 全部 PASS；未設定 `PYTHONPATH` 的全套只會因全域舊 0.6.4 runtime shadow workspace 而出現 1 個 version mismatch。
 
 ---
 

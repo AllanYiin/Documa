@@ -10,10 +10,10 @@
 
 ```powershell
 # 首次安裝
-python -m pip install "documa==0.6.4"
+python -m pip install "documa==0.7.0"
 
 # 已安裝 Documa 時的升級／重裝：先斷開 MCP，再執行 pip
-python -m documa.install --upgrade "documa==0.6.4"
+python -m documa.install --upgrade "documa==0.7.0"
 ```
 
 共用整合契約：
@@ -30,22 +30,24 @@ python -m documa.install --upgrade "documa==0.6.4"
 | --- | --- | --- |
 | `claude-code-documa/` | Claude Code | `.claude-plugin` package with plugin-provided MCP server |
 | `codex-documa/` | Codex | `.codex-plugin` package with plugin-provided MCP server |
+| `hermes-documa/` | Hermes Agent | Portable Agent Plugins v1 package with bundled skills and stdio MCP |
 | `openclaw-documa/` | OpenClaw | Native OpenClaw tool plugin wrapping the `documa` CLI |
 
 ## Host-specific MCP config
 
-Codex 與 Claude Code 的 plugin manifest 都用 `mcpServers` 指向 MCP config；`.mcp.json` 也都使用 top-level `mcpServers` map。兩邊仍維持各自 wrapper 目錄，避免 host-specific metadata 互相耦合：
+Codex 與 Claude Code 的 plugin manifest 都用 `mcpServers` 指向 MCP config；`.mcp.json` 也都使用 top-level `mcpServers` map。兩邊仍維持各自 wrapper 目錄，避免 host-specific metadata 互相耦合。Hermes 則遵循 Portable Agent Plugins v1，在 plugin root 使用 `plugin.json` 與帶明確 `type: stdio` 的 `mcp.json`：
 
 | Host | Manifest field | `.mcp.json` shape |
 | --- | --- | --- |
 | Codex | `"mcpServers": "./.mcp.json"` | wrapped `mcpServers` map，command 為 `python`，args 為 `["-m", "documa.interfaces.mcp_server"]` |
 | Claude Code | `"mcpServers": "./.mcp.json"` | wrapped `mcpServers` map，command 為 `python`，args 為 `["-m", "documa.interfaces.mcp_server"]` |
+| Hermes Agent | Portable fixed location `mcp.json` | `$schema` + wrapped `mcpServers` map，每個 server 明確宣告 `type: stdio` |
 
-不要把兩邊 `.mcp.json` 合併成同一份；wrapper 應維持 host-specific。
+不要把這些 config 合併成同一份；wrapper 應維持 host-specific，Hermes 的 portable `mcp.json` 也不可改成 Codex／Claude 的相容格式。
 
 ## Packaging
 
-`plugins/claude-code-documa.zip` 與 `plugins/codex-documa.zip` 是發佈產物，一律用打包腳本重生（確定性輸出：固定時間戳、排序條目），不要手動壓縮：
+`plugins/claude-code-documa.zip`、`plugins/codex-documa.zip` 與 `plugins/hermes-documa.zip` 是發佈產物，一律用打包腳本重生（確定性輸出：固定時間戳、排序條目），不要手動壓縮：
 
 ```powershell
 python scripts\package_plugins.py          # 重生 zip

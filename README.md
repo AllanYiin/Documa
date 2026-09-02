@@ -8,7 +8,7 @@
 
 它把 PDF、Word、PowerPoint、HTML、email、notebook、Markdown 與純文字轉成同一套結構化 IR，讓 agent 先看文件結構、按 block 搜尋，再只讀取真正需要的內容。文件處理、索引與搜尋都在本機完成，不呼叫 LLM 或 embedding API；agent 因此能用更少的 context tokens，更快找到可引用的證據。
 
-目前版本：**0.6.4**｜需要 Python **3.10+**
+目前版本：**0.7.0**｜需要 Python **3.10+**
 
 ## Overview：Documa 解決什麼問題？
 
@@ -74,10 +74,10 @@ PDF 0.2.0 與 Office 0.1.0 parser 原始碼都已放在 repository 的 `native/`
 python -m pip install -e ".[dev]"
 ```
 
-若 0.6.4 已發布到你使用的 package index，也可以直接安裝固定版本：
+若 0.7.0 已發布到你使用的 package index，也可以直接安裝固定版本：
 
 ```powershell
-python -m pip install "documa==0.6.4"
+python -m pip install "documa==0.7.0"
 ```
 
 先確認執行環境正常：
@@ -388,7 +388,7 @@ documa search-collection --help
 需要本機 CPU OCR 時：
 
 ```powershell
-python -m pip install "documa[all]==0.6.4"
+python -m pip install "documa[all]==0.7.0"
 documa process .\scan.pdf --ocr --out .\out\scan
 ```
 
@@ -421,7 +421,7 @@ documa process .\report.xlsx --office-provider rust --out .\out\report
 首次安裝可直接使用 pip。已安裝 Documa 且 MCP server 可能仍在執行時，請使用受控升級入口：
 
 ```powershell
-python -m documa.install --upgrade "documa==0.6.4"
+python -m documa.install --upgrade "documa==0.7.0"
 ```
 
 它會先協調既有 Documa MCP process 退出，再執行安裝，避免 Windows 上的 executable file lock。不要在 MCP server 仍連線時直接覆寫安裝。

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "documa",
+  "version": "0.7.0",
+  "description": "Evidence-first document understanding and repository graph tools for Hermes Agent.",
+  "author": {
+    "name": "Documa contributors"
+  },
+  "homepage": "https://github.com/AllanYiin/Documa",
+  "repository": "https://github.com/AllanYiin/Documa",
+  "license": "MIT",
+  "keywords": [
+    "document-understanding",
+    "evidence",
+    "mcp",
+    "repository-graph",
+    "hermes-agent"
+  ]
+}

@@ -92,6 +92,7 @@ class PackagingContractTests(unittest.TestCase):
         configs = (
             ROOT / "plugins" / "claude-code-documa" / ".mcp.json",
             ROOT / "plugins" / "codex-documa" / ".mcp.json",
+            ROOT / "plugins" / "hermes-documa" / "mcp.json",
         )
         for path in configs:
             entry = json.loads(path.read_text(encoding="utf-8"))["mcpServers"]["documa"]
@@ -105,6 +106,7 @@ class PackagingContractTests(unittest.TestCase):
             ROOT / "plugins" / "codex-documa" / ".codex-plugin" / "plugin.json",
             ROOT / "plugins" / "openclaw-documa" / "openclaw.plugin.json",
             ROOT / "plugins" / "openclaw-documa" / "package.json",
+            ROOT / "plugins" / "hermes-documa" / "plugin.json",
         )
         for path in manifests:
             plugin_version = json.loads(path.read_text(encoding="utf-8"))["version"]
@@ -115,6 +117,7 @@ class PackagingContractTests(unittest.TestCase):
             ROOT / "plugins" / "claude-code-documa" / "README.md",
             ROOT / "plugins" / "codex-documa" / "README.md",
             ROOT / "plugins" / "openclaw-documa" / "README.md",
+            ROOT / "plugins" / "hermes-documa" / "README.md",
         )
         for path in readmes:
             self.assertIn(f"documa=={version}", path.read_text(encoding="utf-8"), path)
@@ -130,6 +133,16 @@ class PackagingContractTests(unittest.TestCase):
         with zipfile.ZipFile(ROOT / "plugins" / "claude-code-documa.zip") as archive:
             names = set(archive.namelist())
         self.assertIn("skills/documa-codegraph/SKILL.md", names)
+
+    def test_hermes_zip_contains_portable_manifest_mcp_and_skills(self):
+        with zipfile.ZipFile(ROOT / "plugins" / "hermes-documa.zip") as archive:
+            names = set(archive.namelist())
+        self.assertIn("plugin.json", names)
+        self.assertIn("mcp.json", names)
+        self.assertIn("skills/documa-evidence/SKILL.md", names)
+        self.assertIn("skills/documa-skill-loader/SKILL.md", names)
+        self.assertNotIn(".codex-plugin/plugin.json", names)
+        self.assertNotIn(".claude-plugin/plugin.json", names)
 
 
 if __name__ == "__main__":

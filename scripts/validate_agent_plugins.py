@@ -8,6 +8,20 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGINS = ROOT / "plugins"
+AGENT_PLUGIN_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
+AGENT_PLUGIN_MCP_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
+AGENT_PLUGIN_FIELDS = {
+    "$schema",
+    "name",
+    "version",
+    "description",
+    "author",
+    "homepage",
+    "repository",
+    "license",
+    "keywords",
+    "extensions",
+}
 
 
 def expected_documa_version() -> str:
@@ -78,9 +92,11 @@ def require_relative_path(plugin_root: Path, value: Any, field: str, path: Path)
         raise ValidationError(f"{path.relative_to(ROOT)} field {field!r} points to missing path {value!r}")
 
 
-def validate_server_entry(entry: Any, context: str) -> None:
+def validate_server_entry(entry: Any, context: str, *, portable: bool = False) -> None:
     if not isinstance(entry, dict):
         raise ValidationError(f"{context} must be an object")
+    if portable and entry.get("type") != "stdio":
+        raise ValidationError(f"{context}.type must be 'stdio'")
     command = entry.get("command")
     if command != "python":
         raise ValidationError(f"{context} must use command 'python'")
@@ -91,6 +107,23 @@ def validate_server_entry(entry: Any, context: str) -> None:
     env = entry.get("env", {})
     if not isinstance(env, dict):
         raise ValidationError(f"{context}.env must be an object")
+    if portable and {"PLUGIN_ROOT", "PLUGIN_DATA"} & set(env):
+        raise ValidationError(f"{context}.env must not override reserved plugin variables")
+
+
+def validate_hermes_skill(plugin_root: Path, skill_name: str) -> None:
+    skill_path = plugin_root / "skills" / skill_name / "SKILL.md"
+    if not skill_path.exists():
+        raise ValidationError(f"hermes-documa must include skills/{skill_name}/SKILL.md")
+    text = skill_path.read_text(encoding="utf-8")
+    match = re.search(r"(?m)^description:\s*(.+?)\s*$", text)
+    if match is None:
+        raise ValidationError(f"{skill_path.relative_to(ROOT)} must define a description")
+    description = match.group(1).strip().strip('"\'')
+    if len(description) > 60 or not description.endswith("."):
+        raise ValidationError(
+            f"{skill_path.relative_to(ROOT)} description must be <=60 characters and end with a period"
+        )
 
 
 def validate_skill(plugin_root: Path, plugin_name: str, skill_name: str = "documa-evidence") -> None:
@@ -171,12 +204,57 @@ def validate_openclaw_plugin() -> None:
     validate_skill(plugin_root, "openclaw-documa")
 
 
+def validate_hermes_plugin() -> None:
+    plugin_root = PLUGINS / "hermes-documa"
+    require_documa_install_pin(plugin_root / "README.md")
+
+    manifest_path = plugin_root / "plugin.json"
+    manifest = read_json(manifest_path)
+    unknown = set(manifest) - AGENT_PLUGIN_FIELDS
+    if unknown:
+        raise ValidationError(
+            f"{manifest_path.relative_to(ROOT)} has non-portable top-level fields: {sorted(unknown)!r}"
+        )
+    if manifest.get("$schema") != AGENT_PLUGIN_SCHEMA:
+        raise ValidationError(f"{manifest_path.relative_to(ROOT)} must target Agent Plugins 1.0.0")
+    if require_string(manifest, "name", manifest_path) != "documa":
+        raise ValidationError("Hermes portable plugin name must be 'documa'")
+    require_string(manifest, "description", manifest_path)
+    require_documa_version(manifest, "version", manifest_path)
+
+    mcp_path = plugin_root / "mcp.json"
+    mcp = read_json(mcp_path)
+    if set(mcp) != {"$schema", "mcpServers"}:
+        raise ValidationError(f"{mcp_path.relative_to(ROOT)} must only define $schema and mcpServers")
+    if mcp.get("$schema") != AGENT_PLUGIN_MCP_SCHEMA:
+        raise ValidationError(f"{mcp_path.relative_to(ROOT)} must target Agent Plugins MCP 1.0.0")
+    servers = mcp.get("mcpServers")
+    if not isinstance(servers, dict) or set(servers) != {"documa"}:
+        raise ValidationError("Hermes mcp.json must define exactly mcpServers.documa")
+    validate_server_entry(
+        servers["documa"],
+        "hermes-documa/mcp.json mcpServers.documa",
+        portable=True,
+    )
+
+    for skill_name in (
+        "documa-codegraph",
+        "documa-evidence",
+        "documa-maintenance",
+        "documa-skill-loader",
+    ):
+        validate_hermes_skill(plugin_root, skill_name)
+    validate_skill(plugin_root, "hermes-documa")
+    validate_skill(plugin_root, "hermes-documa", "documa-skill-loader")
+
+
 def main() -> int:
     try:
         require_documa_install_pin(PLUGINS / "README.md")
         validate_codex_plugin()
         validate_claude_plugin()
         validate_openclaw_plugin()
+        validate_hermes_plugin()
     except ValidationError as exc:
         print(f"agent plugin validation failed: {exc}")
         return 1

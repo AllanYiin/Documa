@@ -11,10 +11,10 @@ Plugin 內含四個邊界清楚的 skills：`documa-skill-loader` 是唯一常�
 
 ```powershell
 # 首次安裝
-python -m pip install "documa==0.6.4"
+python -m pip install "documa==0.7.0"
 
 # 升級／重裝（會先偵測並斷開 MCP）
-python -m documa.install --upgrade "documa==0.6.4"
+python -m documa.install --upgrade "documa==0.7.0"
 ```
 
 使用 Codex local plugin flow 載入 `plugins/codex-documa`。啟用後，在 Codex 內用以下指令確認 MCP server：
