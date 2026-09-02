@@ -528,12 +528,17 @@ class Stage10BlockReadingTests(unittest.TestCase):
         original = {
             "mcp": sys.modules.get("mcp"),
             "mcp.server": sys.modules.get("mcp.server"),
+            "mcp.server.mcpserver": sys.modules.get("mcp.server.mcpserver"),
             "mcp.server.fastmcp": sys.modules.get("mcp.server.fastmcp"),
         }
+        # Exercise the MCP 1.x fallback: the v2 module exists but does not
+        # export MCPServer, so create_mcp_server must import FastMCP instead.
+        mcpserver_module = types.ModuleType("mcp.server.mcpserver")
         fastmcp_module = types.ModuleType("mcp.server.fastmcp")
         fastmcp_module.FastMCP = FakeFastMCP
         sys.modules["mcp"] = types.ModuleType("mcp")
         sys.modules["mcp.server"] = types.ModuleType("mcp.server")
+        sys.modules["mcp.server.mcpserver"] = mcpserver_module
         sys.modules["mcp.server.fastmcp"] = fastmcp_module
         try:
             from documa.interfaces.mcp_server import create_mcp_server

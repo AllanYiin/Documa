@@ -107,11 +107,16 @@ def create_mcp_server(profile: str | None = None) -> Any:
         pass
 
     try:
-        from mcp.server.fastmcp import FastMCP
-    except ImportError as exc:  # pragma: no cover - broken or incomplete installation
-        raise RuntimeError("Install or repair Documa to run the MCP server: pip install --upgrade documa") from exc
+        # MCP 2 renamed FastMCP to MCPServer while retaining the server API
+        # Documa uses (tool registration, discovery, and stdio transport).
+        from mcp.server.mcpserver import MCPServer as MCPServerClass
+    except ImportError:
+        try:
+            from mcp.server.fastmcp import FastMCP as MCPServerClass
+        except ImportError as exc:  # pragma: no cover - broken or incomplete installation
+            raise RuntimeError("Install or repair Documa to run the MCP server: pip install --upgrade documa") from exc
 
-    mcp = FastMCP(
+    mcp = MCPServerClass(
         "Documa",
         instructions=(
             "Use Documa for large PDFs, long documents, document QA, evidence search, "
@@ -123,7 +128,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
 
     def _documa_tool(fn):
         # Ship each payload exactly once: compact JSON text, no structuredContent
-        # mirror. FastMCP would otherwise serialize the dict twice (structured +
+        # mirror. The MCP SDK would otherwise serialize the dict twice (structured +
         # indent=2 text), doubling the tokens every response costs the host.
         @functools.wraps(fn)
         def wrapper(**kwargs: Any) -> str:
@@ -805,20 +810,31 @@ def create_mcp_server(profile: str | None = None) -> Any:
     return mcp
 
 
-def _stdin_pipe_broken_windows() -> bool:
+def _stdin_pipe_broken_windows(stdin_fd: int | None = None) -> bool:
     """Non-consuming probe: has the host's end of the stdin pipe gone away?
 
     PeekNamedPipe never removes data, so it is safe to call while the MCP
-    transport is concurrently reading stdin.
+    transport is concurrently reading stdin. Only definitive broken-pipe
+    errors count as disconnects; MCP 2.x may temporarily divert fd 0 to NUL,
+    where PeekNamedPipe fails with ERROR_INVALID_FUNCTION even though the
+    original transport pipe is still healthy.
     """
     import ctypes
     import msvcrt
 
     kernel32 = ctypes.windll.kernel32
-    handle = msvcrt.get_osfhandle(sys.stdin.fileno())
+    fd = sys.stdin.fileno() if stdin_fd is None else stdin_fd
+    try:
+        handle = msvcrt.get_osfhandle(fd)
+    except OSError:
+        return False
+    if kernel32.GetFileType(ctypes.c_void_p(handle)) != 3:  # FILE_TYPE_PIPE
+        return False
     available = ctypes.c_ulong(0)
     ok = kernel32.PeekNamedPipe(ctypes.c_void_p(handle), None, 0, None, ctypes.byref(available), None)
-    return not ok
+    if ok:
+        return False
+    return kernel32.GetLastError() in {109, 233}  # ERROR_BROKEN_PIPE / ERROR_PIPE_NOT_CONNECTED
 
 
 def install_stdio_exit_watchdog(poll_seconds: float = 2.0) -> bool:
@@ -846,10 +862,22 @@ def install_stdio_exit_watchdog(poll_seconds: float = 2.0) -> bool:
         handle = msvcrt.get_osfhandle(stdin_fd)
         if ctypes.windll.kernel32.GetFileType(ctypes.c_void_p(handle)) != FILE_TYPE_PIPE:
             return False
+        try:
+            # MCP SDK 2.x claims the stdio wire through a private duplicate and
+            # diverts fd 0 to NUL while the transport is active. Keep our own
+            # duplicate of the original pipe so the watchdog observes the host
+            # connection rather than the SDK's fd-0 diversion.
+            watched_stdin_fd = os.dup(stdin_fd)
+        except OSError:
+            return False
 
         def watch() -> None:
-            while not _stdin_pipe_broken_windows():
+            while not _stdin_pipe_broken_windows(watched_stdin_fd):
                 time.sleep(poll_seconds)
+            try:
+                os.close(watched_stdin_fd)
+            except OSError:
+                pass
             os._exit(0)
 
     else:

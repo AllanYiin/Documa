@@ -118,7 +118,8 @@ class Stage6ToolInterfaceTests(unittest.TestCase):
             self.skipTest(str(exc))
 
         process = next(tool for tool in tools if tool.name == "documa_process")
-        self.assertEqual(process.inputSchema["required"], ["source"])
+        input_schema = getattr(process, "inputSchema", None) or process.input_schema
+        self.assertEqual(input_schema["required"], ["source"])
         self.assertIn("source", process.description)
         self.assertIn("not input_path", process.description)
         self.assertIn("set out", process.description)

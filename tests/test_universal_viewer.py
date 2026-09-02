@@ -148,12 +148,16 @@ class UniversalViewerTests(unittest.TestCase):
         previous = {
             "mcp": sys.modules.get("mcp"),
             "mcp.server": sys.modules.get("mcp.server"),
+            "mcp.server.mcpserver": sys.modules.get("mcp.server.mcpserver"),
             "mcp.server.fastmcp": sys.modules.get("mcp.server.fastmcp"),
         }
+        mcpserver_module = types.ModuleType("mcp.server.mcpserver")
+        mcpserver_module.MCPServer = FakeFastMCP
         fastmcp_module = types.ModuleType("mcp.server.fastmcp")
         fastmcp_module.FastMCP = FakeFastMCP
         sys.modules["mcp"] = types.ModuleType("mcp")
         sys.modules["mcp.server"] = types.ModuleType("mcp.server")
+        sys.modules["mcp.server.mcpserver"] = mcpserver_module
         sys.modules["mcp.server.fastmcp"] = fastmcp_module
         try:
             from documa.interfaces.mcp_server import create_mcp_server

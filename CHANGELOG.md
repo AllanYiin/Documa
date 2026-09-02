@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.0
+
+- **MCP 2 相容性**：MCP server 同時支援 1.x 的 `FastMCP` 與 2.x 更名後的 `MCPServer` API；base dependency 與向前相容的 `mcp` extra 接受 `mcp>=1.0,<3`，避免已安裝 MCP 2.1.1 時出現 resolver 衝突或啟動失敗。
+
 ## v0.6.4 — Internal Rust parser distribution（2026-08-04）
 
 - **Rust LingXi 抽取式摘要成為一級能力**：新增公開 `summarize_text`／`summarize_document`、`documa summarize` CLI、`documa_summarize` MCP/function tool 與 agent profile schema。結果只選取原文子句，保留 offset、block/source/page refs、TextRank／可解釋性／新穎性／事實訊號，固定回報零 LLM 呼叫；長文採來源可逆的階層視窗。LingXi 0.2.1 關鍵詞相容保留，0.3.0 同時提供關鍵詞與摘要。

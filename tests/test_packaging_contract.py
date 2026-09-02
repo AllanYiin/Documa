@@ -68,7 +68,7 @@ class PackagingContractTests(unittest.TestCase):
         )
         self.assertNotIn("rapidocr-onnxruntime", names)
         mcp_requirement = next(item for item in requirements if _distribution_name(item) == "mcp")
-        self.assertIn("<2", mcp_requirement)
+        self.assertIn("<3", mcp_requirement)
 
     def test_all_extra_adds_ocr_only(self):
         all_requirements = _array(self.optional, "all")

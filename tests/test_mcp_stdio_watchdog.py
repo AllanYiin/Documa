@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 import pytest
 
@@ -16,6 +18,26 @@ _CHILD_SCRIPT = (
     "time.sleep(30)\n"
 )
 
+_MCP2_STDIN_DIVERSION_SCRIPT = (
+    "import os, time\n"
+    "from documa.interfaces.mcp_server import install_stdio_exit_watchdog\n"
+    "installed = install_stdio_exit_watchdog(poll_seconds=0.2)\n"
+    "print('installed' if installed else 'skipped', flush=True)\n"
+    "diversion_fd = os.open(os.devnull, os.O_RDONLY)\n"
+    "os.dup2(diversion_fd, 0)\n"
+    "os.close(diversion_fd)\n"
+    "time.sleep(0.7)\n"
+    "print('alive', flush=True)\n"
+)
+
+
+def _source_environment() -> dict[str, str]:
+    env = dict(os.environ)
+    source_root = str(Path(__file__).resolve().parents[1] / "src")
+    existing = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = source_root if not existing else f"{source_root}{os.pathsep}{existing}"
+    return env
+
 
 def test_watchdog_exits_when_host_closes_stdin():
     child = subprocess.Popen(
@@ -23,6 +45,7 @@ def test_watchdog_exits_when_host_closes_stdin():
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         text=True,
+        env=_source_environment(),
     )
     try:
         first_line = child.stdout.readline().strip()
@@ -55,5 +78,28 @@ def test_watchdog_declines_without_pipe_stdin():
             stdout=subprocess.PIPE,
             text=True,
             timeout=30,
+            env=_source_environment(),
         )
     assert child.stdout.strip() == "skipped"
+
+
+def test_watchdog_survives_mcp2_stdin_fd_diversion():
+    if sys.platform != "win32":
+        pytest.skip("MCP 2.x fd-0 diversion regression is Windows-specific")
+
+    child = subprocess.Popen(
+        [sys.executable, "-c", _MCP2_STDIN_DIVERSION_SCRIPT],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        text=True,
+        env=_source_environment(),
+    )
+    try:
+        assert child.stdout.readline().strip() == "installed"
+        assert child.stdout.readline().strip() == "alive"
+        assert child.wait(timeout=5) == 0
+    finally:
+        if child.poll() is None:
+            child.kill()
+        child.stdin.close()
+        child.stdout.close()

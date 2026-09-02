@@ -37,7 +37,7 @@ dependencies = [
   "beautifulsoup4>=4.12",
   "extract-msg>=0.49",
   "nbformat>=5.10",
-  "mcp>=1.0,<2",
+  "mcp>=1.0,<3",
   "tiktoken>=0.7",
   "PyYAML>=6.0",
 ]
@@ -64,7 +64,7 @@ documents = [
   "extract-msg>=0.49",
   "nbformat>=5.10",
 ]
-mcp = ["mcp>=1.0,<2"]
+mcp = ["mcp>=1.0,<3"]
 # Real token counting for query budgets: chars/4-style heuristics are banned.
 tokens = ["tiktoken>=0.7"]
 # Optional multi-language code graph adapters. Python's authoritative AST
