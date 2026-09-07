@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.9.0 — PDF 語意結構與正文閱讀流（2026-09-08）
+
+- **英文空白與幾何修正**：從字形間距恢復詞間空白，修正 CTM／Form 矩陣組合、窄欄順序與段落行距；垂直旁註保留為頁首頁尾來源。
+- **全文標題階層**：文件標題只輸出一個 H1；完整文件的標題字級統一分配 H2～H6，搭配編號／來源標籤校正。Abstract 不固定層級，缺少父章節時保留未確認標記。
+- **正文段落續接**：以來源、字型與版面證據接合一般折行及跨圖表／頁／欄的同段落文字；標題、程式碼、有序／無序列表、字型差異與新段落維持邊界。原始文字、來源 block ids、頁碼及略過區塊收據仍保留。
+- **圖文分離**：figure container 收納圖內文字與素材，Markdown 使用 details 呈現並保留圖說與原始 PDF 頁面連結，避免圖內文字混入正文。
+- **0.9.0 交付**：Codex、Claude Code、OpenClaw、Hermes 分宿主封裝；原生 runtime 依作業系統／CPU／Python ABI 區分，Linux ARM64（aarch64）為獨立建置目標。實際驗證範圍以 release report 為準。
+- **相容性**：DocumentIR 公開版本與 parser adapter 介面維持；rust_pdf 0.2.0、rust_office 0.1.0、私有 LingXi 0.4.5 保留各自版本。既有 PDF 編碼、部分素材／版型與完整品質 gate 限制仍存在。
+
 ## v0.8.0 — Bundled rust-Lingxi 0.4.5（2026-08-31）
 
 - **MCP token counter 啟動修正**：Codex、Claude Code 與 Hermes plugin 明確以 `tiktoken:o200k_base` 啟動 Documa MCP，避免宿主繼承環境或啟動期自動偵測失敗讓預設 code-context hard cap 持續回傳 `TOKEN_COUNTER_UNAVAILABLE`；自動偵測的暫態失敗不再永久快取於 server process。

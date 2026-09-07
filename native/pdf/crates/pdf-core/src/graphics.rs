@@ -20,14 +20,16 @@ impl Matrix {
         f: 0.0,
     };
 
+    /// Compose a new user-space transform inside the current CTM:
+    /// `self.multiply(other).transform(p) == self.transform(other.transform(p))`.
     pub const fn multiply(self, other: Self) -> Self {
         Self {
-            a: self.a * other.a + self.b * other.c,
-            b: self.a * other.b + self.b * other.d,
-            c: self.c * other.a + self.d * other.c,
-            d: self.c * other.b + self.d * other.d,
-            e: self.e * other.a + self.f * other.c + other.e,
-            f: self.e * other.b + self.f * other.d + other.f,
+            a: self.a * other.a + self.c * other.b,
+            b: self.b * other.a + self.d * other.b,
+            c: self.a * other.c + self.c * other.d,
+            d: self.b * other.c + self.d * other.d,
+            e: self.a * other.e + self.c * other.f + self.e,
+            f: self.b * other.e + self.d * other.f + self.f,
         }
     }
 
@@ -104,4 +106,32 @@ pub(crate) fn parse_matrix(object: &PdfObject) -> PdfResult<Matrix> {
         e: numbers[4],
         f: numbers[5],
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Matrix;
+
+    #[test]
+    fn general_affine_composition_preserves_nested_transform_order() {
+        let parent = Matrix {
+            a: 0.5,
+            b: 0.1,
+            c: -0.2,
+            d: 0.8,
+            e: 10.0,
+            f: 20.0,
+        };
+        let child = Matrix {
+            a: 1.0,
+            b: 0.2,
+            c: 0.3,
+            d: 1.5,
+            e: 4.0,
+            f: -2.0,
+        };
+        let result = parent.multiply(child).transform(3.0, 7.0);
+        assert!((result.0 - 12.73).abs() < 1e-9);
+        assert!((result.1 - 28.19).abs() < 1e-9);
+    }
 }

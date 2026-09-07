@@ -1,4 +1,11 @@
 graft native
+include scripts/build_manylinux_release.sh
+include scripts/smoke_installed_release.py
+include scripts/verify_release_artifacts.py
+include scripts/package_release.py
+include scripts/package_plugins.py
+include docs/documa/install-0.9.0.md
+include CHANGELOG.md
 prune native/pdf/target
 prune native/office/target
 prune native/lingxi/target

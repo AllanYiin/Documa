@@ -44,6 +44,37 @@ fn paragraph_gap_creates_a_stable_boundary() {
 }
 
 #[test]
+fn narrow_realistic_column_gutter_is_not_a_word_gap() {
+    let content = b"BT /F1 10 Tf \
+        1 0 0 1 50 700 Tm (MMMMMMMMMMMMMMMMMMMM) Tj \
+        1 0 0 1 50 686 Tm (LLLLLLLLLLLLLLLLLLLL) Tj \
+        1 0 0 1 232 700 Tm (RRRRRRRRRRRRRRRRRRRR) Tj \
+        1 0 0 1 232 686 Tm (SSSSSSSSSSSSSSSSSSSS) Tj ET";
+    let layout = layout(&single_page_pdf(content));
+    assert_eq!(layout.pages[0].semantic_nodes.len(), 2);
+    assert!(layout.pages[0].semantic_nodes[0].text.starts_with("MMMM"));
+    assert!(!layout.pages[0].semantic_nodes[0].text.contains("RRRR"));
+}
+
+#[test]
+fn caption_spacing_does_not_swallow_the_body_continuation() {
+    let content = b"BT /F1 10 Tf 1 0 0 1 50 700 Tm (Figure 1: An image) Tj \
+        1 0 0 1 50 688 Tm (Caption continued) Tj \
+        1 0 0 1 50 664 Tm (Body starts here) Tj \
+        1 0 0 1 50 652 Tm (Next body line) Tj ET";
+    let layout = layout(&single_page_pdf(content));
+    assert_eq!(layout.pages[0].semantic_nodes.len(), 2);
+    assert_eq!(
+        layout.pages[0].semantic_nodes[0].text,
+        "Figure 1: An image\nCaption continued"
+    );
+    assert_eq!(
+        layout.pages[0].semantic_nodes[1].text,
+        "Body starts here\nNext body line"
+    );
+}
+
+#[test]
 fn repeated_furniture_is_preserved_but_excluded_from_main_flow() {
     let pdf = three_page_pdf();
     let layout = layout(&pdf);
@@ -159,19 +190,22 @@ fn bottom_year_is_not_misclassified_as_page_number() {
 }
 
 #[test]
-fn rotated_text_uses_source_order_fallback_and_warns_once() {
+fn interior_rotated_text_keeps_fallback_without_disabling_body_geometry() {
     let content = b"BT /F1 12 Tf \
         0 1 -1 0 100 100 Tm (Rotated) Tj \
         1 0 0 1 50 600 Tm (Body) Tj ET";
     let layout = layout(&single_page_pdf(content));
     let page = &layout.pages[0];
 
-    assert_eq!(page.orders.source_order, page.orders.inferred_order);
-    assert!(
-        page.semantic_nodes
-            .iter()
-            .all(|node| node.rule_id == "stage3_source_fallback_v1")
+    assert_eq!(page.orders.source_order, ["p0-n1", "p0-n0"]);
+    assert_eq!(page.semantic_nodes[0].text, "Body");
+    assert_eq!(
+        page.semantic_nodes[0].rule_id,
+        "stage3_paragraph_geometry_v1"
     );
+    assert_eq!(page.semantic_nodes[1].text, "Rotated");
+    assert_eq!(page.semantic_nodes[1].rule_id, "stage3_source_fallback_v1");
+    assert_eq!(page.orders.main_flow, page.orders.inferred_order);
     assert_eq!(
         layout
             .warnings
@@ -330,6 +364,74 @@ fn visual_reading_preserves_blocks_that_may_go_unnoticed() {
             .all(|focus| focus.block_id != artifact_block.id)
     );
 }
+#[test]
+fn positional_word_spaces_preserve_original_span_text() {
+    let pdf = single_page_pdf(b"BT /F1 12 Tf 50 700 Td [(Hello) -250 (world)] TJ ET");
+    let layout = layout(&pdf);
+    let node = &layout.pages[0].semantic_nodes[0];
+    assert_eq!(node.text, "Hello world");
+    assert_eq!(
+        node.spans
+            .iter()
+            .map(|s| s.text.as_str())
+            .collect::<String>(),
+        "Helloworld"
+    );
+    assert_eq!(node.spans.len(), 2);
+}
+
+#[test]
+fn kerning_and_explicit_spaces_are_not_duplicated() {
+    let pdf = single_page_pdf(b"BT /F1 12 Tf 50 700 Td [(A) -40 (V) 60 (ATAR world)] TJ ET");
+    assert_eq!(layout(&pdf).pages[0].semantic_nodes[0].text, "AVATAR world");
+}
+
+#[test]
+fn positional_spaces_work_after_punctuation_and_before_parentheses() {
+    let pdf = single_page_pdf(
+        b"BT /F1 12 Tf 50 700 Td [(Hello,) -250 (world.) -250 (Next) -250 (\\(item\\))] TJ ET",
+    );
+    assert_eq!(
+        layout(&pdf).pages[0].semantic_nodes[0].text,
+        "Hello, world. Next (item)"
+    );
+}
+
+#[test]
+fn rotated_margin_note_does_not_fragment_inline_font_changes() {
+    let content = b"BT /F1 12 Tf 0 1 -1 0 15 100 Tm (arXiv note) Tj ET \
+        BT /F1 12 Tf 1 0 0 1 50 700 Tm (G) Tj /F2 12 Tf (enerating) Tj \
+        [-250] TJ /F1 12 Tf (I) Tj /F2 12 Tf (mages) Tj \
+        1 0 0 1 50 682 Tm (Next line) Tj ET";
+    let layout = layout(&single_page_pdf(content));
+    let page = &layout.pages[0];
+    assert_eq!(page.semantic_nodes.len(), 2);
+    assert_eq!(page.semantic_nodes[0].text, "Generating Images\nNext line");
+    assert_eq!(
+        page.semantic_nodes[0].rule_id,
+        "stage3_paragraph_geometry_v1"
+    );
+    assert_eq!(page.semantic_nodes[1].text, "arXiv note");
+    assert_eq!(
+        page.semantic_nodes[1].rule_id,
+        "stage3_rotated_margin_note_v1"
+    );
+    assert_eq!(page.semantic_nodes[1].role, LayoutNodeRole::Header);
+    assert_eq!(page.orders.main_flow, ["p0-n0"]);
+    assert_eq!(page.orders.source_order, ["p0-n1", "p0-n0"]);
+}
+
+#[test]
+fn right_margin_rotation_is_preserved_as_footer() {
+    let content = b"BT /F1 12 Tf 0 1 -1 0 600 100 Tm (Side note) Tj ET \
+        BT /F1 12 Tf 1 0 0 1 50 700 Tm (Body) Tj ET";
+    let layout = layout(&single_page_pdf(content));
+    let page = &layout.pages[0];
+    assert_eq!(page.semantic_nodes[1].text, "Side note");
+    assert_eq!(page.semantic_nodes[1].role, LayoutNodeRole::Footer);
+    assert_eq!(page.orders.main_flow, ["p0-n0"]);
+}
+
 fn layout(pdf: &[u8]) -> pdf_core::DocumentLayout {
     PdfDocument::parse(pdf)
         .expect("valid generated PDF")
@@ -341,7 +443,7 @@ fn single_page_pdf(content: &[u8]) -> Vec<u8> {
     classic_pdf(&[
         b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_vec(),
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>".to_vec(),
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R /F2 5 0 R >> >> /Contents 4 0 R >>".to_vec(),
         stream_body(content),
         b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".to_vec(),
     ])

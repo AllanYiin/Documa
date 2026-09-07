@@ -186,8 +186,8 @@ chunks:
     block_path:
     - 2. Financial Results
     block_types:
-    - text
-    chunk_kind: paragraph
+    - footnote
+    chunk_kind: footnote
     citation_label: PDF p.2
     intra_block_view: true
     page_ref_kind: physical_page_number_1_based
@@ -307,10 +307,6 @@ chunks:
 document_blocks:
 - bbox_refs:
   - - 56.0
-    - 96.46
-    - 387.28
-    - 126.75
-  - - 56.0
     - 136.09
     - 180.24
     - 153.69
@@ -330,13 +326,16 @@ document_blocks:
     - 72.88
     - 134.24
     - 94.91
+  - - 56.0
+    - 96.46
+    - 387.28
+    - 126.75
   child_ids:
   - db_doc_snapshot_sec_0002
   - db_doc_snapshot_sec_0003
   - db_doc_snapshot_sec_0004
-  - db_doc_snapshot_sec_0005
-  - db_doc_snapshot_sec_0009
-  - db_doc_snapshot_sec_0014
+  - db_doc_snapshot_sec_0008
+  - db_doc_snapshot_sec_0013
   confidence: high
   content_hash: null
   depth: 0
@@ -345,6 +344,7 @@ document_blocks:
     build_strategy: document_root
     citation_label: PDF p.1, PDF p.2, PDF p.3
     furniture: []
+    heading_level: 1
     keyword_stats:
       child_support:
         above: 1
@@ -353,12 +353,11 @@ document_blocks:
         all: 1
         americas: 1
         and: 1
-        annual: 1
         approved: 1
         are: 1
         as: 1
         asia-pacific: 2
-        aurora: 2
+        aurora: 1
         backlog: 1
         by: 3
         capacity: 1
@@ -401,7 +400,7 @@ document_blocks:
         line: 1
         management: 2
         margin: 1
-        materials: 2
+        materials: 1
         new: 2
         next: 1
         ninety: 1
@@ -420,7 +419,6 @@ document_blocks:
         region: 1
         regions: 1
         remain: 1
-        report: 1
         revenue: 2
         revenuegrew: 1
         sector: 1
@@ -448,12 +446,11 @@ document_blocks:
         all: 1
         americas: 1
         and: 1
-        annual: 1
         approved: 1
         are: 1
         as: 1
         asia-pacific: 2
-        aurora: 2
+        aurora: 1
         backlog: 1
         by: 3
         capacity: 1
@@ -496,7 +493,7 @@ document_blocks:
         line: 1
         management: 2
         margin: 1
-        materials: 2
+        materials: 1
         new: 2
         next: 1
         ninety: 1
@@ -515,7 +512,6 @@ document_blocks:
         region: 1
         regions: 1
         remain: 1
-        report: 1
         revenue: 2
         revenuegrew: 1
         sector: 1
@@ -540,84 +536,21 @@ document_blocks:
     - the
     - fiscal
     - year
-    - materials
     - management
     - asia-pacific
     - revenue
     - coating
     - two
-    - aurora
     - by
     - new
+    - for
+    - to
     keyword_thresholds:
-      leaf_count: 10
+      leaf_count: 9
       min_freq: 2
       min_support: 1
       strategy: bottom_up_aggregation
-      text_length: 947
-    new_word_terms: []
-    page_ref_kind: physical_page_number_1_based
-    pdf_page_labels: []
-    printed_page_labels: []
-    role: body
-    search_terms:
-    - real/annual-report.pdf
-    - the
-    - fiscal
-    - year
-    - materials
-    - management
-    - asia-pacific
-    - revenue
-    - coating
-    - two
-    - aurora
-    - by
-    - new
-    stage: block_tree
-  order_index: 1
-  page_refs:
-  - 1
-  - 2
-  - 3
-  parent_id: null
-  source_block_ids: []
-  source_chunk_ids: []
-  text_preview: null
-  title: real/annual-report.pdf
-  type: document
-- bbox_refs:
-  - - 56.0
-    - 96.46
-    - 387.28
-    - 126.75
-  child_ids: []
-  confidence: high
-  content_hash: d539502edeb632a9c0b5691ecb33c43556a1112ba6ce180230291103bd155a10
-  depth: 1
-  id: db_doc_snapshot_sec_0002
-  metadata:
-    build_strategy: heading_block
-    citation_label: PDF p.1
-    heading_level: 1
-    keyword_stats:
-      child_support:
-        annual: 1
-        aurora: 1
-        materials: 1
-        report: 1
-      term_freq:
-        annual: 1
-        aurora: 1
-        materials: 1
-        report: 1
-    keyword_terms: []
-    keyword_thresholds:
-      leaf_count: 1
-      min_freq: 2
-      min_support: 2
-      strategy: bottom_up_aggregation
-      text_length: 30
+      text_length: 917
     new_word_terms: []
     page_ref_kind: physical_page_number_1_based
     pdf_page_labels: []
@@ -625,18 +558,31 @@ document_blocks:
     role: body
     search_terms:
     - Aurora Materials Annual Report
-    source_range: null
+    - the
+    - fiscal
+    - year
+    - management
+    - asia-pacific
+    - revenue
+    - coating
+    - two
+    - by
+    - new
+    - for
+    - to
     stage: block_tree
-  order_index: 2
+  order_index: 1
   page_refs:
   - 1
-  parent_id: db_doc_snapshot_root
+  - 2
+  - 3
+  parent_id: null
   source_block_ids:
   - p1_b1
   source_chunk_ids: []
-  text_preview: Aurora Materials Annual Report
+  text_preview: null
   title: Aurora Materials Annual Report
-  type: section
+  type: document
 - bbox_refs:
   - - 56.0
     - 136.09
@@ -646,11 +592,11 @@ document_blocks:
   confidence: high
   content_hash: 08639f68636e4ae1cbb8526e1849c39bc156bc23175bf6ede012d67371d37b92
   depth: 1
-  id: db_doc_snapshot_sec_0003
+  id: db_doc_snapshot_sec_0002
   metadata:
     build_strategy: heading_block
     citation_label: PDF p.1
-    heading_level: 1
+    heading_level: 4
     keyword_stats:
       child_support:
         fiscal: 1
@@ -676,7 +622,7 @@ document_blocks:
     - Fiscal Year Summary
     source_range: null
     stage: block_tree
-  order_index: 3
+  order_index: 2
   page_refs:
   - 1
   parent_id: db_doc_snapshot_root
@@ -695,11 +641,11 @@ document_blocks:
   confidence: high
   content_hash: 437aea62a5bd6ad4762e494c81b88532809a231477c82bdecf6fd6636908b7ab
   depth: 1
-  id: db_doc_snapshot_sec_0004
+  id: db_doc_snapshot_sec_0003
   metadata:
     build_strategy: heading_block
     citation_label: PDF p.1
-    heading_level: 1
+    heading_level: 3
     keyword_stats:
       child_support:
         contents: 1
@@ -721,7 +667,7 @@ document_blocks:
     - Contents
     source_range: null
     stage: block_tree
-  order_index: 4
+  order_index: 3
   page_refs:
   - 1
   parent_id: db_doc_snapshot_root
@@ -741,11 +687,11 @@ document_blocks:
   confidence: high
   content_hash: 1fcb3bd0656d7cd18cd97fdb3ea4b0a89924a6bbd809f9945d4fc6a038e1654b
   depth: 1
-  id: db_doc_snapshot_sec_0005
+  id: db_doc_snapshot_sec_0004
   metadata:
     build_strategy: heading_block
     citation_label: PDF p.2
-    heading_level: 1
+    heading_level: 2
     keyword_stats:
       child_support:
         across: 1
@@ -833,7 +779,7 @@ document_blocks:
     - the
     source_range: null
     stage: block_tree
-  order_index: 5
+  order_index: 4
   page_refs:
   - 2
   parent_id: db_doc_snapshot_root
@@ -950,10 +896,10 @@ document_blocks:
     - the
     - for
     stage: block_tree
-  order_index: 6
+  order_index: 5
   page_refs:
   - 2
-  parent_id: db_doc_snapshot_sec_0005
+  parent_id: db_doc_snapshot_sec_0004
   source_block_ids: []
   source_chunk_ids: []
   text_preview: null
@@ -1073,7 +1019,7 @@ document_blocks:
     source_block_type: text
     source_range: null
     stage: block_tree
-  order_index: 7
+  order_index: 6
   page_refs:
   - 2
   parent_id: db_doc_snapshot_p2_1
@@ -1137,7 +1083,7 @@ document_blocks:
     source_block_type: text
     source_range: null
     stage: block_tree
-  order_index: 8
+  order_index: 7
   page_refs:
   - 2
   parent_id: db_doc_snapshot_p2_1
@@ -1157,11 +1103,11 @@ document_blocks:
   confidence: high
   content_hash: b2dcd02770476658168f0ca20f07e8e83e1d3bb7f76f12295393bb663167d964
   depth: 1
-  id: db_doc_snapshot_sec_0009
+  id: db_doc_snapshot_sec_0008
   metadata:
     build_strategy: heading_block
     citation_label: PDF p.2
-    heading_level: 1
+    heading_level: 2
     keyword_stats:
       child_support:
         absolute: 1
@@ -1241,7 +1187,7 @@ document_blocks:
     - revenue
     source_range: null
     stage: block_tree
-  order_index: 9
+  order_index: 8
   page_refs:
   - 2
   parent_id: db_doc_snapshot_root
@@ -1353,10 +1299,10 @@ document_blocks:
     - Page 2
     - revenue
     stage: block_tree
-  order_index: 10
+  order_index: 9
   page_refs:
   - 2
-  parent_id: db_doc_snapshot_sec_0009
+  parent_id: db_doc_snapshot_sec_0008
   source_block_ids: []
   source_chunk_ids: []
   text_preview: null
@@ -1422,7 +1368,7 @@ document_blocks:
     source_block_type: table
     source_range: null
     stage: block_tree
-  order_index: 11
+  order_index: 10
   page_refs:
   - 2
   parent_id: db_doc_snapshot_p2_2
@@ -1523,7 +1469,7 @@ document_blocks:
     source_block_type: text
     source_range: null
     stage: block_tree
-  order_index: 12
+  order_index: 11
   page_refs:
   - 2
   parent_id: db_doc_snapshot_p2_2
@@ -1587,10 +1533,10 @@ document_blocks:
     - revenue
     - figures
     - are
-    source_block_type: text
+    source_block_type: footnote
     source_range: null
     stage: block_tree
-  order_index: 13
+  order_index: 12
   page_refs:
   - 2
   parent_id: db_doc_snapshot_p2_2
@@ -1599,7 +1545,7 @@ document_blocks:
   source_chunk_ids: []
   text_preview: 1 Revenue figures are unaudited management estimates.
   title: null
-  type: paragraph
+  type: footnote
 - bbox_refs:
   - - 56.0
     - 72.88
@@ -1610,11 +1556,11 @@ document_blocks:
   confidence: high
   content_hash: cbcb6f35e6d50e6987e597f3d53b9d4327ce6350a383c73a6cfcfba18410d032
   depth: 1
-  id: db_doc_snapshot_sec_0014
+  id: db_doc_snapshot_sec_0013
   metadata:
     build_strategy: heading_block
     citation_label: PDF p.3
-    heading_level: 1
+    heading_level: 2
     keyword_stats:
       child_support:
         above: 1
@@ -1712,7 +1658,7 @@ document_blocks:
     - year
     source_range: null
     stage: block_tree
-  order_index: 14
+  order_index: 13
   page_refs:
   - 3
   parent_id: db_doc_snapshot_root
@@ -1841,10 +1787,10 @@ document_blocks:
     - the
     - to
     stage: block_tree
-  order_index: 15
+  order_index: 14
   page_refs:
   - 3
-  parent_id: db_doc_snapshot_sec_0014
+  parent_id: db_doc_snapshot_sec_0013
   source_block_ids: []
   source_chunk_ids: []
   text_preview: null
@@ -1932,7 +1878,7 @@ document_blocks:
     source_block_type: table
     source_range: null
     stage: block_tree
-  order_index: 16
+  order_index: 15
   page_refs:
   - 3
   parent_id: db_doc_snapshot_p3_3
@@ -2051,7 +1997,7 @@ document_blocks:
     source_block_type: text
     source_range: null
     stage: block_tree
-  order_index: 17
+  order_index: 16
   page_refs:
   - 3
   parent_id: db_doc_snapshot_p3_3
@@ -2067,6 +2013,8 @@ id: doc_snapshot
 ir_version: '0.2'
 metadata:
   adapter: pymupdf
+  document_title: Aurora Materials Annual Report
+  document_title_block_id: p1_b1
   page_citations:
     '1':
       citation_label: PDF p.1
@@ -2088,6 +2036,13 @@ metadata:
       printed_page_label: null
   page_count: 3
   page_ref_kind: physical_page_number_1_based
+  pdf_heading_font_scale:
+  - font_size: 16.0
+    heading_level: 2
+  - font_size: 14.0
+    heading_level: 3
+  - font_size: 13.0
+    heading_level: 4
   toc:
   - - 1
     - Overview
@@ -2123,6 +2078,8 @@ pages:
     confidence: high
     id: p1_b1
     metadata:
+      heading_level: 1
+      heading_role: document_title
       layout_classification:
         block_font_size: 22.0
         median_font_size: 10.0
@@ -2182,6 +2139,9 @@ pages:
     confidence: high
     id: p1_b2
     metadata:
+      heading_font_level: 4
+      heading_level: 4
+      heading_level_source: global_font_scale
       layout_classification:
         block_font_size: 13.0
         median_font_size: 10.0
@@ -2241,6 +2201,9 @@ pages:
     confidence: high
     id: p1_b3
     metadata:
+      heading_font_level: 3
+      heading_level: 3
+      heading_level_source: global_font_scale
       layout_classification:
         block_font_size: 14.0
         median_font_size: 10.0
@@ -2536,11 +2499,10 @@ pages:
     confidence: high
     id: p2_b1
     metadata:
-      layout_classification:
-        block_font_size: 16.0
-        median_font_size: 10.0
-        previous_type: text
-        strategy: font_size_and_page_position
+      heading_font_level: 2
+      heading_level: 2
+      heading_level_source: global_font_scale
+      heading_strategy: pdf_semantic_label_or_number
       original_order_index: 1
       reading_order:
         column_index: null
@@ -2778,11 +2740,10 @@ pages:
     confidence: high
     id: p2_b4
     metadata:
-      layout_classification:
-        block_font_size: 16.0
-        median_font_size: 10.0
-        previous_type: text
-        strategy: font_size_and_page_position
+      heading_font_level: 2
+      heading_level: 2
+      heading_level_source: global_font_scale
+      heading_strategy: pdf_semantic_label_or_number
       original_order_index: 4
       reading_order:
         column_index: 0
@@ -3022,6 +2983,11 @@ pages:
     confidence: high
     id: p2_b10
     metadata:
+      layout_classification:
+        block_font_size: 7.5
+        median_font_size: 10.0
+        previous_type: text
+        strategy: small_numbered_bottom_note
       original_order_index: 10
       reading_order:
         column_index: null
@@ -3088,7 +3054,7 @@ pages:
       simplified_traditional_converted: false
       unicode_form: NFC
       width_normalized: false
-    type: text
+    type: footnote
   height: 842.0
   id: page_2
   images: []
@@ -3137,11 +3103,10 @@ pages:
     confidence: high
     id: p3_b1
     metadata:
-      layout_classification:
-        block_font_size: 16.0
-        median_font_size: 10.0
-        previous_type: text
-        strategy: font_size_and_page_position
+      heading_font_level: 2
+      heading_level: 2
+      heading_level_source: global_font_scale
+      heading_strategy: pdf_semantic_label_or_number
       original_order_index: 1
       reading_order:
         column_index: null
@@ -3466,6 +3431,17 @@ relations:
   type: toc_item_to_heading
 - confidence: high
   evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_root
+  id: rel_block_source_db_doc_snapshot_root_p1_b1
+  metadata:
+    source_block_id: p1_b1
+    stage: block_tree
+  state: inferred
+  to_id: p1_b1
+  type: block_to_source
+- confidence: high
+  evidence:
   - document_block_parent_id
   from_id: db_doc_snapshot_root
   id: rel_block_parent_db_doc_snapshot_sec_0002
@@ -3479,12 +3455,12 @@ relations:
   evidence:
   - document_block_source_block_ids
   from_id: db_doc_snapshot_sec_0002
-  id: rel_block_source_db_doc_snapshot_sec_0002_p1_b1
+  id: rel_block_source_db_doc_snapshot_sec_0002_p1_b2
   metadata:
-    source_block_id: p1_b1
+    source_block_id: p1_b2
     stage: block_tree
   state: inferred
-  to_id: p1_b1
+  to_id: p1_b2
   type: block_to_source
 - confidence: high
   evidence:
@@ -3501,12 +3477,12 @@ relations:
   evidence:
   - document_block_source_block_ids
   from_id: db_doc_snapshot_sec_0003
-  id: rel_block_source_db_doc_snapshot_sec_0003_p1_b2
+  id: rel_block_source_db_doc_snapshot_sec_0003_p1_b3
   metadata:
-    source_block_id: p1_b2
+    source_block_id: p1_b3
     stage: block_tree
   state: inferred
-  to_id: p1_b2
+  to_id: p1_b3
   type: block_to_source
 - confidence: high
   evidence:
@@ -3523,29 +3499,7 @@ relations:
   evidence:
   - document_block_source_block_ids
   from_id: db_doc_snapshot_sec_0004
-  id: rel_block_source_db_doc_snapshot_sec_0004_p1_b3
-  metadata:
-    source_block_id: p1_b3
-    stage: block_tree
-  state: inferred
-  to_id: p1_b3
-  type: block_to_source
-- confidence: high
-  evidence:
-  - document_block_parent_id
-  from_id: db_doc_snapshot_root
-  id: rel_block_parent_db_doc_snapshot_sec_0005
-  metadata:
-    child_id: db_doc_snapshot_sec_0005
-    stage: block_tree
-  state: inferred
-  to_id: db_doc_snapshot_sec_0005
-  type: block_parent_child
-- confidence: high
-  evidence:
-  - document_block_source_block_ids
-  from_id: db_doc_snapshot_sec_0005
-  id: rel_block_source_db_doc_snapshot_sec_0005_p2_b1
+  id: rel_block_source_db_doc_snapshot_sec_0004_p2_b1
   metadata:
     source_block_id: p2_b1
     stage: block_tree
@@ -3555,7 +3509,7 @@ relations:
 - confidence: high
   evidence:
   - document_block_parent_id
-  from_id: db_doc_snapshot_sec_0005
+  from_id: db_doc_snapshot_sec_0004
   id: rel_block_parent_db_doc_snapshot_p2_1
   metadata:
     child_id: db_doc_snapshot_p2_1
@@ -3611,18 +3565,18 @@ relations:
   evidence:
   - document_block_parent_id
   from_id: db_doc_snapshot_root
-  id: rel_block_parent_db_doc_snapshot_sec_0009
+  id: rel_block_parent_db_doc_snapshot_sec_0008
   metadata:
-    child_id: db_doc_snapshot_sec_0009
+    child_id: db_doc_snapshot_sec_0008
     stage: block_tree
   state: inferred
-  to_id: db_doc_snapshot_sec_0009
+  to_id: db_doc_snapshot_sec_0008
   type: block_parent_child
 - confidence: high
   evidence:
   - document_block_source_block_ids
-  from_id: db_doc_snapshot_sec_0009
-  id: rel_block_source_db_doc_snapshot_sec_0009_p2_b4
+  from_id: db_doc_snapshot_sec_0008
+  id: rel_block_source_db_doc_snapshot_sec_0008_p2_b4
   metadata:
     source_block_id: p2_b4
     stage: block_tree
@@ -3632,7 +3586,7 @@ relations:
 - confidence: high
   evidence:
   - document_block_parent_id
-  from_id: db_doc_snapshot_sec_0009
+  from_id: db_doc_snapshot_sec_0008
   id: rel_block_parent_db_doc_snapshot_p2_2
   metadata:
     child_id: db_doc_snapshot_p2_2
@@ -3710,18 +3664,18 @@ relations:
   evidence:
   - document_block_parent_id
   from_id: db_doc_snapshot_root
-  id: rel_block_parent_db_doc_snapshot_sec_0014
+  id: rel_block_parent_db_doc_snapshot_sec_0013
   metadata:
-    child_id: db_doc_snapshot_sec_0014
+    child_id: db_doc_snapshot_sec_0013
     stage: block_tree
   state: inferred
-  to_id: db_doc_snapshot_sec_0014
+  to_id: db_doc_snapshot_sec_0013
   type: block_parent_child
 - confidence: high
   evidence:
   - document_block_source_block_ids
-  from_id: db_doc_snapshot_sec_0014
-  id: rel_block_source_db_doc_snapshot_sec_0014_p3_b1
+  from_id: db_doc_snapshot_sec_0013
+  id: rel_block_source_db_doc_snapshot_sec_0013_p3_b1
   metadata:
     source_block_id: p3_b1
     stage: block_tree
@@ -3731,7 +3685,7 @@ relations:
 - confidence: high
   evidence:
   - document_block_parent_id
-  from_id: db_doc_snapshot_sec_0014
+  from_id: db_doc_snapshot_sec_0013
   id: rel_block_parent_db_doc_snapshot_p3_3
   metadata:
     child_id: db_doc_snapshot_p3_3

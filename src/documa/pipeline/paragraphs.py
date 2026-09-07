@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from documa.core.ir import BlockIR, BlockType, Confidence, DocumentIR, TextContent
+from documa.core.text_joining import is_heading_block, is_code_block, is_list_block, is_caption_block, typography_matches
 from documa.pipeline.base import PipelineContext, PipelineStage, StageResult
 from documa.pipeline.reading_order import median_text_block_height
 
@@ -59,6 +60,14 @@ def _can_merge(previous: BlockIR, current: BlockIR, gap_threshold: float) -> boo
     if previous.type != BlockType.TEXT or current.type != BlockType.TEXT:
         return False
     if not previous.text or not current.text:
+        return False
+    if previous.metadata.get("figure_group_id") or current.metadata.get("figure_group_id"):
+        return False
+    if any(is_heading_block(block) or is_list_block(block, block.text.raw_text)
+           or is_code_block(block, block.text.raw_text) or is_caption_block(block, block.text.raw_text)
+           for block in (previous, current)):
+        return False
+    if not typography_matches(previous.spans, current.spans):
         return False
     if previous.bbox is None or current.bbox is None:
         return False
@@ -165,4 +174,3 @@ class ParagraphGroupingStage(PipelineStage):
             changed=changed,
             report={"pages": report_pages},
         )
-

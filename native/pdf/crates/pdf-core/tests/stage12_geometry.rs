@@ -228,8 +228,10 @@ fn form_placements_share_one_page_geometry_conversion() {
             })
         })
         .collect::<Vec<_>>();
-    assert_point(mapped[0], Point { x: 70.0, y: 346.0 });
-    assert_point(mapped[1], Point { x: 150.0, y: 346.0 });
+    // Form maps (10,20) to (25,47), then page translation is applied;
+    // CropBox/UserUnit conversion must not scale the parent translation twice.
+    assert_point(mapped[0], Point { x: 50.0, y: 346.0 });
+    assert_point(mapped[1], Point { x: 90.0, y: 346.0 });
 }
 
 fn assert_close(actual: f64, expected: f64) {

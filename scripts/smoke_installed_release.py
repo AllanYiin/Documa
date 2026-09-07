@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import importlib.metadata
 import importlib.util
 import json
 import os
+import platform
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -18,13 +20,38 @@ import documa
 from documa.adapters.lingxi_binding import lingxi_binding
 
 
+def spacing_pdf() -> bytes:
+    """Tiny PDF with positional word gaps, without invoking another parser."""
+    stream = b"BT /F1 12 Tf 72 720 Td [(We) -250 (propose)] TJ 0 -16 Td [(a) -250 (model.)] TJ ET"
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
+    ]
+    data = bytearray(b"%PDF-1.4\n")
+    offsets = [0]
+    for index, obj in enumerate(objects, 1):
+        offsets.append(len(data))
+        data.extend(f"{index} 0 obj\n".encode() + obj + b"\nendobj\n")
+    xref = len(data)
+    data.extend(b"xref\n0 6\n0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        data.extend(f"{offset:010d} 00000 n \n".encode())
+    data.extend(f"trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode())
+    return bytes(data)
+
+
 async def smoke() -> dict:
-    assert documa.__version__ == importlib.metadata.version("documa") == "0.8.0"
+    assert documa.__version__ == importlib.metadata.version("documa") == "0.9.0"
     assert importlib.util.find_spec("lingxi") is None, "Run in an environment without external LingXi"
     module, version = lingxi_binding()
     assert version == "0.4.5"
-    for name in ("rust_office._core", "rust_pdf._native"):
-        importlib.import_module(name)
+    native_hashes = {}
+    for name in ("rust_office._core", "rust_pdf._native", "documa._vendor.lingxi._core"):
+        native = importlib.import_module(name)
+        native_hashes[name] = hashlib.sha256(Path(native.__file__).read_bytes()).hexdigest()
 
     with TemporaryDirectory(prefix="documa-release-smoke-") as temporary:
         root = Path(temporary)
@@ -57,13 +84,28 @@ async def smoke() -> dict:
                 assert payload["status"] == "ok" and payload["provider_version"] == "0.4.5"
                 assert payload["sentences"] and payload["uses_llm"] is False and payload["llm_tokens_used"] == 0
                 assert all(row["source_block_ids"] and row["block_ids"] for row in payload["sentences"])
+                pdf = root / "spacing.pdf"
+                pdf.write_bytes(spacing_pdf())
+                parsed = await session.call_tool("documa_process", {
+                    "source": str(pdf), "out": str(root / "pdf-out"), "pdf_provider": "rust",
+                })
+                assert not getattr(parsed, "is_error", getattr(parsed, "isError", False)), parsed
+                pdf_ir = json.loads((root / "pdf-out/documa.ir.json").read_text(encoding="utf-8"))
+                assert pdf_ir["parser"] == "rust_pdf" and len(pdf_ir["pages"]) == 1
+                raw_text = "\n".join(block.get("text", {}).get("raw_text", "")
+                                     for page in pdf_ir["pages"] for block in page["blocks"]
+                                     if block.get("text"))
+                assert "We propose" in raw_text, raw_text
                 return {
                     "status": "PASS", "documa": documa.__version__, "lingxi": version,
+                    "python": platform.python_version(), "machine": platform.machine(),
+                    "native_sha256": native_hashes,
                     "documa_path": documa.__file__, "lingxi_path": module.__file__,
                     "external_lingxi": False, "native_parsers": ["rust_pdf", "rust_office"],
                     "mcp_transport": "stdio", "mcp_idle_seconds": 4.5,
                     "tool_count": len(names), "summary_rows": len(payload["sentences"]),
                     "source_refs": "PASS", "uses_llm": False,
+                    "rust_pdf_spacing": "PASS",
                 }
 
 

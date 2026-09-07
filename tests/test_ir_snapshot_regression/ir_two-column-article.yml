@@ -4,14 +4,45 @@ chunks:
   bbox_refs:
   - - 56.0
     - 89.3
-    - 287.18
-    - 335.76
-  heading_path:
-  - Signal Propagation in Layered Media
+    - 235.52
+    - 102.84
+  heading_path: []
   id: chunk_doc_snapshot_0001
   metadata:
-    block_path:
-    - Signal Propagation in Layered Media
+    block_path: []
+    block_types:
+    - text
+    chunk_kind: paragraph
+    citation_label: PDF p.1
+    intra_block_view: true
+    page_ref_kind: physical_page_number_1_based
+    parent_block_id: db_doc_snapshot_p1_b2
+    pdf_page_labels: []
+    printed_page_labels: []
+    stage: rag_chunking
+  page_refs:
+  - 1
+  parent_block_id: db_doc_snapshot_p1_b2
+  relation_ids:
+  - rel_chunk_chunk_doc_snapshot_0001_1
+  source_block_ids:
+  - p1_b2
+  text:
+    normalized_text: A short synthetic article for layout testing
+    raw_text: A short synthetic article for layout testing
+    simplified_traditional_converted: false
+    unicode_form: NFC
+    width_normalized: false
+- asset_refs: []
+  bbox_refs:
+  - - 56.0
+    - 130.0
+    - 287.18
+    - 335.76
+  heading_path: []
+  id: chunk_doc_snapshot_0002
+  metadata:
+    block_path: []
     block_types:
     - paragraph
     chunk_kind: paragraph
@@ -26,26 +57,25 @@ chunks:
   - 1
   parent_block_id: db_doc_snapshot_p1_para1
   relation_ids:
-  - rel_chunk_chunk_doc_snapshot_0001_1
+  - rel_chunk_chunk_doc_snapshot_0002_1
   source_block_ids:
   - p1_para1
   text:
-    normalized_text: A short synthetic article for layout testing Layered media introduce
-      boundary effects thatdominate propagation behaviour at shortwavelengths. When
-      a signal crosses an interface,part of its energy reflects while the remainderrefracts
-      into the next layer. The balance betweenthe two depends on the impedance contrast
-      at theboundary. In practical assemblies the layers are rarely uniform.Thickness
-      variation of only a few percent shifts theinterference pattern enough to move
-      resonancepeaks by a measurable margin, which is whymanufacturing tolerance is
-      the first parameterengineers examine.
-    raw_text: A short synthetic article for layout testing Layered media introduce
-      boundary effects thatdominate propagation behaviour at shortwavelengths. When
-      a signal crosses an interface,part of its energy reflects while the remainderrefracts
-      into the next layer. The balance betweenthe two depends on the impedance contrast
-      at theboundary. In practical assemblies the layers are rarely uniform.Thickness
-      variation of only a few percent shifts theinterference pattern enough to move
-      resonancepeaks by a measurable margin, which is whymanufacturing tolerance is
-      the first parameterengineers examine.
+    normalized_text: Layered media introduce boundary effects thatdominate propagation
+      behaviour at shortwavelengths. When a signal crosses an interface,part of its
+      energy reflects while the remainderrefracts into the next layer. The balance
+      betweenthe two depends on the impedance contrast at theboundary. In practical
+      assemblies the layers are rarely uniform.Thickness variation of only a few percent
+      shifts theinterference pattern enough to move resonancepeaks by a measurable
+      margin, which is whymanufacturing tolerance is the first parameterengineers
+      examine.
+    raw_text: Layered media introduce boundary effects thatdominate propagation behaviour
+      at shortwavelengths. When a signal crosses an interface,part of its energy reflects
+      while the remainderrefracts into the next layer. The balance betweenthe two
+      depends on the impedance contrast at theboundary. In practical assemblies the
+      layers are rarely uniform.Thickness variation of only a few percent shifts theinterference
+      pattern enough to move resonancepeaks by a measurable margin, which is whymanufacturing
+      tolerance is the first parameterengineers examine.
     simplified_traditional_converted: false
     unicode_form: NFC
     width_normalized: false
@@ -54,43 +84,72 @@ chunks:
   - - 306.5
     - 130.0
     - 538.85
-    - 276.67
-  heading_path:
-  - Signal Propagation in Layered Media
-  id: chunk_doc_snapshot_0002
+    - 202.82
+  heading_path: []
+  id: chunk_doc_snapshot_0003
   metadata:
-    block_path:
-    - Signal Propagation in Layered Media
+    block_path: []
     block_types:
-    - paragraph
+    - text
     chunk_kind: paragraph
     citation_label: PDF p.1
     intra_block_view: true
     page_ref_kind: physical_page_number_1_based
-    parent_block_id: db_doc_snapshot_p1_para2
+    parent_block_id: db_doc_snapshot_p1_b5
     pdf_page_labels: []
     printed_page_labels: []
     stage: rag_chunking
   page_refs:
   - 1
-  parent_block_id: db_doc_snapshot_p1_para2
+  parent_block_id: db_doc_snapshot_p1_b5
   relation_ids:
-  - rel_chunk_chunk_doc_snapshot_0002_1
+  - rel_chunk_chunk_doc_snapshot_0003_1
   source_block_ids:
-  - p1_para2
+  - p1_b5
   text:
     normalized_text: The second parameter is loss. Dissipative layersflatten the resonance
       structure and widen the usableband at the cost of peak transmission. Designerstherefore
-      alternate low-loss and high-loss layers toshape the response. Figure 1 summarises
-      the measurement setup usedthroughout this article. A swept source drives thestack
-      from the left while a calibrated receiversamples the transmitted field on the
-      right.
+      alternate low-loss and high-loss layers toshape the response.
     raw_text: The second parameter is loss. Dissipative layersflatten the resonance
       structure and widen the usableband at the cost of peak transmission. Designerstherefore
-      alternate low-loss and high-loss layers toshape the response. Figure 1 summarises
-      the measurement setup usedthroughout this article. A swept source drives thestack
-      from the left while a calibrated receiversamples the transmitted field on the
-      right.
+      alternate low-loss and high-loss layers toshape the response.
+    simplified_traditional_converted: false
+    unicode_form: NFC
+    width_normalized: false
+- asset_refs: []
+  bbox_refs:
+  - - 306.5
+    - 218.62
+    - 532.14
+    - 276.67
+  heading_path: []
+  id: chunk_doc_snapshot_0004
+  metadata:
+    block_path: []
+    block_types:
+    - text
+    chunk_kind: paragraph
+    citation_label: PDF p.1
+    intra_block_view: true
+    page_ref_kind: physical_page_number_1_based
+    parent_block_id: db_doc_snapshot_p1_b6
+    pdf_page_labels: []
+    printed_page_labels: []
+    stage: rag_chunking
+  page_refs:
+  - 1
+  parent_block_id: db_doc_snapshot_p1_b6
+  relation_ids:
+  - rel_chunk_chunk_doc_snapshot_0004_1
+  source_block_ids:
+  - p1_b6
+  text:
+    normalized_text: Figure 1 summarises the measurement setup usedthroughout this
+      article. A swept source drives thestack from the left while a calibrated receiversamples
+      the transmitted field on the right.
+    raw_text: Figure 1 summarises the measurement setup usedthroughout this article.
+      A swept source drives thestack from the left while a calibrated receiversamples
+      the transmitted field on the right.
     simplified_traditional_converted: false
     unicode_form: NFC
     width_normalized: false
@@ -100,12 +159,10 @@ chunks:
     - 526.91
     - 538.92
     - 538.41
-  heading_path:
-  - Signal Propagation in Layered Media
-  id: chunk_doc_snapshot_0003
+  heading_path: []
+  id: chunk_doc_snapshot_0005
   metadata:
-    block_path:
-    - Signal Propagation in Layered Media
+    block_path: []
     block_types:
     - text
     chunk_kind: paragraph
@@ -120,7 +177,7 @@ chunks:
   - 1
   parent_block_id: db_doc_snapshot_p1_b7
   relation_ids:
-  - rel_chunk_chunk_doc_snapshot_0003_1
+  - rel_chunk_chunk_doc_snapshot_0005_1
   source_block_ids:
   - p1_b7
   text:
@@ -135,12 +192,10 @@ chunks:
     - 90.0
     - 283.87
     - 177.59
-  heading_path:
-  - Signal Propagation in Layered Media
-  id: chunk_doc_snapshot_0004
+  heading_path: []
+  id: chunk_doc_snapshot_0006
   metadata:
-    block_path:
-    - Signal Propagation in Layered Media
+    block_path: []
     block_types:
     - text
     chunk_kind: paragraph
@@ -155,7 +210,7 @@ chunks:
   - 2
   parent_block_id: db_doc_snapshot_p2_b1
   relation_ids:
-  - rel_chunk_chunk_doc_snapshot_0004_1
+  - rel_chunk_chunk_doc_snapshot_0006_1
   source_block_ids:
   - p2_b1
   text:
@@ -176,12 +231,10 @@ chunks:
     - 90.0
     - 533.84
     - 162.82
-  heading_path:
-  - Signal Propagation in Layered Media
-  id: chunk_doc_snapshot_0005
+  heading_path: []
+  id: chunk_doc_snapshot_0007
   metadata:
-    block_path:
-    - Signal Propagation in Layered Media
+    block_path: []
     block_types:
     - text
     chunk_kind: paragraph
@@ -196,7 +249,7 @@ chunks:
   - 2
   parent_block_id: db_doc_snapshot_p2_b2
   relation_ids:
-  - rel_chunk_chunk_doc_snapshot_0005_1
+  - rel_chunk_chunk_doc_snapshot_0007_1
   source_block_ids:
   - p2_b2
   text:
@@ -216,7 +269,8 @@ document_blocks:
     - 353.58
     - 85.22
   child_ids:
-  - db_doc_snapshot_sec_0002
+  - db_doc_snapshot_p1_1
+  - db_doc_snapshot_p2_2
   confidence: high
   content_hash: null
   depth: 0
@@ -225,343 +279,6 @@ document_blocks:
     build_strategy: document_root
     citation_label: PDF p.1, PDF p.2
     furniture: []
-    keyword_stats:
-      child_support:
-        across: 1
-        alternate: 1
-        an: 1
-        and: 3
-        are: 1
-        article: 2
-        as: 1
-        assemblies: 1
-        assumed: 1
-        at: 2
-        balance: 1
-        behaviour: 2
-        betweenthe: 1
-        boundary: 1
-        by: 1
-        calibrated: 1
-        captures: 1
-        conclude: 1
-        contrast: 2
-        correctionsmatter: 1
-        correlates: 1
-        cost: 1
-        crosses: 1
-        depends: 1
-        designerstherefore: 1
-        dissipative: 1
-        drives: 1
-        effects: 1
-        energy: 1
-        enough: 1
-        error: 1
-        examine: 1
-        fabricated: 1
-        few: 1
-        field: 1
-        figure: 2
-        first: 2
-        for: 1
-        forengineering: 1
-        forty: 1
-        from: 1
-        grazing: 1
-        high-loss: 1
-        higher-order: 1
-        impedance: 2
-        in: 1
-        incidence: 1
-        interface: 1
-        into: 1
-        introduce: 1
-        is: 3
-        its: 1
-        layer: 2
-        layered: 2
-        layers: 2
-        layersflatten: 1
-        layout: 1
-        left: 1
-        loss: 2
-        low-loss: 1
-        margin: 1
-        measurable: 1
-        measured: 1
-        measurement: 2
-        media: 1
-        model: 1
-        move: 1
-        near: 1
-        next: 1
-        of: 3
-        'on': 2
-        once: 1
-        only: 2
-        parameter: 1
-        parameterengineers: 1
-        part: 1
-        pattern: 1
-        peak: 1
-        percent: 1
-        practical: 1
-        predicts: 1
-        propagation: 1
-        purposes: 1
-        rarely: 1
-        ratherthan: 1
-        receiver: 1
-        receiversamples: 1
-        refinement: 1
-        reflects: 1
-        remainderrefracts: 1
-        residual: 1
-        resonance: 2
-        resonancepeaks: 1
-        response: 1
-        results: 1
-        right: 1
-        roughness: 1
-        scattering: 1
-        second: 1
-        setup: 2
-        shifts: 1
-        short: 1
-        shortwavelengths: 1
-        show: 1
-        signal: 1
-        source: 2
-        stacks: 2
-        structure: 1
-        suggesting: 1
-        summarises: 1
-        swept: 2
-        synthetic: 1
-        tangent: 1
-        testing: 1
-        that: 2
-        thatdominate: 1
-        the: 3
-        theboundary: 1
-        thedominant: 1
-        theinterference: 1
-        themodel: 1
-        thenext: 1
-        thestack: 1
-        thickness: 2
-        this: 1
-        to: 1
-        tolerance: 1
-        toshape: 1
-        transmission: 1
-        transmitted: 1
-        two: 1
-        two-parameter: 1
-        twopercent: 1
-        uniform: 1
-        usableband: 1
-        usedthroughout: 1
-        variation: 1
-        we: 1
-        when: 1
-        which: 1
-        while: 2
-        whymanufacturing: 1
-        widen: 1
-        with: 1
-        within: 1
-        withsurface: 1
-      term_freq:
-        across: 1
-        alternate: 1
-        an: 1
-        and: 4
-        are: 1
-        article: 2
-        as: 1
-        assemblies: 1
-        assumed: 1
-        at: 3
-        balance: 1
-        behaviour: 2
-        betweenthe: 1
-        boundary: 1
-        by: 1
-        calibrated: 1
-        captures: 1
-        conclude: 1
-        contrast: 2
-        correctionsmatter: 1
-        correlates: 1
-        cost: 1
-        crosses: 1
-        depends: 1
-        designerstherefore: 1
-        dissipative: 1
-        drives: 1
-        effects: 1
-        energy: 1
-        enough: 1
-        error: 1
-        examine: 1
-        fabricated: 1
-        few: 1
-        field: 1
-        figure: 2
-        first: 2
-        for: 1
-        forengineering: 1
-        forty: 1
-        from: 1
-        grazing: 1
-        high-loss: 1
-        higher-order: 1
-        impedance: 2
-        in: 1
-        incidence: 1
-        interface: 1
-        into: 1
-        introduce: 1
-        is: 4
-        its: 1
-        layer: 2
-        layered: 2
-        layers: 2
-        layersflatten: 1
-        layout: 1
-        left: 1
-        loss: 2
-        low-loss: 1
-        margin: 1
-        measurable: 1
-        measured: 1
-        measurement: 2
-        media: 1
-        model: 1
-        move: 1
-        near: 1
-        next: 1
-        of: 4
-        'on': 2
-        once: 1
-        only: 2
-        parameter: 1
-        parameterengineers: 1
-        part: 1
-        pattern: 1
-        peak: 1
-        percent: 1
-        practical: 1
-        predicts: 1
-        propagation: 1
-        purposes: 1
-        rarely: 1
-        ratherthan: 1
-        receiver: 1
-        receiversamples: 1
-        refinement: 1
-        reflects: 1
-        remainderrefracts: 1
-        residual: 1
-        resonance: 2
-        resonancepeaks: 1
-        response: 1
-        results: 1
-        right: 1
-        roughness: 1
-        scattering: 1
-        second: 1
-        setup: 2
-        shifts: 1
-        short: 1
-        shortwavelengths: 1
-        show: 1
-        signal: 1
-        source: 2
-        stacks: 2
-        structure: 1
-        suggesting: 1
-        summarises: 1
-        swept: 2
-        synthetic: 1
-        tangent: 1
-        testing: 1
-        that: 2
-        thatdominate: 1
-        the: 17
-        theboundary: 1
-        thedominant: 1
-        theinterference: 1
-        themodel: 1
-        thenext: 1
-        thestack: 1
-        thickness: 2
-        this: 1
-        to: 1
-        tolerance: 1
-        toshape: 1
-        transmission: 1
-        transmitted: 1
-        two: 1
-        two-parameter: 1
-        twopercent: 1
-        uniform: 1
-        usableband: 1
-        usedthroughout: 1
-        variation: 1
-        we: 1
-        when: 1
-        which: 1
-        while: 2
-        whymanufacturing: 1
-        widen: 1
-        with: 1
-        within: 1
-        withsurface: 1
-    keyword_terms:
-    - the
-    keyword_thresholds:
-      leaf_count: 5
-      min_freq: 5
-      min_support: 3
-      strategy: bottom_up_aggregation
-      text_length: 1519
-    new_word_terms: []
-    page_ref_kind: physical_page_number_1_based
-    pdf_page_labels: []
-    printed_page_labels: []
-    role: body
-    search_terms:
-    - real/two-column-article.pdf
-    - the
-    stage: block_tree
-  order_index: 1
-  page_refs:
-  - 1
-  - 2
-  parent_id: null
-  source_block_ids: []
-  source_chunk_ids: []
-  text_preview: null
-  title: real/two-column-article.pdf
-  type: document
-- bbox_refs:
-  - - 56.0
-    - 61.81
-    - 353.58
-    - 85.22
-  child_ids:
-  - db_doc_snapshot_p1_1
-  - db_doc_snapshot_p2_2
-  confidence: high
-  content_hash: 839f1f470db23549edd8bded08608297d9698bf0c6d8362f8cb63a5cc126584b
-  depth: 1
-  id: db_doc_snapshot_sec_0002
-  metadata:
-    build_strategy: heading_block
-    citation_label: PDF p.1, PDF p.2
     heading_level: 1
     keyword_stats:
       child_support:
@@ -681,7 +398,7 @@ document_blocks:
         testing: 1
         that: 2
         thatdominate: 1
-        the: 3
+        the: 4
         theboundary: 1
         thedominant: 1
         theinterference: 1
@@ -860,23 +577,12 @@ document_blocks:
         withsurface: 1
     keyword_terms:
     - the
-    - and
-    - thickness
-    - resonance
-    - measurement
-    - impedance
-    - contrast
-    - behaviour
-    - layered
-    - article
-    - of
-    - is
     keyword_thresholds:
-      leaf_count: 5
-      min_freq: 2
-      min_support: 2
+      leaf_count: 7
+      min_freq: 5
+      min_support: 3
       strategy: bottom_up_aggregation
-      text_length: 1519
+      text_length: 1517
     new_word_terms: []
     page_ref_kind: physical_page_number_1_based
     pdf_page_labels: []
@@ -885,50 +591,48 @@ document_blocks:
     search_terms:
     - Signal Propagation in Layered Media
     - the
-    - and
-    - thickness
-    - resonance
-    - measurement
-    - impedance
-    - contrast
-    - behaviour
-    - layered
-    - article
-    - of
-    - is
-    source_range: null
     stage: block_tree
-  order_index: 2
+  order_index: 1
   page_refs:
   - 1
   - 2
-  parent_id: db_doc_snapshot_root
+  parent_id: null
   source_block_ids:
   - p1_b1
   source_chunk_ids: []
-  text_preview: Signal Propagation in Layered Media
+  text_preview: null
   title: Signal Propagation in Layered Media
-  type: section
+  type: document
 - bbox_refs:
   - - 56.0
     - 89.3
+    - 235.52
+    - 102.84
+  - - 56.0
+    - 130.0
     - 287.18
     - 335.76
   - - 306.5
     - 130.0
     - 538.85
+    - 202.82
+  - - 306.5
+    - 218.62
+    - 532.14
     - 276.67
   - - 306.5
     - 526.91
     - 538.92
     - 538.41
   child_ids:
+  - db_doc_snapshot_p1_b2
   - db_doc_snapshot_p1_para1
-  - db_doc_snapshot_p1_para2
+  - db_doc_snapshot_p1_b5
+  - db_doc_snapshot_p1_b6
   - db_doc_snapshot_p1_b7
   confidence: high
   content_hash: null
-  depth: 2
+  depth: 1
   id: db_doc_snapshot_p1_1
   metadata:
     build_strategy: page_boundary
@@ -1020,7 +724,7 @@ document_blocks:
         synthetic: 1
         testing: 1
         thatdominate: 1
-        the: 2
+        the: 3
         theboundary: 1
         theinterference: 1
         thestack: 1
@@ -1164,11 +868,11 @@ document_blocks:
     - of
     - is
     keyword_thresholds:
-      leaf_count: 3
+      leaf_count: 5
       min_freq: 2
       min_support: 1
       strategy: bottom_up_aggregation
-      text_length: 1053
+      text_length: 1051
     new_word_terms: []
     page_ref_kind: physical_page_number_1_based
     pdf_page_labels: []
@@ -1189,10 +893,10 @@ document_blocks:
     - of
     - is
     stage: block_tree
-  order_index: 3
+  order_index: 2
   page_refs:
   - 1
-  parent_id: db_doc_snapshot_sec_0002
+  parent_id: db_doc_snapshot_root
   source_block_ids: []
   source_chunk_ids: []
   text_preview: null
@@ -1201,12 +905,78 @@ document_blocks:
 - bbox_refs:
   - - 56.0
     - 89.3
+    - 235.52
+    - 102.84
+  child_ids: []
+  confidence: high
+  content_hash: 875f2211fdae5498ee6f9ea2a28f62801138934fcd09786dfcc98e9e9b3f7dcf
+  depth: 2
+  id: db_doc_snapshot_p1_b2
+  metadata:
+    build_strategy: page_local_block
+    citation_label: PDF p.1
+    keyword_stats:
+      child_support:
+        article: 1
+        for: 1
+        layout: 1
+        short: 1
+        synthetic: 1
+        testing: 1
+      term_freq:
+        article: 1
+        for: 1
+        layout: 1
+        short: 1
+        synthetic: 1
+        testing: 1
+    keyword_terms:
+    - synthetic
+    - testing
+    - article
+    - layout
+    - short
+    - for
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 1
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 44
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - synthetic
+    - testing
+    - article
+    - layout
+    - short
+    - for
+    source_block_type: text
+    source_range: null
+    stage: block_tree
+  order_index: 3
+  page_refs:
+  - 1
+  parent_id: db_doc_snapshot_p1_1
+  source_block_ids:
+  - p1_b2
+  source_chunk_ids: []
+  text_preview: A short synthetic article for layout testing
+  title: null
+  type: paragraph
+- bbox_refs:
+  - - 56.0
+    - 130.0
     - 287.18
     - 335.76
   child_ids: []
   confidence: medium
-  content_hash: 872129750f7dbd2a475e687af0f9238ef38fb547fdf213d13e03dede099b9bd0
-  depth: 3
+  content_hash: 2c2970a7d55f038956de58b2453285edc2e140598b67cfb0d8ada9b3be2d419a
+  depth: 2
   id: db_doc_snapshot_p1_para1
   metadata:
     build_strategy: page_local_block
@@ -1215,7 +985,6 @@ document_blocks:
       child_support:
         an: 1
         are: 1
-        article: 1
         assemblies: 1
         at: 1
         balance: 1
@@ -1232,7 +1001,6 @@ document_blocks:
         examine: 1
         few: 1
         first: 1
-        for: 1
         impedance: 1
         in: 1
         interface: 1
@@ -1243,7 +1011,6 @@ document_blocks:
         layer: 1
         layered: 1
         layers: 1
-        layout: 1
         margin: 1
         measurable: 1
         media: 1
@@ -1263,11 +1030,8 @@ document_blocks:
         remainderrefracts: 1
         resonancepeaks: 1
         shifts: 1
-        short: 1
         shortwavelengths: 1
         signal: 1
-        synthetic: 1
-        testing: 1
         thatdominate: 1
         the: 1
         theboundary: 1
@@ -1285,7 +1049,6 @@ document_blocks:
       term_freq:
         an: 1
         are: 1
-        article: 1
         assemblies: 1
         at: 2
         balance: 1
@@ -1302,7 +1065,6 @@ document_blocks:
         examine: 1
         few: 1
         first: 1
-        for: 1
         impedance: 1
         in: 1
         interface: 1
@@ -1313,7 +1075,6 @@ document_blocks:
         layer: 1
         layered: 1
         layers: 1
-        layout: 1
         margin: 1
         measurable: 1
         media: 1
@@ -1333,11 +1094,8 @@ document_blocks:
         remainderrefracts: 1
         resonancepeaks: 1
         shifts: 1
-        short: 1
         shortwavelengths: 1
         signal: 1
-        synthetic: 1
-        testing: 1
         thatdominate: 1
         the: 6
         theboundary: 1
@@ -1361,16 +1119,16 @@ document_blocks:
     - theinterference
     - theboundary
     - thatdominate
-    - synthetic
     - shortwavelengths
     - resonancepeaks
     - remainderrefracts
+    - reflects
     keyword_thresholds:
       leaf_count: 1
       min_freq: 1
       min_support: 1
       strategy: bottom_up_aggregation
-      text_length: 588
+      text_length: 543
     new_word_terms: []
     page_ref_kind: physical_page_number_1_based
     pdf_page_labels: []
@@ -1385,10 +1143,10 @@ document_blocks:
     - theinterference
     - theboundary
     - thatdominate
-    - synthetic
     - shortwavelengths
     - resonancepeaks
     - remainderrefracts
+    - reflects
     source_block_type: paragraph
     source_range: null
     stage: block_tree
@@ -1399,21 +1157,21 @@ document_blocks:
   source_block_ids:
   - p1_para1
   source_chunk_ids: []
-  text_preview: A short synthetic article for layout testing Layered media introduce
-    boundary effects thatdominate propagation behaviour at shortwavelengths. When
-    a signal cros
+  text_preview: 'Layered media introduce boundary effects thatdominate propagation
+    behaviour at shortwavelengths. When a signal crosses an interface,part of its
+    energy reflects '
   title: null
   type: paragraph
 - bbox_refs:
   - - 306.5
     - 130.0
     - 538.85
-    - 276.67
+    - 202.82
   child_ids: []
-  confidence: medium
-  content_hash: e66f5a3ec1add4fdce77ba889ffeba88c2c6ab91ba38427330b94a8caedc75b0
-  depth: 3
-  id: db_doc_snapshot_p1_para2
+  confidence: high
+  content_hash: 5961db035271f2136d46d2ff0a0e05d5a000c4805e5f6006be5ce89a2a3a6e25
+  depth: 2
+  id: db_doc_snapshot_p1_b5
   metadata:
     build_strategy: page_local_block
     citation_label: PDF p.1
@@ -1421,112 +1179,182 @@ document_blocks:
       child_support:
         alternate: 1
         and: 1
-        article: 1
         at: 1
-        calibrated: 1
         cost: 1
         designerstherefore: 1
         dissipative: 1
-        drives: 1
-        field: 1
-        figure: 1
-        from: 1
         high-loss: 1
         is: 1
         layers: 1
         layersflatten: 1
-        left: 1
         loss: 1
         low-loss: 1
-        measurement: 1
         of: 1
-        'on': 1
         parameter: 1
         peak: 1
-        receiversamples: 1
         resonance: 1
         response: 1
-        right: 1
         second: 1
-        setup: 1
-        source: 1
         structure: 1
-        summarises: 1
-        swept: 1
         the: 1
-        thestack: 1
-        this: 1
         toshape: 1
         transmission: 1
-        transmitted: 1
         usableband: 1
-        usedthroughout: 1
-        while: 1
         widen: 1
       term_freq:
         alternate: 1
         and: 2
-        article: 1
         at: 1
-        calibrated: 1
         cost: 1
         designerstherefore: 1
         dissipative: 1
-        drives: 1
-        field: 1
-        figure: 1
-        from: 1
         high-loss: 1
         is: 1
         layers: 1
         layersflatten: 1
-        left: 1
         loss: 1
         low-loss: 1
-        measurement: 1
         of: 1
-        'on': 1
         parameter: 1
         peak: 1
-        receiversamples: 1
         resonance: 1
         response: 1
-        right: 1
         second: 1
-        setup: 1
-        source: 1
         structure: 1
-        summarises: 1
-        swept: 1
-        the: 9
-        thestack: 1
-        this: 1
+        the: 5
         toshape: 1
         transmission: 1
-        transmitted: 1
         usableband: 1
-        usedthroughout: 1
-        while: 1
         widen: 1
     keyword_terms:
     - the
-    - usedthroughout
     - usableband
-    - transmitted
     - transmission
-    - thestack
-    - summarises
     - structure
     - response
     - resonance
-    - receiversamples
     - parameter
+    - low-loss
+    - layersflatten
+    - high-loss
+    - dissipative
+    - designerstherefore
     keyword_thresholds:
       leaf_count: 1
       min_freq: 1
       min_support: 1
       strategy: bottom_up_aggregation
-      text_length: 406
+      text_length: 219
+    new_word_terms: []
+    page_ref_kind: physical_page_number_1_based
+    pdf_page_labels: []
+    printed_page_labels: []
+    role: body
+    search_terms:
+    - the
+    - usableband
+    - transmission
+    - structure
+    - response
+    - resonance
+    - parameter
+    - low-loss
+    - layersflatten
+    - high-loss
+    - dissipative
+    - designerstherefore
+    source_block_type: text
+    source_range: null
+    stage: block_tree
+  order_index: 5
+  page_refs:
+  - 1
+  parent_id: db_doc_snapshot_p1_1
+  source_block_ids:
+  - p1_b5
+  source_chunk_ids: []
+  text_preview: The second parameter is loss. Dissipative layersflatten the resonance
+    structure and widen the usableband at the cost of peak transmission. Designerstherefore
+    al
+  title: null
+  type: paragraph
+- bbox_refs:
+  - - 306.5
+    - 218.62
+    - 532.14
+    - 276.67
+  child_ids: []
+  confidence: high
+  content_hash: 13cddb8a2cbe16b7e47db94b171546ac4c9d60f6141bafe4b1200518622526f8
+  depth: 2
+  id: db_doc_snapshot_p1_b6
+  metadata:
+    build_strategy: page_local_block
+    citation_label: PDF p.1
+    keyword_stats:
+      child_support:
+        article: 1
+        calibrated: 1
+        drives: 1
+        field: 1
+        figure: 1
+        from: 1
+        left: 1
+        measurement: 1
+        'on': 1
+        receiversamples: 1
+        right: 1
+        setup: 1
+        source: 1
+        summarises: 1
+        swept: 1
+        the: 1
+        thestack: 1
+        this: 1
+        transmitted: 1
+        usedthroughout: 1
+        while: 1
+      term_freq:
+        article: 1
+        calibrated: 1
+        drives: 1
+        field: 1
+        figure: 1
+        from: 1
+        left: 1
+        measurement: 1
+        'on': 1
+        receiversamples: 1
+        right: 1
+        setup: 1
+        source: 1
+        summarises: 1
+        swept: 1
+        the: 4
+        thestack: 1
+        this: 1
+        transmitted: 1
+        usedthroughout: 1
+        while: 1
+    keyword_terms:
+    - the
+    - usedthroughout
+    - transmitted
+    - thestack
+    - summarises
+    - receiversamples
+    - measurement
+    - calibrated
+    - article
+    - source
+    - figure
+    - drives
+    keyword_thresholds:
+      leaf_count: 1
+      min_freq: 1
+      min_support: 1
+      strategy: bottom_up_aggregation
+      text_length: 186
     new_word_terms: []
     page_ref_kind: physical_page_number_1_based
     pdf_page_labels: []
@@ -1535,29 +1363,29 @@ document_blocks:
     search_terms:
     - the
     - usedthroughout
-    - usableband
     - transmitted
-    - transmission
     - thestack
     - summarises
-    - structure
-    - response
-    - resonance
     - receiversamples
-    - parameter
-    source_block_type: paragraph
+    - measurement
+    - calibrated
+    - article
+    - source
+    - figure
+    - drives
+    source_block_type: text
     source_range: null
     stage: block_tree
-  order_index: 5
+  order_index: 6
   page_refs:
   - 1
   parent_id: db_doc_snapshot_p1_1
   source_block_ids:
-  - p1_para2
+  - p1_b6
   source_chunk_ids: []
-  text_preview: The second parameter is loss. Dissipative layersflatten the resonance
-    structure and widen the usableband at the cost of peak transmission. Designerstherefore
-    al
+  text_preview: Figure 1 summarises the measurement setup usedthroughout this article.
+    A swept source drives thestack from the left while a calibrated receiversamples
+    the trans
   title: null
   type: paragraph
 - bbox_refs:
@@ -1568,7 +1396,7 @@ document_blocks:
   child_ids: []
   confidence: high
   content_hash: 3bf27bdead2fcc7003c4963c3b8e0db55dc261aaa279639db1c8bdb2dbe71604
-  depth: 3
+  depth: 2
   id: db_doc_snapshot_p1_b7
   metadata:
     build_strategy: page_local_block
@@ -1624,7 +1452,7 @@ document_blocks:
     source_block_type: text
     source_range: null
     stage: block_tree
-  order_index: 6
+  order_index: 7
   page_refs:
   - 1
   parent_id: db_doc_snapshot_p1_1
@@ -1648,7 +1476,7 @@ document_blocks:
   - db_doc_snapshot_p2_b2
   confidence: high
   content_hash: null
-  depth: 2
+  depth: 1
   id: db_doc_snapshot_p2_2
   metadata:
     build_strategy: page_boundary
@@ -1783,10 +1611,10 @@ document_blocks:
     - that
     - the
     stage: block_tree
-  order_index: 7
+  order_index: 8
   page_refs:
   - 2
-  parent_id: db_doc_snapshot_sec_0002
+  parent_id: db_doc_snapshot_root
   source_block_ids: []
   source_chunk_ids: []
   text_preview: null
@@ -1800,7 +1628,7 @@ document_blocks:
   child_ids: []
   confidence: high
   content_hash: a17350925641dd2abe85d180aac42b6065ffb127e324146cb706c85ab4aba290
-  depth: 3
+  depth: 2
   id: db_doc_snapshot_p2_b1
   metadata:
     build_strategy: page_local_block
@@ -1910,7 +1738,7 @@ document_blocks:
     source_block_type: text
     source_range: null
     stage: block_tree
-  order_index: 8
+  order_index: 9
   page_refs:
   - 2
   parent_id: db_doc_snapshot_p2_2
@@ -1930,7 +1758,7 @@ document_blocks:
   child_ids: []
   confidence: high
   content_hash: 7690e0bbedcb11577057f3bb7de58aa2066241db400b17d80f2014699f45cb90
-  depth: 3
+  depth: 2
   id: db_doc_snapshot_p2_b2
   metadata:
     build_strategy: page_local_block
@@ -2026,7 +1854,7 @@ document_blocks:
     source_block_type: text
     source_range: null
     stage: block_tree
-  order_index: 9
+  order_index: 10
   page_refs:
   - 2
   parent_id: db_doc_snapshot_p2_2
@@ -2042,6 +1870,8 @@ id: doc_snapshot
 ir_version: '0.2'
 metadata:
   adapter: pymupdf
+  document_title: Signal Propagation in Layered Media
+  document_title_block_id: p1_b1
   page_citations:
     '1':
       citation_label: PDF p.1
@@ -2057,6 +1887,7 @@ metadata:
       printed_page_label: null
   page_count: 2
   page_ref_kind: physical_page_number_1_based
+  pdf_heading_font_scale: []
   toc: []
 pages:
 - blocks:
@@ -2068,6 +1899,8 @@ pages:
     confidence: high
     id: p1_b1
     metadata:
+      heading_level: 1
+      heading_role: document_title
       layout_classification:
         block_font_size: 17.0
         median_font_size: 10.0
@@ -2122,11 +1955,12 @@ pages:
   - bbox:
     - 56.0
     - 89.3
-    - 287.18
-    - 335.76
-    confidence: medium
-    id: p1_para1
+    - 235.52
+    - 102.84
+    confidence: high
+    id: p1_b2
     metadata:
+      original_order_index: 2
       reading_order:
         column_index: 0
         gestalt:
@@ -2135,17 +1969,11 @@ pages:
         rule: column_flow
         strategy: zone_column_v2
         zone_id: z1b2
-      source_block_ids:
-      - p1_b2
-      - p1_b3
-      - p1_b4
-      strategy: vertical_gap_x_overlap
+      source_type: pymupdf_text_block
     order_index: 2
     page_number: 1
     source_refs:
     - pymupdf:block:1:2
-    - pymupdf:block:1:3
-    - pymupdf:block:1:4
     spans:
     - bbox:
       - 56.0
@@ -2172,6 +2000,39 @@ pages:
         simplified_traditional_converted: false
         unicode_form: NFC
         width_normalized: false
+    text:
+      normalized_text: A short synthetic article for layout testing
+      raw_text: A short synthetic article for layout testing
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: text
+  - bbox:
+    - 56.0
+    - 130.0
+    - 287.18
+    - 335.76
+    confidence: medium
+    id: p1_para1
+    metadata:
+      reading_order:
+        column_index: 0
+        gestalt:
+        - proximity
+        - continuity
+        rule: column_flow
+        strategy: zone_column_v2
+        zone_id: z1b2
+      source_block_ids:
+      - p1_b3
+      - p1_b4
+      strategy: vertical_gap_x_overlap
+    order_index: 3
+    page_number: 1
+    source_refs:
+    - pymupdf:block:1:3
+    - pymupdf:block:1:4
+    spans:
     - bbox:
       - 56.0
       - 130.0
@@ -2472,22 +2333,22 @@ pages:
         unicode_form: NFC
         width_normalized: false
     text:
-      normalized_text: A short synthetic article for layout testing Layered media
-        introduce boundary effects thatdominate propagation behaviour at shortwavelengths.
-        When a signal crosses an interface,part of its energy reflects while the remainderrefracts
-        into the next layer. The balance betweenthe two depends on the impedance contrast
-        at theboundary. In practical assemblies the layers are rarely uniform.Thickness
-        variation of only a few percent shifts theinterference pattern enough to move
-        resonancepeaks by a measurable margin, which is whymanufacturing tolerance
-        is the first parameterengineers examine.
-      raw_text: A short synthetic article for layout testing Layered media introduce
-        boundary effects thatdominate propagation behaviour at shortwavelengths. When
-        a signal crosses an interface,part of its energy reflects while the remainderrefracts
-        into the next layer. The balance betweenthe two depends on the impedance contrast
-        at theboundary. In practical assemblies the layers are rarely uniform.Thickness
-        variation of only a few percent shifts theinterference pattern enough to move
-        resonancepeaks by a measurable margin, which is whymanufacturing tolerance
-        is the first parameterengineers examine.
+      normalized_text: Layered media introduce boundary effects thatdominate propagation
+        behaviour at shortwavelengths. When a signal crosses an interface,part of
+        its energy reflects while the remainderrefracts into the next layer. The balance
+        betweenthe two depends on the impedance contrast at theboundary. In practical
+        assemblies the layers are rarely uniform.Thickness variation of only a few
+        percent shifts theinterference pattern enough to move resonancepeaks by a
+        measurable margin, which is whymanufacturing tolerance is the first parameterengineers
+        examine.
+      raw_text: Layered media introduce boundary effects thatdominate propagation
+        behaviour at shortwavelengths. When a signal crosses an interface,part of
+        its energy reflects while the remainderrefracts into the next layer. The balance
+        betweenthe two depends on the impedance contrast at theboundary. In practical
+        assemblies the layers are rarely uniform.Thickness variation of only a few
+        percent shifts theinterference pattern enough to move resonancepeaks by a
+        measurable margin, which is whymanufacturing tolerance is the first parameterengineers
+        examine.
       simplified_traditional_converted: false
       unicode_form: NFC
       width_normalized: false
@@ -2496,10 +2357,11 @@ pages:
     - 306.5
     - 130.0
     - 538.85
-    - 276.67
-    confidence: medium
-    id: p1_para2
+    - 202.82
+    confidence: high
+    id: p1_b5
     metadata:
+      original_order_index: 5
       reading_order:
         column_index: 1
         gestalt:
@@ -2508,15 +2370,11 @@ pages:
         rule: column_flow
         strategy: zone_column_v2
         zone_id: z1b2
-      source_block_ids:
-      - p1_b5
-      - p1_b6
-      strategy: vertical_gap_x_overlap
-    order_index: 3
+      source_type: pymupdf_text_block
+    order_index: 4
     page_number: 1
     source_refs:
     - pymupdf:block:1:5
-    - pymupdf:block:1:6
     spans:
     - bbox:
       - 306.5
@@ -2633,6 +2491,40 @@ pages:
         simplified_traditional_converted: false
         unicode_form: NFC
         width_normalized: false
+    text:
+      normalized_text: The second parameter is loss. Dissipative layersflatten the
+        resonance structure and widen the usableband at the cost of peak transmission.
+        Designerstherefore alternate low-loss and high-loss layers toshape the response.
+      raw_text: The second parameter is loss. Dissipative layersflatten the resonance
+        structure and widen the usableband at the cost of peak transmission. Designerstherefore
+        alternate low-loss and high-loss layers toshape the response.
+      simplified_traditional_converted: false
+      unicode_form: NFC
+      width_normalized: false
+    type: text
+  - bbox:
+    - 306.5
+    - 218.62
+    - 532.14
+    - 276.67
+    confidence: high
+    id: p1_b6
+    metadata:
+      original_order_index: 6
+      reading_order:
+        column_index: 1
+        gestalt:
+        - proximity
+        - continuity
+        rule: column_flow
+        strategy: zone_column_v2
+        zone_id: z1b2
+      source_type: pymupdf_text_block
+    order_index: 5
+    page_number: 1
+    source_refs:
+    - pymupdf:block:1:6
+    spans:
     - bbox:
       - 306.5
       - 218.62
@@ -2726,22 +2618,16 @@ pages:
         unicode_form: NFC
         width_normalized: false
     text:
-      normalized_text: The second parameter is loss. Dissipative layersflatten the
-        resonance structure and widen the usableband at the cost of peak transmission.
-        Designerstherefore alternate low-loss and high-loss layers toshape the response.
-        Figure 1 summarises the measurement setup usedthroughout this article. A swept
-        source drives thestack from the left while a calibrated receiversamples the
-        transmitted field on the right.
-      raw_text: The second parameter is loss. Dissipative layersflatten the resonance
-        structure and widen the usableband at the cost of peak transmission. Designerstherefore
-        alternate low-loss and high-loss layers toshape the response. Figure 1 summarises
-        the measurement setup usedthroughout this article. A swept source drives thestack
-        from the left while a calibrated receiversamples the transmitted field on
-        the right.
+      normalized_text: Figure 1 summarises the measurement setup usedthroughout this
+        article. A swept source drives thestack from the left while a calibrated receiversamples
+        the transmitted field on the right.
+      raw_text: Figure 1 summarises the measurement setup usedthroughout this article.
+        A swept source drives thestack from the left while a calibrated receiversamples
+        the transmitted field on the right.
       simplified_traditional_converted: false
       unicode_form: NFC
       width_normalized: false
-    type: paragraph
+    type: text
   - bbox:
     - 306.5
     - 526.91
@@ -2760,7 +2646,7 @@ pages:
         strategy: zone_column_v2
         zone_id: z1b2
       source_type: pymupdf_text_block
-    order_index: 4
+    order_index: 6
     page_number: 1
     source_refs:
     - pymupdf:block:1:7
@@ -3182,6 +3068,19 @@ relations:
   evidence:
   - caption_prefix=image
   - target_missing
+  from_id: p1_b6
+  id: rel_caption_p1_b6
+  metadata:
+    caption_kind: image
+    page_number: 1
+    stage: caption_linking
+  state: unresolved
+  to_id: null
+  type: unresolved
+- confidence: low
+  evidence:
+  - caption_prefix=image
+  - target_missing
   from_id: p1_b7
   id: rel_caption_p1_b7
   metadata:
@@ -3193,20 +3092,9 @@ relations:
   type: unresolved
 - confidence: high
   evidence:
-  - document_block_parent_id
-  from_id: db_doc_snapshot_root
-  id: rel_block_parent_db_doc_snapshot_sec_0002
-  metadata:
-    child_id: db_doc_snapshot_sec_0002
-    stage: block_tree
-  state: inferred
-  to_id: db_doc_snapshot_sec_0002
-  type: block_parent_child
-- confidence: high
-  evidence:
   - document_block_source_block_ids
-  from_id: db_doc_snapshot_sec_0002
-  id: rel_block_source_db_doc_snapshot_sec_0002_p1_b1
+  from_id: db_doc_snapshot_root
+  id: rel_block_source_db_doc_snapshot_root_p1_b1
   metadata:
     source_block_id: p1_b1
     stage: block_tree
@@ -3216,7 +3104,7 @@ relations:
 - confidence: high
   evidence:
   - document_block_parent_id
-  from_id: db_doc_snapshot_sec_0002
+  from_id: db_doc_snapshot_root
   id: rel_block_parent_db_doc_snapshot_p1_1
   metadata:
     child_id: db_doc_snapshot_p1_1
@@ -3224,6 +3112,28 @@ relations:
   state: inferred
   to_id: db_doc_snapshot_p1_1
   type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_p1_1
+  id: rel_block_parent_db_doc_snapshot_p1_b2
+  metadata:
+    child_id: db_doc_snapshot_p1_b2
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p1_b2
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_p1_b2
+  id: rel_block_source_db_doc_snapshot_p1_b2_p1_b2
+  metadata:
+    source_block_id: p1_b2
+    stage: block_tree
+  state: inferred
+  to_id: p1_b2
+  type: block_to_source
 - confidence: high
   evidence:
   - document_block_parent_id
@@ -3250,23 +3160,45 @@ relations:
   evidence:
   - document_block_parent_id
   from_id: db_doc_snapshot_p1_1
-  id: rel_block_parent_db_doc_snapshot_p1_para2
+  id: rel_block_parent_db_doc_snapshot_p1_b5
   metadata:
-    child_id: db_doc_snapshot_p1_para2
+    child_id: db_doc_snapshot_p1_b5
     stage: block_tree
   state: inferred
-  to_id: db_doc_snapshot_p1_para2
+  to_id: db_doc_snapshot_p1_b5
   type: block_parent_child
 - confidence: high
   evidence:
   - document_block_source_block_ids
-  from_id: db_doc_snapshot_p1_para2
-  id: rel_block_source_db_doc_snapshot_p1_para2_p1_para2
+  from_id: db_doc_snapshot_p1_b5
+  id: rel_block_source_db_doc_snapshot_p1_b5_p1_b5
   metadata:
-    source_block_id: p1_para2
+    source_block_id: p1_b5
     stage: block_tree
   state: inferred
-  to_id: p1_para2
+  to_id: p1_b5
+  type: block_to_source
+- confidence: high
+  evidence:
+  - document_block_parent_id
+  from_id: db_doc_snapshot_p1_1
+  id: rel_block_parent_db_doc_snapshot_p1_b6
+  metadata:
+    child_id: db_doc_snapshot_p1_b6
+    stage: block_tree
+  state: inferred
+  to_id: db_doc_snapshot_p1_b6
+  type: block_parent_child
+- confidence: high
+  evidence:
+  - document_block_source_block_ids
+  from_id: db_doc_snapshot_p1_b6
+  id: rel_block_source_db_doc_snapshot_p1_b6_p1_b6
+  metadata:
+    source_block_id: p1_b6
+    stage: block_tree
+  state: inferred
+  to_id: p1_b6
   type: block_to_source
 - confidence: high
   evidence:
@@ -3293,7 +3225,7 @@ relations:
 - confidence: high
   evidence:
   - document_block_parent_id
-  from_id: db_doc_snapshot_sec_0002
+  from_id: db_doc_snapshot_root
   id: rel_block_parent_db_doc_snapshot_p2_2
   metadata:
     child_id: db_doc_snapshot_p2_2
@@ -3348,9 +3280,21 @@ relations:
 - confidence: high
   evidence:
   - chunk_source_block_ids
-  - source_block_id=p1_para1
+  - source_block_id=p1_b2
   from_id: chunk_doc_snapshot_0001
   id: rel_chunk_chunk_doc_snapshot_0001_1
+  metadata:
+    source_block_id: p1_b2
+    stage: provenance_linking
+  state: inferred
+  to_id: p1_b2
+  type: chunk_to_source
+- confidence: high
+  evidence:
+  - chunk_source_block_ids
+  - source_block_id=p1_para1
+  from_id: chunk_doc_snapshot_0002
+  id: rel_chunk_chunk_doc_snapshot_0002_1
   metadata:
     source_block_id: p1_para1
     stage: provenance_linking
@@ -3360,21 +3304,33 @@ relations:
 - confidence: high
   evidence:
   - chunk_source_block_ids
-  - source_block_id=p1_para2
-  from_id: chunk_doc_snapshot_0002
-  id: rel_chunk_chunk_doc_snapshot_0002_1
+  - source_block_id=p1_b5
+  from_id: chunk_doc_snapshot_0003
+  id: rel_chunk_chunk_doc_snapshot_0003_1
   metadata:
-    source_block_id: p1_para2
+    source_block_id: p1_b5
     stage: provenance_linking
   state: inferred
-  to_id: p1_para2
+  to_id: p1_b5
+  type: chunk_to_source
+- confidence: high
+  evidence:
+  - chunk_source_block_ids
+  - source_block_id=p1_b6
+  from_id: chunk_doc_snapshot_0004
+  id: rel_chunk_chunk_doc_snapshot_0004_1
+  metadata:
+    source_block_id: p1_b6
+    stage: provenance_linking
+  state: inferred
+  to_id: p1_b6
   type: chunk_to_source
 - confidence: high
   evidence:
   - chunk_source_block_ids
   - source_block_id=p1_b7
-  from_id: chunk_doc_snapshot_0003
-  id: rel_chunk_chunk_doc_snapshot_0003_1
+  from_id: chunk_doc_snapshot_0005
+  id: rel_chunk_chunk_doc_snapshot_0005_1
   metadata:
     source_block_id: p1_b7
     stage: provenance_linking
@@ -3385,8 +3341,8 @@ relations:
   evidence:
   - chunk_source_block_ids
   - source_block_id=p2_b1
-  from_id: chunk_doc_snapshot_0004
-  id: rel_chunk_chunk_doc_snapshot_0004_1
+  from_id: chunk_doc_snapshot_0006
+  id: rel_chunk_chunk_doc_snapshot_0006_1
   metadata:
     source_block_id: p2_b1
     stage: provenance_linking
@@ -3397,8 +3353,8 @@ relations:
   evidence:
   - chunk_source_block_ids
   - source_block_id=p2_b2
-  from_id: chunk_doc_snapshot_0005
-  id: rel_chunk_chunk_doc_snapshot_0005_1
+  from_id: chunk_doc_snapshot_0007
+  id: rel_chunk_chunk_doc_snapshot_0007_1
   metadata:
     source_block_id: p2_b2
     stage: provenance_linking

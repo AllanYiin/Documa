@@ -9,8 +9,11 @@ from collections import Counter
 from statistics import median
 
 from documa.core.ir import BlockIR, BlockType, Confidence, DocumentIR
+from documa.core.text_joining import is_caption_block, list_metadata
 from documa.core.text_normalization import normalize_for_search
 from documa.pipeline.base import PipelineContext, PipelineStage, StageResult
+from documa.pipeline.figures import classify_figure_regions
+from documa.pipeline.pdf_headings import assign_pdf_heading_levels, pdf_block_font_size, pdf_heading_geometry, split_pdf_headings
 
 _SPACES = re.compile(r"\s+")
 _TOC_LEADER_RE = re.compile(r"^(?P<title>.+?)\.{4,}\s*(?P<page>(?:\d+|[IVXLCDM]+))\s*$", re.IGNORECASE)
@@ -92,18 +95,20 @@ class LayoutClassificationStage(PipelineStage):
     name: str = "layout_classification"
 
     def run(self, document: DocumentIR, context: PipelineContext | None = None) -> StageResult:
-        changed_count = 0
+        changed_count = classify_figure_regions(document) + split_pdf_headings(document)
         report_pages: list[dict[str, int]] = []
         repeated_headers = _repeated_region_keys(document, top=True)
         repeated_footers = _repeated_region_keys(document, top=False)
 
         for page in document.pages:
+            font_size = pdf_block_font_size if document.parser in {"rust_pdf", "pymupdf"} else _block_font_size
             body_font_sizes = [
                 size
                 for block in page.blocks
-                for size in [_block_font_size(block)]
+                for size in [font_size(block)]
                 if size is not None
                 and block.type in {BlockType.TEXT, BlockType.PARAGRAPH}
+                and block.metadata.get("reading_region") != "figure"
                 and block.bbox is not None
                 and block.bbox[1] > page.height * _REPEATED_REGION_RATIO
                 and block.bbox[3] < page.height * 0.82
@@ -111,23 +116,39 @@ class LayoutClassificationStage(PipelineStage):
             all_font_sizes = [
                 size
                 for block in page.blocks
-                for size in [_block_font_size(block)]
+                for size in [font_size(block)]
                 if size is not None and block.type in {BlockType.TEXT, BlockType.PARAGRAPH}
+                and block.metadata.get("reading_region") != "figure"
             ]
             font_sizes = body_font_sizes or all_font_sizes
             median_font = float(median(font_sizes)) if font_sizes else 0.0
             page_counts = {"heading": 0, "page_header": 0, "page_footer": 0}
 
             for block in page.blocks:
+                if block.metadata.get("reading_region") == "figure":
+                    continue
                 if block.bbox is None or block.type not in {BlockType.TEXT, BlockType.PARAGRAPH}:
                     continue
+                if block.text and is_caption_block(block, block.text.raw_text):
+                    continue
                 original_type = block.type
-                block_font = _block_font_size(block) or median_font
+                block_font = font_size(block) or median_font
                 y0, y1 = block.bbox[1], block.bbox[3]
                 repeat_key = _repeat_key(block)
                 strategy = None
 
-                if y0 <= page.height * 0.06:
+                if (document.parser in {"rust_pdf", "pymupdf"} and page.page_number == 1
+                        and y0 > page.height * 0.9 and block_font < median_font
+                        and re.fullmatch(r"(?:Preprint\.?\s*Under review\.?|\d+(?:st|nd|rd|th)\s+Conference\b.+)", block.text.raw_text.strip(), re.I)):
+                    block.type = BlockType.PAGE_FOOTER
+                    page_counts["page_footer"] += 1
+                    strategy = "publication_footer"
+                elif (document.parser in {"rust_pdf", "pymupdf"} and y0 > page.height * 0.86
+                      and block_font < median_font * 0.95 and not list_metadata(block.metadata)
+                      and re.match(r"^\s*\d{1,3}[.)]?\s*[A-Za-z\u3400-\u9fff]", block.text.raw_text)):
+                    block.type = BlockType.FOOTNOTE
+                    strategy = "small_numbered_bottom_note"
+                elif y0 <= page.height * 0.06:
                     block.type = BlockType.PAGE_HEADER
                     page_counts["page_header"] += 1
                     strategy = "font_size_and_page_position"
@@ -148,7 +169,10 @@ class LayoutClassificationStage(PipelineStage):
                     block.metadata["toc_title"] = toc_item["title"]
                     block.metadata["toc_items"] = [toc_item]
                     strategy = "toc_leader_dots"
-                elif median_font and block_font >= median_font * 1.25 and _is_short_heading_candidate(block):
+                elif (median_font and block_font >= median_font * 1.25 and _is_short_heading_candidate(block)
+                      and (document.parser not in {"rust_pdf", "pymupdf"}
+                           or (pdf_heading_geometry(block, page.width, page.height)
+                               and any(char.isalpha() for char in block.text.raw_text)))):
                     block.type = BlockType.HEADING
                     page_counts["heading"] += 1
                     strategy = "font_size_and_page_position"
@@ -169,6 +193,7 @@ class LayoutClassificationStage(PipelineStage):
 
             report_pages.append({"page_number": page.page_number, **page_counts})
 
+        changed_count += assign_pdf_heading_levels(document)
         return StageResult(
             document=document,
             stage_name=self.name,

@@ -1905,6 +1905,15 @@ fn can_merge(span: &LayoutTextSpan, glyph: &LayoutGlyph) -> bool {
         && mcid_matches(span.provenance.mcids.as_slice(), glyph.mcid)
         && alignment >= 0.999
         && gap <= max_gap
+        // Keep the original glyph text in each span. A positional word gap
+        // becomes a span boundary so reading_order can emit a derived space.
+        && !(span.writing_mode == WritingMode::Horizontal
+            && span.rotation == 0
+            && crate::layout::has_layout_word_gap(
+                &span.text, &glyph.text,
+                glyph.origin.x - span.baseline.end.x,
+                span.font_size.max(glyph.font_size),
+            ))
 }
 
 fn merge_glyph(span: &mut LayoutTextSpan, glyph: &LayoutGlyph) -> PdfResult<()> {

@@ -237,6 +237,28 @@ fn is_cjk_compatibility(character: char) -> bool {
     matches!(u32::from(character), 0x2e80..=0x2fdf | 0xf900..=0xfaff)
 }
 
+/// Layout IR keeps source spans verbatim and infers separators between them.
+/// PDF producers commonly encode a word space as a ~0.25 em TJ displacement.
+pub(crate) fn has_layout_word_gap(left: &str, right: &str, gap: f64, em: f64) -> bool {
+    let (Some(left), Some(right)) = (left.chars().next_back(), right.chars().next()) else {
+        return false;
+    };
+    if left.is_whitespace()
+        || right.is_whitespace()
+        || (is_cjk(left) && is_cjk(right))
+        || is_closing_punctuation(right)
+        || is_opening_punctuation(left)
+    {
+        return false;
+    }
+    let threshold = if is_cjk(left) || is_cjk(right) {
+        0.25
+    } else {
+        0.18
+    };
+    gap > em.abs().max(1.0) * threshold
+}
+
 fn should_insert_space(left: Option<char>, right: Option<char>, gap: f64) -> bool {
     let (Some(left), Some(right)) = (left, right) else {
         return false;

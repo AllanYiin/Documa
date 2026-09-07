@@ -1,7 +1,10 @@
 use pdf_core::{PdfDocument, TextExtractionOptions};
 
 fn form_pdf() -> Vec<u8> {
-    let page_content = b"/X1 Do";
+    form_pdf_with_content(b"/X1 Do")
+}
+
+fn form_pdf_with_content(page_content: &[u8]) -> Vec<u8> {
     let form_content = b"BT /F1 10 Tf 5 7 Td (Form text) Tj ET";
     let objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
@@ -65,4 +68,30 @@ fn extracts_text_from_form_xobject_and_applies_form_matrix() {
     assert_eq!(result.pages[0].spans.len(), 1);
     assert!((result.pages[0].spans[0].x - 25.0).abs() < f64::EPSILON);
     assert!((result.pages[0].spans[0].y - 37.0).abs() < f64::EPSILON);
+}
+
+#[test]
+fn form_translation_is_scaled_by_the_enclosing_ctm() {
+    let document = PdfDocument::parse(&form_pdf_with_content(b"q 0.5 0 0 0.5 100 100 cm /X1 Do Q"))
+        .expect("valid transformed form");
+    let result = document
+        .extract_text(TextExtractionOptions::default())
+        .unwrap();
+    let span = &result.pages[0].spans[0];
+    assert!((span.x - 112.5).abs() < 1e-9);
+    assert!((span.y - 118.5).abs() < 1e-9);
+}
+
+#[test]
+fn consecutive_cm_operators_transform_in_nested_user_space_order() {
+    let document = PdfDocument::parse(&form_pdf_with_content(
+        b"q 0.5 0 0 0.5 100 100 cm 1 0 0 1 20 30 cm BT /F1 10 Tf 5 7 Td (Nested) Tj ET Q",
+    ))
+    .expect("valid nested cm");
+    let result = document
+        .extract_text(TextExtractionOptions::default())
+        .unwrap();
+    let span = &result.pages[0].spans[0];
+    assert!((span.x - 112.5).abs() < 1e-9);
+    assert!((span.y - 118.5).abs() < 1e-9);
 }

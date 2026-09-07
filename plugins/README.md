@@ -6,17 +6,19 @@
 
 這個目錄放 host-specific plugin wrappers。它們把 Documa 當成第三方 package 使用，並且刻意留在 `src/` 外面，避免 Documa core 變成某個 agent host 專用的實作。
 
+0.9.0 依宿主分別封裝；wrapper 為跨平台文字／JavaScript，含原生模組的 runtime 另依 Windows x64、Linux x86_64、Linux ARM64 與 Python ABI 打包。請依 [0.9.0 安裝文件](../docs/documa/install-0.9.0.md) 選取，不要混用 wheel 架構。
+
 所有 wrapper 都假設 host 執行環境已經能找到 Documa：
 
 ```powershell
 # 首次安裝
 # 本次交付先使用隨附的 Windows CPython 3.10 x64 wheel：
-python -m pip install .\documa-0.8.0-cp310-cp310-win_amd64.whl
+python -m pip install .\documa-0.9.0-cp310-cp310-win_amd64.whl
 # 僅當目標 package index 已發布此版本時使用：
-python -m pip install "documa==0.8.0"
+python -m pip install "documa==0.9.0"
 
 # 已安裝 Documa 時的升級／重裝：先斷開 MCP，再執行 pip
-python -m documa.install --upgrade "documa==0.8.0"
+python -m documa.install --upgrade "documa==0.9.0"
 ```
 
 共用整合契約：

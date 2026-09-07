@@ -218,8 +218,11 @@ def _node_block(
 
     if role == "caption":
         metadata["caption_kind"] = "figure"
+    block_type = _block_type(role)
+    if role == "unclassified" and node.get("rule_id") == "stage3_paragraph_geometry_v1" and "\n" in text:
+        block_type = BlockType.PARAGRAPH
     return BlockIR(
-        id=f"rust_{node_id}", type=_block_type(role), page_number=page_number,
+        id=f"rust_{node_id}", type=block_type, page_number=page_number,
         text=TextContent(text), bbox=_bbox(node.get("bbox"), f"node[{node_id}].bbox"),
         spans=spans, confidence=_confidence(node.get("confidence")),
         source_refs=[f"rust-pdf:node:{page_number}:{node_id}"], metadata=metadata,

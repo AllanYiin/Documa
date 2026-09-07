@@ -35,6 +35,13 @@ class ImageNormalizationStage(PipelineStage):
                     intrinsic_width=image.metadata.get("width"),
                     intrinsic_height=image.metadata.get("height"),
                 )
+                if reason == "small_area" and image.metadata.get("figure_group_id"):
+                    reason = None
+                    if image.image_type == "decorative":
+                        image.image_type = "image"
+                    image.metadata.pop("decorative", None)
+                    image.metadata.pop("decorative_reason", None)
+                    image.metadata["image_normalization"] = "captioned_figure_member"
                 if reason:
                     image.image_type = "decorative"
                     image.metadata["decorative"] = True

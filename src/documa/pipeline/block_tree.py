@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -21,6 +22,7 @@ from documa.core.ir import (
 from documa.pipeline.base import PipelineContext, PipelineStage, StageResult
 from documa.pipeline.page_refs import ensure_page_citation_map, page_citation_metadata, printed_page_label_from_footer
 from documa.pipeline.relations import append_relation_once, block_text
+from documa.pipeline.continuations import join_fragments, link_paragraph_continuations
 
 
 _FURNITURE_TYPES = {BlockType.PAGE_HEADER, BlockType.PAGE_FOOTER}
@@ -76,11 +78,57 @@ def block_text_by_id(document: DocumentIR) -> dict[str, str]:
 
 def document_block_text(document: DocumentIR, document_block: DocumentBlockIR) -> str:
     text_by_id = block_text_by_id(document)
+    if document_block.metadata.get("paragraph_continuation"):
+        return join_fragments([text_by_id.get(identity, "") for identity in document_block.source_block_ids])
     return "\n\n".join(
         text_by_id[source_id].strip()
         for source_id in document_block.source_block_ids
         if text_by_id.get(source_id, "").strip()
     )
+
+
+def _resolve_numbered_parents(blocks: list[DocumentBlockIR], root: DocumentBlockIR) -> None:
+    """Use explicit section prefixes even when PDF column order is imperfect.
+
+    A missing numbered parent is reported, never invented or replaced by an
+    unrelated preceding chapter (e.g. 3.4 must not become a child of chapter 4).
+    """
+    sections: dict[tuple[str, ...], list[DocumentBlockIR]] = {}
+    keys: dict[str, tuple[str, ...]] = {}
+    by_id = {block.id: block for block in blocks}
+    for block in blocks:
+        if block.type != DocumentBlockType.SECTION:
+            continue
+        match = re.match(r"^(\d+(?:\.\d+)*|[A-Z](?:\.\d+)*)(?:[.)])?\s", block.title or "")
+        if match:
+            key = tuple(match.group(1).split("."))
+            keys[block.id] = key
+            sections.setdefault(key, []).append(block)
+    changed = False
+    for block in blocks:
+        key = keys.get(block.id, ())
+        if len(key) < 2:
+            continue
+        candidates = [item for item in sections.get(key[:-1], [])
+                      if int(item.metadata.get("heading_level", 1)) < int(block.metadata.get("heading_level", 1))
+                      or item.metadata.get("heading_level") == block.metadata.get("heading_level") == 6]
+        earlier = [item for item in candidates if (item.order_index or 0) < (block.order_index or 0)]
+        parent = earlier[-1] if earlier else candidates[0] if candidates else root
+        if not candidates:
+            block.metadata["hierarchy_unresolved"] = {"missing_numbered_parent": ".".join(key[:-1])}
+        if block.parent_id != parent.id:
+            old_parent = by_id[block.parent_id]
+            old_parent.child_ids.remove(block.id)
+            parent.child_ids.append(block.id)
+            block.parent_id = parent.id
+            block.metadata["hierarchy_strategy"] = "explicit_number_prefix" if candidates else "unresolved_number_prefix"
+            changed = True
+    if changed:
+        def depth(node: DocumentBlockIR) -> int:
+            return 0 if node.parent_id is None else 1 + depth(by_id[node.parent_id])
+        for block in blocks:
+            block.depth = depth(block)
+            block.child_ids.sort(key=lambda identity: by_id[identity].order_index or 0)
 
 
 @dataclass(slots=True)
@@ -101,13 +149,18 @@ class BlockTreeBuildingStage(PipelineStage):
             )
         if force:
             document.document_blocks.clear()
+            document.relations = [relation for relation in document.relations
+                                  if relation.metadata.get("stage") != self.name]
 
+        continuations = link_paragraph_continuations(document)
+        chains = {g['source_block_ids'][0]: g for g in continuations}
+        tails = {identity for g in continuations for identity in g['source_block_ids'][1:]}
         blocks: list[DocumentBlockIR] = []
         root_id = f"db_{document.id}_root"
         root = DocumentBlockIR(
             id=root_id,
             type=DocumentBlockType.DOCUMENT,
-            title=document.source_name,
+            title=document.metadata.get("document_title") or document.source_name,
             depth=0,
             order_index=1,
             confidence=Confidence.HIGH,
@@ -119,6 +172,8 @@ class BlockTreeBuildingStage(PipelineStage):
         page_nodes: dict[tuple[str, int], DocumentBlockIR] = {}
         order = 1
         furniture: list[dict[str, Any]] = []
+        figure_nodes: dict[str, DocumentBlockIR] = {}
+        source_index = {b.id: b for p in document.pages for b in p.blocks}
         page_citations = ensure_page_citation_map(document)
 
         def append_child(parent: DocumentBlockIR, child: DocumentBlockIR) -> None:
@@ -157,6 +212,8 @@ class BlockTreeBuildingStage(PipelineStage):
         for page in sorted(document.pages, key=lambda item: item.page_number):
             page_blocks = sorted(page.blocks, key=lambda item: (item.order_index is None, item.order_index or 0))
             for source in page_blocks:
+                if source.id in tails:
+                    continue
                 text = block_text(source).strip()
                 if source.type in _FURNITURE_TYPES:
                     item = {
@@ -169,10 +226,35 @@ class BlockTreeBuildingStage(PipelineStage):
                         item["printed_page_label"] = printed_page_label_from_footer(text)
                     furniture.append(item)
                     continue
-                if source.type == BlockType.HEADING:
+                figure_parent = None
+                figure_id = source.metadata.get("figure_group_id")
+                if figure_id in source_index:
+                    caption = source_index[figure_id]
+                    if figure_id not in figure_nodes:
+                        parent = page_node(current_section(), page.page_number)
+                        order += 1
+                        figure_parent = DocumentBlockIR(
+                            id=f"db_{document.id}_figure_{figure_id}", type=DocumentBlockType.IMAGE,
+                            title=block_text(caption).strip(), source_block_ids=[caption.id],
+                            page_refs=[page.page_number], bbox_refs=[caption.metadata.get("figure_bbox", caption.bbox)],
+                            order_index=order, confidence=Confidence.MEDIUM,
+                            metadata={"stage": self.name, "role": "figure", "build_strategy": "figure_region",
+                                      "figure_image_ids": caption.metadata.get("figure_image_ids", [])},
+                        )
+                        append_child(parent, figure_parent)
+                        figure_nodes[figure_id] = figure_parent
+                    figure_parent = figure_nodes[figure_id]
+                    if source.id == figure_id:
+                        continue
+                if source.type == BlockType.HEADING and figure_parent is None:
+                    if source.metadata.get("heading_role") == "document_title":
+                        root.source_block_ids.append(source.id)
+                        root.bbox_refs.extend([source.bbox] if source.bbox else [])
+                        root.metadata["heading_level"] = 1
+                        continue
                     level = int(source.metadata.get("heading_level", 1) or 1)
                     level = max(1, min(level, 6))
-                    while len(section_stack) > level:
+                    while len(section_stack) > 1 and int(section_stack[-1].metadata["heading_level"]) >= level:
                         section_stack.pop()
                     parent = section_stack[-1]
                     order += 1
@@ -207,8 +289,12 @@ class BlockTreeBuildingStage(PipelineStage):
                 if source.type in _SKIP_LEAF_TYPES:
                     continue
 
-                parent_page = page_node(current_section(), page.page_number)
+                parent_page = figure_parent or page_node(current_section(), page.page_number)
                 order += 1
+                source_ids = chains[source.id]['source_block_ids'] if source.id in chains else [source.id]
+                source_pages = _unique([source_index[identity].page_number for identity in source_ids])
+                if source.id in chains:
+                    text = join_fragments([block_text(source_index[identity]) for identity in source_ids])
                 text = text if source.type != BlockType.TABLE else text
                 title = (
                     source.metadata.get("paragraph_title")
@@ -217,21 +303,22 @@ class BlockTreeBuildingStage(PipelineStage):
                 )
                 leaf = DocumentBlockIR(
                     id=f"db_{document.id}_{source.id}",
-                    type=_block_type(source),
+                    type=DocumentBlockType.PARAGRAPH if figure_parent else _block_type(source),
                     title=title,
-                    source_block_ids=[source.id],
-                    page_refs=[source.page_number],
-                    bbox_refs=[source.bbox] if source.bbox else [],
+                    source_block_ids=source_ids,
+                    page_refs=source_pages,
+                    bbox_refs=[source_index[identity].bbox for identity in source_ids if source_index[identity].bbox],
                     text_preview=_preview(text),
                     content_hash=_hash(text),
                     order_index=order,
                     confidence=source.confidence if source.confidence != Confidence.UNKNOWN else Confidence.MEDIUM,
                     metadata={
                         "stage": self.name,
-                        "role": "body",
+                        "role": "figure_text" if figure_parent else "body",
                         "source_block_type": source.type.value,
                         "build_strategy": "page_local_block",
-                        **page_citation_metadata([source.page_number], page_citations),
+                        **page_citation_metadata(source_pages, page_citations),
+                        **({"paragraph_continuation": chains[source.id]} if source.id in chains else {}),
                         "source_range": {
                             "line_start": source.metadata.get("line_start"),
                             "line_end": source.metadata.get("line_end"),
@@ -242,6 +329,8 @@ class BlockTreeBuildingStage(PipelineStage):
                 )
                 append_child(parent_page, leaf)
 
+        if document.parser in {"rust_pdf", "pymupdf"}:
+            _resolve_numbered_parents(blocks, root)
         root.page_refs = _unique([page.page_number for page in document.pages])
         root.metadata["furniture"] = furniture
         for node in blocks:

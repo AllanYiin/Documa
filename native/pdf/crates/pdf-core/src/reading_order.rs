@@ -9,9 +9,8 @@ use crate::layout_ir::{
 use crate::{BBox, ErrorCode, ParseLimits, PdfError, PdfResult, TextOrigin, WritingMode};
 
 const LINE_GAP_FACTOR: f64 = 0.55;
-const WORD_GAP_FACTOR: f64 = 0.35;
 const COLUMN_GAP_FACTOR: f64 = 1.5;
-const PARAGRAPH_GAP_FACTOR: f64 = 1.8;
+const PARAGRAPH_GAP_FACTOR: f64 = 0.8;
 const MARGIN_FRACTION: f64 = 0.12;
 const PARAGRAPH_CONFIDENCE: f32 = 0.78;
 const FURNITURE_CONFIDENCE: f32 = 0.90;
@@ -250,11 +249,13 @@ pub(crate) fn rebuild_page(
         return Ok(());
     }
 
-    let supported = spans
-        .iter()
-        .all(|span| span.writing_mode == WritingMode::Horizontal && span.rotation == 0);
-    let lines = if supported {
-        let clustered = cluster_lines(spans);
+    let (horizontal, other): (Vec<_>, Vec<_>) = spans
+        .into_iter()
+        .partition(|span| span.writing_mode == WritingMode::Horizontal && span.rotation == 0);
+    let mut nodes = if horizontal.is_empty() {
+        Vec::new()
+    } else {
+        let clustered = cluster_lines(horizontal);
         let (ordered, depth_limited) = xy_order(clustered, 0, limits.max_object_depth);
         if depth_limited {
             push_reading_order_warning(
@@ -263,16 +264,42 @@ pub(crate) fn rebuild_page(
                 "XY-cut depth limit used deterministic visual-order fallback",
             );
         }
-        ordered
-    } else {
+        build_paragraphs(page, ordered, true)
+    };
+    if !other.is_empty() {
         push_reading_order_warning(
             warnings,
             page.page_index,
-            "rotated or vertical text used deterministic source-order fallback",
+            "rotated or vertical spans used source-order fallback; horizontal text retained geometric grouping",
         );
-        source_lines(spans)
-    };
-    let nodes = build_paragraphs(page, lines, supported);
+        // A rotated margin note must not fragment horizontal body text. Keep
+        // unsupported spans, in source order, after the geometric body flow.
+        let fallback = build_paragraphs(page, source_lines(other), false);
+        for mut node in fallback {
+            node.id = format!("p{}-n{}", page.page_index, nodes.len());
+            let bounds = page.geometry.layout_bounds;
+            let margin = bounds.width() * MARGIN_FRACTION;
+            if role_accepts_furniture(node.role)
+                && node
+                    .spans
+                    .iter()
+                    .all(|span| matches!(span.rotation, 90 | 270 | -90))
+            {
+                let role = if node.bbox.x1 <= bounds.x0 + margin {
+                    Some(LayoutNodeRole::Header)
+                } else if node.bbox.x0 >= bounds.x1 - margin {
+                    Some(LayoutNodeRole::Footer)
+                } else {
+                    None
+                };
+                if let Some(role) = role {
+                    node.role = role;
+                    "stage3_rotated_margin_note_v1".clone_into(&mut node.rule_id);
+                }
+            }
+            nodes.push(node);
+        }
+    }
     let source_order = source_node_ids(&nodes);
     let inferred_order = nodes.iter().map(|node| node.id.clone()).collect();
     state.any_inferred |= !nodes.is_empty();
@@ -600,7 +627,19 @@ fn cluster_lines(mut spans: Vec<LayoutTextSpan>) -> Vec<Line> {
         for span in row {
             let split = segment.last().is_some_and(|previous: &LayoutTextSpan| {
                 let gap = span.bbox.x0 - previous.bbox.x1;
-                let threshold = previous.font_size.max(span.font_size).mul_add(3.0, 12.0);
+                let spread_cjk = |text: &str| {
+                    let mut chars = text.chars();
+                    chars
+                        .next()
+                        .is_some_and(|c| ('\u{3400}'..='\u{9fff}').contains(&c))
+                        && chars.next().is_none()
+                };
+                let scale = visual_font_size(previous).max(visual_font_size(&span));
+                let threshold = if spread_cjk(&previous.text) && spread_cjk(&span.text) {
+                    scale.mul_add(3.0, 12.0)
+                } else {
+                    scale * 1.3
+                };
                 !same_metadata(previous, &span) || gap > threshold
             });
             if split {
@@ -623,15 +662,30 @@ fn source_lines(mut spans: Vec<LayoutTextSpan>) -> Vec<Line> {
         .collect()
 }
 
+fn visual_font_size(span: &LayoutTextSpan) -> f64 {
+    let height =
+        if span.writing_mode == WritingMode::Vertical || span.rotation.rem_euclid(180) == 90 {
+            span.bbox.width()
+        } else {
+            span.bbox.height()
+        };
+    let ratio = height / span.font_size.max(0.001);
+    if (0.55..=1.8).contains(&ratio) {
+        span.font_size
+    } else {
+        height / 0.9
+    }
+}
+
 fn line_from_spans(spans: Vec<LayoutTextSpan>) -> Line {
     let first = spans.first().expect("line is non-empty");
     let mut bbox = first.bbox;
-    let mut font_size = first.font_size;
+    let mut font_size = visual_font_size(first);
     let mut source_start = first.provenance.source_ordinal_start;
     let mut source_end = first.provenance.source_ordinal_end;
     for span in &spans[1..] {
         bbox = union_bbox(bbox, span.bbox);
-        font_size = font_size.max(span.font_size);
+        font_size = font_size.max(visual_font_size(span));
         source_start = source_start.min(span.provenance.source_ordinal_start);
         source_end = source_end.max(span.provenance.source_ordinal_end);
     }
@@ -731,12 +785,26 @@ fn build_paragraphs(
     lines: Vec<Line>,
     geometry_supported: bool,
 ) -> Vec<LayoutNode> {
+    let mut gaps = lines
+        .windows(2)
+        .filter_map(|pair| {
+            let scale = pair[0].font_size.max(pair[1].font_size).max(1.0);
+            let gap = (pair[1].bbox.y0 - pair[0].bbox.y1) / scale;
+            (0.0..=PARAGRAPH_GAP_FACTOR).contains(&gap).then_some(gap)
+        })
+        .collect::<Vec<_>>();
+    gaps.sort_by(f64::total_cmp);
+    let normal_gap = if gaps.is_empty() {
+        PARAGRAPH_GAP_FACTOR
+    } else {
+        gaps[(gaps.len() - 1) / 2]
+    };
     let mut groups = Vec::<Vec<Line>>::new();
     for line in lines {
         if let Some(group) = groups.last_mut()
             && group
                 .last()
-                .is_some_and(|previous| can_join_paragraph(previous, &line))
+                .is_some_and(|previous| can_join_paragraph(previous, &line, normal_gap))
         {
             group.push(line);
         } else {
@@ -750,11 +818,11 @@ fn build_paragraphs(
         .collect()
 }
 
-fn can_join_paragraph(left: &Line, right: &Line) -> bool {
+fn can_join_paragraph(left: &Line, right: &Line, normal_gap: f64) -> bool {
     let first_left = left.spans.first().expect("line is non-empty");
     let first_right = right.spans.first().expect("line is non-empty");
     let vertical_gap = right.bbox.y0 - left.bbox.y1;
-    let max_gap = left.font_size.max(right.font_size) * PARAGRAPH_GAP_FACTOR;
+    let max_gap = left.font_size.max(right.font_size) * PARAGRAPH_GAP_FACTOR.min(normal_gap + 0.2);
     let overlap = (left.bbox.x1.min(right.bbox.x1) - left.bbox.x0.max(right.bbox.x0)).max(0.0);
     let overlap_ratio = overlap / left.bbox.width().min(right.bbox.width()).max(1.0);
     let indent_delta = (left.bbox.x0 - right.bbox.x0).abs();
@@ -886,19 +954,12 @@ fn line_text(line: &Line) -> String {
 }
 
 fn should_insert_space(left: &LayoutTextSpan, right: &LayoutTextSpan) -> bool {
-    if left.text.chars().last().is_some_and(char::is_whitespace)
-        || right.text.chars().next().is_some_and(char::is_whitespace)
-    {
-        return false;
-    }
-    let latin_edges = left
-        .text
-        .chars()
-        .last()
-        .zip(right.text.chars().next())
-        .is_some_and(|(left, right)| left.is_ascii_alphanumeric() && right.is_ascii_alphanumeric());
-    let gap = right.bbox.x0 - left.bbox.x1;
-    latin_edges && gap > left.font_size.max(right.font_size) * WORD_GAP_FACTOR
+    crate::layout::has_layout_word_gap(
+        &left.text,
+        &right.text,
+        right.origin.x - left.baseline.end.x,
+        left.font_size.max(right.font_size),
+    )
 }
 
 fn source_node_ids(nodes: &[LayoutNode]) -> Vec<String> {

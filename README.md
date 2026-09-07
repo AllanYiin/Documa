@@ -8,7 +8,9 @@
 
 它把 PDF、Word、PowerPoint、HTML、email、notebook、Markdown 與純文字轉成同一套結構化 IR，讓 agent 先看文件結構、按 block 搜尋，再只讀取真正需要的內容。文件處理、索引與搜尋都在本機完成，不呼叫 LLM 或 embedding API；agent 因此能用更少的 context tokens，更快找到可引用的證據。
 
-目前版本：**0.8.0**｜需要 Python **3.10+**
+目前版本：**0.9.0**｜需要 Python **3.10+**
+
+0.9.0 新增 PDF 全文標題階層、正文跨圖表／頁欄續接與圖內文字分離。四宿主插件及 Windows x64、Linux x86_64／ARM64 交付方式見 [0.9.0 安裝文件](docs/documa/install-0.9.0.md)。
 
 ## Overview：Documa 解決什麼問題？
 
@@ -71,9 +73,9 @@ PDF 0.2.0、Office 0.1.0 與 rust-Lingxi 0.4.5 原始碼都已放在 repository 
 拿到本次 Windows CPython 3.10 x64 產物時可直接安裝（其他平台需相符的 wheel 或從 sdist 編譯）：
 
 ```powershell
-python -m pip install .\dist\documa-0.8.0-cp310-cp310-win_amd64.whl
+python -m pip install .\dist\0.9.0\runtime\windows-x86_64\documa-0.9.0-cp310-cp310-win_amd64.whl
 # 已安裝舊版時，先依既有 lifecycle guard 斷開 MCP 再升級：
-python -m documa.install --upgrade .\dist\documa-0.8.0-cp310-cp310-win_amd64.whl
+python -m documa.install --upgrade .\dist\0.9.0\runtime\windows-x86_64\documa-0.9.0-cp310-cp310-win_amd64.whl
 ```
 
 wheel 自帶 Lingxi，但其他一般 Python 依賴仍由 pip 解析；完全離線安裝須另備依賴 wheelhouse。
@@ -84,10 +86,10 @@ wheel 自帶 Lingxi，但其他一般 Python 依賴仍由 pip 解析；完全離
 python -m pip install -e ".[dev]"
 ```
 
-若 0.8.0 已發布到你使用的 package index，也可以直接安裝固定版本（本次僅產出本機封裝）：
+若 0.9.0 已發布到你使用的 package index，也可以直接安裝固定版本（本次僅產出本機封裝）：
 
 ```powershell
-python -m pip install "documa==0.8.0"
+python -m pip install "documa==0.9.0"
 ```
 
 先確認執行環境正常：
@@ -106,7 +108,7 @@ documa process .\report.pdf --out .\out\report --export-format block-json
 
 成功後，`.\out\report\documa.ir.json` 是後續搜尋、讀取與引用使用的 parser-neutral IR。
 
-Documa 0.8.0 內建 Lingxi 0.4.5，可直接產生不呼叫 LLM 的來源連結摘要：
+Documa 0.9.0 內建 Lingxi 0.4.5，可直接產生不呼叫 LLM 的來源連結摘要：
 
 ```powershell
 documa summarize .\out\report\documa.ir.json --top-k 8
