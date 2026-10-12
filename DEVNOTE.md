@@ -9,9 +9,12 @@
 ## 📌 SNAPSHOT — 當前狀態
 <!-- 這一整段每次 /devnote 會被覆寫，只反映「到目前為止的最新狀態」 -->
 
-**最後更新**：2026-09-08
+**最後更新**：2026-10-12
 
 ### 需求狀態
+- [x] 2026-10-12：獨立 Rust PDF 的 P0–P2 工程增量已整合至 native/pdf，安裝包裝 src/rust_pdf 同步；依時間／主題分組提交，保留既有 0.9.0 與遠端 main 的 CI 修正。整合驗證 Rust 264 PASS／1 existing ignored、Documa 613 PASS、doctor 9/9、fmt／Clippy／Ruff／schema／plugin gates PASS。Windows 並行 replace 暫態失敗後全套重跑通過。提交目標 origin/main；未變更 provider 預設、未更新全域 runtime／發行 tag／registry，真人品質驗收仍延後。細節與提交序列見 docs/PDF_PRIORITY_INTEGRATION_20261012.md。
+- [x] 2026-10-12：PDF Differences 間接參照修正已回到 Documa/native/pdf 與獨立 rust-pdf_parser 源頭，新增原生及 adapter 回歸。另找出 Documa-only 的 CTM/Form、詞間空白、旋轉旁註與窄欄/段落修正，已回補獨立源頭且保留其 OCR 功能。源頭 workspace 236 passed／1 existing ignored，fmt／Clippy PASS；Documa source 相關 81 passed。源頭編譯模組解析使用者 19 頁原 PDF：rust_pdf、0 U+FFFD、無警告、原檔 hash 不變。Rust Office 已查 native+wrapper 一致；LingXi 尚有編譯 __version__ 匯出的整合差異；SkillNow 固定 sdist 尚未納入 Documa 10/08 遠端來源 Python 增量。詳見 docs/NATIVE_UPSTREAM_SYNC_20261012.md。本輪僅改來源，保留現有 dirty Python/README，未 commit/push/發布/更新安裝版。
+- [x] 2026-10-08：新增 HTTP(S)／Drive PDF 接入與 `source_url` 來源收據，保留確認／簽章下載參數、TLS／DNS/socket／redirect／大小／完整性驗證；connector 物件取 `download_url`，opaque ref 需 host 物化。MCP 補齊 `ocr`，掃描件無文字時明載 `ocr_required|no_readable_text`。指定 Drive PDF（276,074 bytes／2 頁）實測 OCR→11 chunks→search/read/cite PASS；OCR 字誤仍須核對原頁，OAuth API 為 mock 契約驗證。0.9.0 本機 wheel build `1remote20261008` 沿用已驗證三個 native hashes、Python source exact match；隔離全套 612 passed，Ruff／schema／plugin gates PASS。受控離線 no-deps 更新 D:/Python310 0.8.0→此 build，6 個 MCP 正常退出、無 force；installed MCP 實檔流程 PASS，其他 distributions 未變，pip check 61 既有／0 新增問題。證據、安裝包與舊版備份在 `build/remote-install`；未發布／推送／升版／重裝插件 manifest，現有 chat 需重新連線取得新 schema。
 - [x] 2026-09-08：Documa 與 Codex／Claude Code／OpenClaw／Hermes 全部定版 0.9.0，包含本次 PDF 空白、CTM／閱讀序、語意標題、正文跨圖表／頁欄續接與 figure 分離修正。已交付 7 個原生 wheels：Windows x64 cp310；Linux x86_64／ARM64 各 cp310／cp311／cp312（manylinux_2_28），四份分宿主插件與三個平台完整包。全部 installed native SHA／ELF 或 PE 架構／模型雜湊／MCP idle→摘要引用→Rust 字距 PDF smoke／pip check PASS；ARM64 為 QEMU 實跑，未宣稱實體 ARM 硬體測試。Windows 隔離 wheel 全套 546 passed／5 skipped／29 subtests；封裝測試 11 passed（其中 9 已含全套），Rust PDF core 213 passed／1 ignored，Ruff／lock／diff／plugin ZIP PASS。Claude 原生 manifest、Hermes portable loader（4 skills／1 MCP／0 diagnostics）PASS；Codex CLI 無 validate 子命令，repo validator PASS，四宿主實際安裝／reload 未執行。因 D 槽不足，最終交付在 C:/Users/allan/Downloads/Documa-0.9.0（release-report.json、SHA256SUMS.txt、INSTALL.md），證據 build/release-0.9.0；原始碼位於 codex/release-0.9.0 分支。Linux CI 已加入原生 ARM runner matrix；未推送／發布／全域安裝，既有 PDF 完整品質 gate 限制保留。
 - [x] 2026-09-08：已依最新澄清改為「正文閱讀流」：同段落可跨圖表／圖說／頁首頁尾／註記／欄與頁續接，保留 page-local blocks、source ids、頁碼及 skipped-block 收據；已知段落採主要正文字型判斷，上下標不單獨拆段，標題／列表／code 保持邊界。全篇標題字級在完整 IR 到齊後統一分配 H2～H6，編號／來源標籤校正；Abstract **不固定 H3**（先前僅是使用者例子）。修正 Rust CTM/Form 組合次序、實際字形尺度的窄欄辨識與相對段落行距；修正 caption/body 合併，figure 成為有來源的 Image container，MD 圖內文字與素材收於 details 並附原圖頁連結。真實 v1/v3 的 `outputs of the text encoder` 已在同一段連續顯示，無圖內 User prompts／Figure 1 圖說夾入，原頁碼 [1,2] 保留；Poppler 已核對兩版原頁，兩版分頁不同。Python 545 passed／6 skipped、Rust 213 passed／1 ignored、Ruff／Clippy PASS；2 個 IR goldens 更新註脚與 caption 邊界，原始非空白文字 audit 不變。Music 8 PDF 已重跑更新（build/music-pdf-rust-20260908-042611，1,139 頁／269.77s，32 續段／32 figure groups），備份於 Music/documa_backup_before_body_flow_20260908；仍有 6 個未確認編號父節點及既有編碼／素材／部分版型限制。最新原生模組 build/rust-flow-runtime；未升版、封裝或全域安裝。
 - [x] 2026-09-08：PDF 語意標題階層修正：layout stage 先依文字／span 字型與幾何拆出 Abstract、編號章節／小節，保留拆分來源全文、span ids 與 Unicode raw ranges；文件標題（含多列）連到 document root 並只輸出一個 H1，Abstract H3、章節 H2／子章節 H3…。block tree 改用 heading level 判斷同級，PDF 明確編號優先決定父節點；缺父節點標示 unresolved，不掛到無關章節。force rebuild 清除舊 tree relations；保留 code/list/reflow，PDF 範例中的 literal # 不生成假標題。主 tests 513 passed／6 skipped、Ruff／diff check PASS；3 個 IR goldens 為預期結構變更，頁面原文 audit 不變。Music 8 PDF 已更新 MD／統計／structure JSON（最新 IR：build/music-pdf-rust-20260908-014913），1,139 頁／原解析 290.26s、階層衍生重建另 233.99s；2305.17216v3 的 Abstract 按塊閱讀與 3.x／4.x 父節點實測 PASS。其他文件仍有 14 個未確認編號父章節，部分文件標題暫用檔名，完整品質 gate 未宣稱通過。舊 MD 備份於 Music/documa_backup_before_headings_20260908；曾遇 D 磁碟滿，已清理本 session 重複中間 IR／assets 並重跑完成。未升版、封裝或全域安裝。
@@ -488,3 +491,32 @@
 - Codex／Claude plugin 新增 `documa-codegraph` skill 並重建 deterministic zip；既有 ContextIR 1.0 與 `context_from_code()` 未更動。
 - 驗證：`tests/` 416 passed／4 skipped；Python resolver gold 的 hard-edge precision／recall 均為 100%；Ruff full PASS；plugin validator、兩份 skill validator、deterministic zip check 與 `git diff --check` PASS。合成 1,000,001 行 corpus：cold 11.04s、no-op 0.172s、單檔增量 0.353s、bounded query 18ms、peak RSS 56.5MB，皆通過既定 gate。全套曾遇一次既有 registry Windows concurrent replace 暫態失敗，該案例單獨重跑與其後全套皆 PASS。
 - Source-tree 根目錄直接收集 `native/` 測試仍需已編譯的 `rust_pdf._native`／`rust_office._core`；本次完整產品測試限定 `tests/`，未把缺少 native build 視為 graph 回歸。wheel/sdist smoke 亦未宣稱通過：非隔離建置缺 `setuptools-rust`，隔離建置停在 build dependency 準備且無輸出，有限等待後中止。
+
+
+---
+
+## [2026-10-08] 遠端 PDF／Drive 接入與本機驗證
+
+- 沿用本地 adapter 與原文／IR 契約，先串流物化 HTTP(S) PDF、Drive 分享連結或 connector download_url；保留 canonical 來源、byte count、SHA-256，查詢簽章不寫入 IR，暫存 PDF 保留至 OCR／匯出完成後清除。Drive usercontent／uc 的確認與簽章參數原樣送出，OAuth headers 限同 origin；私人 OAuth token 只由本機環境讀取，未實測使用者 token。公開網路 DNS 檢查後固定 socket 位址，每次 redirect 重驗、HTTPS 不降級。
+- API 增加可選 source_url，CLI 對應 --source-url；MCP process 補齊既有 ocr。原有本地呼叫保持相容；遠端空文字 PDF 回傳 OCR 所需狀態與警告。實際 connector 回傳 file_uri 物件（download_url／sediment file_id），前者可下載，後者必須由 host 物化。
+- 指定 Drive PDF 的 connector 下載、2 頁 OCR、11 chunks、搜尋同意書、精讀與 PDF p.2 引用均 PASS。保留來源／OCR confidence 與原圖；OCR 有中文字辨識誤差，沒有宣稱逐字轉錄正確。MCP stdio 需要 sandbox 之外的 Windows named pipe，經工具自動審核准許後完成；僅輸出 canonical URL，沒有保存下載簽章。
+- 本機 candidate 基底是 Downloads/Documa-0.9.0 已驗證 Windows wheel（SHA-256 4a01fcc16b2af0526d639578b048328b34e790945c52bb29b3678a14b4df4af2），沿用 native，不宣稱重編 Rust。全部 Python source 與工作區一致；candidate build 1remote20261008 的 SHA-256 daa7406fb27dcb416e1912a68e0791c8ac1432d9d44878adf2727e37ef00eb19。
+- 隔離 installed-wheel 全套 612 passed；早期 harness 出現 Windows venv shim PID、第三方 tests package 與 child 載入舊全域 runtime 的問題，修正測試入口與明確 PYTHONPATH 後全套通過。58+ OCR 狀態測試／MCP schema、Ruff、IR schema、plugin validator／ZIP freshness、diff check PASS。
+- guarded_install／disconnect_mcp_servers 下離線 --no-deps --force-reinstall 更新 D:/Python310：Documa 0.8.0→0.9.0，其餘 distributions 不變，6 個舊 MCP 全部正常退出。Installed-runtime native SHA／19 tools／idle 4.5 秒／實檔 Drive→OCR→search/read/cite PASS。pip check 原有 61 項環境問題保持不變，不擴大任務修理其他依賴。
+- 可重跑證據：build/remote-install/candidate.json、install-receipt.json、drive-mcp-isolated-mcp-receipt.json、drive-mcp-installed-mcp-receipt.json；安裝包在 build/remote-install/dist，0.8.0 owned-file backup 在 rollback/documa-0.8.0-installed-backup.zip（133 個非 pyc 唯一檔案）。未發布、推送或重新安裝 plugin metadata；現有 host 需重新連線／新 chat 載入新 schema。
+
+
+## [2026-10-12] PDF 修正回補源頭與 native 依賴稽核
+
+- 修正 native/pdf 字型 Differences 間接參照，保留既有循環／深度上限與非法內容檢查；增加 native encoding_differences.rs 及 tests/test_rust_pdf_encoding_differences.py。
+- 檢查 PDF/Office/LingXi native、Python wrappers 及 SkillNow 固定 sdist。四組既有 Documa-only PDF 修正已回補獨立源頭；其餘 OCR/Cargo 與 LingXi __version__ 差異明確記錄，未以舊下游覆蓋較新的上游功能。
+- 獨立 Rust source workspace 236 PASS／1 existing ignored、fmt／Clippy PASS；Documa 相關 81 PASS；實檔 19 頁純 Rust／無 warnings／0 replacement chars。隔離 native 與收據存 SkillNow platformdirs diagnostics/upstream-sync-20261012。
+- 保留本輪開始時既有遠端來源等未提交 Python 修改。未更新全域 runtime、MCP、plugins 或發行包，未 commit/push。稽核說明 docs/NATIVE_UPSTREAM_SYNC_20261012.md。
+
+
+## [2026-10-12] Rust PDF P0–P2 整合與主題提交
+
+- [x] 2026-10-12：獨立 Rust PDF 的 P0–P2 工程增量已整合至 native/pdf，安裝包裝 src/rust_pdf 同步；依時間／主題分組提交，保留既有 0.9.0 與遠端 main 的 CI 修正。整合驗證 Rust 264 PASS／1 existing ignored、Documa 613 PASS、doctor 9/9、fmt／Clippy／Ruff／schema／plugin gates PASS。Windows 並行 replace 暫態失敗後全套重跑通過。提交目標 origin/main；未變更 provider 預設、未更新全域 runtime／發行 tag／registry，真人品質驗收仍延後。細節與提交序列見 docs/PDF_PRIORITY_INTEGRATION_20261012.md。
+
+- 核心含 bounded filters、CID vertical metrics、OCR eligibility 與選頁；OCR runtime 含 lazy budgets／ONNX validation；SDK 含 Python Document/GIL release、CLI NDJSON 與 WASM streams。root Rust PDF workflow 從 native/pdf 執行，完整授權文字與公開驗證收據已納入。
+- Python 驗證使用當前來源隔離副本與同源已驗證 native；本地 tests namespace、PYTHONPATH 與 Windows concurrent replace 的檢查過程見 integration report。私人資料、模型、暫存與編譯產物留在本機，無強制推送或歷史重寫。

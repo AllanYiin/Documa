@@ -24,7 +24,7 @@ Status: non-human-gold engineering items completed locally. Final evidence and a
 - PDF rules remain in `pdf-core`, which forbids unsafe code.
 - No PDF-aware parser dependency, renderer, editing or default provider cutover.
 - Preserve current upstream sync changes; baseline copies are under `target/priority-20261012-before`.
-- No registry publishing or external repository mutation is requested.
+- The original implementation excluded external mutation; the later user request explicitly authorizes topic commits and submission to Documa main. Registry publication remains outside scope.
 
 ## Validation
 
