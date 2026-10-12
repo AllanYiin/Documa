@@ -88,3 +88,23 @@ def test_native_error_envelope_is_shared_and_structured() -> None:
     assert converted.detail.code == "INPUT_LIMIT"
     assert converted.detail.recoverable is False
     assert converted.detail.context == {"source": "sample.bin", "limit": 10}
+
+
+def test_typed_native_error_preserves_code_and_context() -> None:
+    class TypedError(ValueError):
+        code = "ZIP_PATH_TRAVERSAL"
+        message = "unsafe part"
+        recoverable = False
+        context = {"part": "../outside.xml"}
+
+    converted = native_exception_to_documa(
+        TypedError("ZIP_PATH_TRAVERSAL: unsafe part"),
+        source="sample.docx",
+        default_code="PARSE_FAILED",
+        default_message="parse failed",
+        default_recoverable=True,
+        suggested_action="Inspect the source.",
+    )
+    assert converted.detail.code == "ZIP_PATH_TRAVERSAL"
+    assert converted.detail.recoverable is False
+    assert converted.detail.context == {"source": "sample.docx", "part": "../outside.xml"}

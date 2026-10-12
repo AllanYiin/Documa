@@ -403,7 +403,7 @@ dependencies = [
 
 [[package]]
 name = "office-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "base64",
  "clap",
@@ -416,7 +416,7 @@ dependencies = [
 
 [[package]]
 name = "office-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "base64",
  "serde",
@@ -427,7 +427,7 @@ dependencies = [
 
 [[package]]
 name = "office-ooxml"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "office-core",
  "quick-xml",
@@ -439,7 +439,7 @@ dependencies = [
 
 [[package]]
 name = "office-py"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "office-core",
  "office-sheet",
@@ -452,7 +452,7 @@ dependencies = [
 
 [[package]]
 name = "office-sheet"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "calamine",
  "cfb",
@@ -464,7 +464,7 @@ dependencies = [
 
 [[package]]
 name = "office-slide"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "office-core",
  "office-ooxml",
@@ -474,7 +474,7 @@ dependencies = [
 
 [[package]]
 name = "office-word"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "office-core",
  "office-ooxml",

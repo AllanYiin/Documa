@@ -158,3 +158,26 @@ def test_real_rust_office_vertical_slices(
     else:
         assert all(block.bbox is None for block in document.pages[0].blocks)
         assert document.pages[0].metadata["citation_geometry"] == "structural"
+
+
+def test_office_02_binding_and_selection_metadata() -> None:
+    pytest.importorskip("rust_office")
+    document = RustOfficeAdapter().parse(
+        FIXTURE_ROOT / "smoke.xlsx",
+        ParseOptions(metadata={"cell_range": "A1", "sparse": True}),
+    )
+    assert document.metadata["office_binding_version"] == "0.2.0"
+    cells = document.pages[0].blocks[0].metadata["cell_records"]
+    assert [cell["address"] for cell in cells] == ["A1"]
+
+
+def test_office_02_typed_error_is_not_lost_or_fallback(tmp_path: Path) -> None:
+    pytest.importorskip("rust_office")
+    with pytest.raises(DocumaError) as caught:
+        RustFirstOfficeAdapter().parse(FIXTURE_ROOT / "xlsx-path-traversal.xlsx")
+    assert caught.value.detail.code == "ZIP_PATH_TRAVERSAL"
+    with pytest.raises(DocumaError) as caught:
+        RustOfficeAdapter().parse(
+            FIXTURE_ROOT / "smoke.docx", ParseOptions(metadata={"revision_mode": "invalid"})
+        )
+    assert caught.value.detail.code == "INVALID_OPTIONS"

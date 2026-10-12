@@ -25,7 +25,7 @@ def case_id(case: dict[str, object]) -> str:
 
 
 def test_contract_and_capabilities():
-    assert rust_office.version_info() == ("0.1.0", "office-layout-v1")
+    assert rust_office.version_info() == ("0.2.0", "office-layout-v1")
     capabilities = rust_office.capabilities()
     assert capabilities["formats"]["docx"]["supported"] is True
     assert capabilities["formats"]["doc"]["supported"] is False

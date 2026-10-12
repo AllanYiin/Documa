@@ -166,6 +166,15 @@ def native_exception_to_documa(
     except (TypeError, json.JSONDecodeError):
         raw_payload = {}
     payload = raw_payload if isinstance(raw_payload, dict) else {}
+    # Office 0.2 exposes structured attributes while legacy/native PDF errors
+    # still use a JSON message. Preserve either envelope without losing codes.
+    if not payload and isinstance(getattr(exc, "code", None), str):
+        payload = {
+            "code": exc.code,
+            "message": getattr(exc, "message", str(exc)),
+            "recoverable": getattr(exc, "recoverable", default_recoverable),
+            "context": getattr(exc, "context", {}),
+        }
     raw_context = payload.get("context")
     context = dict(raw_context) if isinstance(raw_context, dict) else {}
     context = {"source": str(source), **context}

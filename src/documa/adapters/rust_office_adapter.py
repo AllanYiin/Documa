@@ -28,7 +28,7 @@ from documa.core.ir import (
 from documa.storage.assets import AssetStore, safe_asset_name
 
 
-EXPECTED_PACKAGE_VERSION = "0.1.0"
+EXPECTED_PACKAGE_VERSION = "0.2.0"
 EXPECTED_LAYOUT_CONTRACT = "office-layout-v1"
 _RUST_OFFICE_BINDING = NativeBindingSpec(
     parser_id="rust_office",
@@ -315,6 +315,9 @@ class RustOfficeAdapter(ParserAdapter):
             ),
             "external_links": "metadata_only",
         }
+        for key in ("asset_mode", "sheets", "cell_range", "batch_rows", "sparse", "limits", "external_links"):
+            if key in options.metadata:
+                rust_options[key] = options.metadata[key]
         try:
             stream = rust_office.open(source_path, rust_options)
         except Exception as exc:
