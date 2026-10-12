@@ -355,11 +355,11 @@ def write_interactive_review(
         (output_dir / filename).write_text(rendered, encoding="utf-8")
 
     launcher = """<!doctype html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Private Stage 7.3 review launcher</title>
+<title>閱讀順序盲評入口</title>
 <style>
 :root { color-scheme: dark; font-family: Aptos, "Segoe UI Variable", "Segoe UI", sans-serif;
   --bg:#07111f; --surface:#0d1b2d; --text:#f7f4ec; --muted:#9eb0c5;
@@ -381,17 +381,17 @@ a:hover, a:focus-visible { border-color:var(--accent); background:rgb(56 209 173
 </head>
 <body>
 <main>
-<p>PRIVATE STAGE 7.3 PACKET</p>
-<h1>Human reading-order review</h1>
-<p>Reviewer A and Reviewer B must work from independent packet copies. Export each reviewer file before comparison. Only then import both files into adjudication.</p>
-<div class="flow" aria-label="Three-step review flow">
-  <a href="reviewer-a.html">1. Reviewer A<br><small>Independent labels</small></a>
+<p>私人閱讀順序評閱包</p>
+<h1>真人閱讀順序評閱</h1>
+<p>評閱者 A 與 B 必須各自獨立標註。兩人完成並分別匯出評閱檔後，才能比對結果與處理分歧。</p>
+<div class="flow" aria-label="三步驟評閱流程">
+  <a href="reviewer-a.html">1. 評閱者 A<br><small>獨立標註</small></a>
   <span class="arrow" aria-hidden="true">&#8594;</span>
-  <a href="reviewer-b.html">2. Reviewer B<br><small>Independent labels</small></a>
+  <a href="reviewer-b.html">2. 評閱者 B<br><small>獨立標註</small></a>
   <span class="arrow" aria-hidden="true">&#8594;</span>
-  <a href="adjudicate.html">3. Adjudication<br><small>Merge and resolve</small></a>
+  <a href="adjudicate.html">3. 處理分歧<br><small>合併與裁決</small></a>
 </div>
-<p class="notice">Rendered pages and review files are private. Do not commit or redistribute this directory.</p>
+<p class="notice">本目錄包含私人文件頁面與標註，請勿提交至公開儲存庫或對外分享。</p>
 </main>
 </body>
 </html>
@@ -610,7 +610,7 @@ def self_test() -> None:
         "canonicalLabels",
         "nextOrdinalByPage",
         "/^b(\\d+)$/",
-        "Blind mode",
+        "盲評模式",
         "block_precedence_pairs",
     ]:
         assert required in template
