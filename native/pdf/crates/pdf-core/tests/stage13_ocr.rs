@@ -78,6 +78,82 @@ fn coverage_counts_only_the_image_area_inside_the_page() {
     assert!((candidate.page_coverage - 0.9).abs() < 1e-12);
 }
 
+#[test]
+fn rejects_effects_that_cannot_be_reproduced_without_rendering() {
+    for (prefix, reason) in [
+        ("0 0 50 50 re W n ", DirectOcrReason::ClippingUnsupported),
+        ("/GS gs ", DirectOcrReason::GraphicsStateUnsupported),
+        ("0 0 1 1 re f ", DirectOcrReason::OtherPageMarks),
+        (
+            "BI /W 1 /H 1 ID x EI ",
+            DirectOcrReason::InlineImageUnsupported,
+        ),
+    ] {
+        let content = format!("{prefix}q 100 0 0 100 0 0 cm /Im Do Q");
+        let document = PdfDocument::parse(&image_pdf(content.as_bytes())).unwrap();
+        assert_eq!(
+            document
+                .analyze_direct_ocr(DirectOcrOptions::default())
+                .unwrap()
+                .pages[0]
+                .reason,
+            reason
+        );
+    }
+    for (extra, reason) in [
+        ("/Decode [1 0]", DirectOcrReason::DecodeArrayUnsupported),
+        ("/Mask [0 0]", DirectOcrReason::ExplicitMaskUnsupported),
+        ("/SMask 6 0 R", DirectOcrReason::SoftMaskUnsupported),
+        ("/ColorSpace /Lab", DirectOcrReason::UnsupportedImageFormat),
+        (
+            "/BitsPerComponent 4",
+            DirectOcrReason::UnsupportedImageFormat,
+        ),
+    ] {
+        let mut image = format!("<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceGray /BitsPerComponent 8 {extra} /Length 1 >>\nstream\n").into_bytes();
+        image.extend_from_slice(b"x\nendstream");
+        let pdf = classic_pdf(&[
+            b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
+            b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_vec(),
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /XObject << /Im 5 0 R >> >> /Contents 4 0 R >>".to_vec(),
+            stream_body(b"q 100 0 0 100 0 0 cm /Im Do Q"), image,
+        ]);
+        assert_eq!(
+            PdfDocument::parse(&pdf)
+                .unwrap()
+                .analyze_direct_ocr(DirectOcrOptions::default())
+                .unwrap()
+                .pages[0]
+                .reason,
+            reason
+        );
+    }
+}
+
+#[test]
+fn candidates_are_lazy_fused_and_do_not_decode_unused_images() {
+    let pdf = classic_pdf(&[
+        b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
+        b"<< /Type /Pages /Kids [3 0 R 6 0 R] /Count 2 >>".to_vec(),
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /XObject << /Im 5 0 R /Unused 8 0 R >> >> /Contents 4 0 R >>".to_vec(),
+        stream_body(b"q 100 0 0 100 0 0 cm /Im Do Q"), image_stream(),
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Contents 7 0 R >>".to_vec(),
+        stream_body(b"BT (unterminated"),
+        b"<< /Type /XObject /Subtype /Image /Width -1 /Height 1 /Length 0 >>\nstream\n\nendstream".to_vec(),
+    ]);
+    let document = PdfDocument::parse(&pdf).unwrap();
+    let mut pages = document
+        .direct_ocr_pages(DirectOcrOptions::default())
+        .unwrap();
+    assert_eq!(
+        pages.next().unwrap().unwrap().reason,
+        DirectOcrReason::Eligible
+    );
+    assert!(pages.next().unwrap().is_err());
+    assert!(pages.next().is_none());
+    assert!(pages.next().is_none());
+}
+
 fn image_pdf(content: &[u8]) -> Vec<u8> {
     classic_pdf(&[
         b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),

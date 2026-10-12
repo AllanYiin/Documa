@@ -58,7 +58,19 @@ impl PdfDocument {
     ///
     /// Returns a structured error for malformed image dictionaries, references, or limits.
     pub fn extract_images(&self) -> PdfResult<Vec<ExtractedImage>> {
-        let pages = self.pages()?;
+        self.extract_images_pages(&crate::PageSelection::all())
+    }
+
+    /// Extract image resources only from selected source pages.
+    ///
+    /// # Errors
+    ///
+    /// Returns selection, image, reference or resource limit errors.
+    pub fn extract_images_pages(
+        &self,
+        selection: &crate::PageSelection,
+    ) -> PdfResult<Vec<ExtractedImage>> {
+        let pages = selection.select(self.pages()?)?;
         let mut images = Vec::new();
         for page in pages {
             let mut stack = BTreeSet::new();
@@ -168,7 +180,8 @@ fn walk_resources(
     Ok(())
 }
 
-fn extract_image(
+#[allow(clippy::too_many_lines)] // Metadata, codec selection and bounded output validation share one stream.
+pub(crate) fn extract_image(
     document: &PdfDocument,
     page_index: usize,
     resource_name: String,
@@ -212,23 +225,64 @@ fn extract_image(
             )
         })?
         .unwrap_or(if image_mask { 1 } else { 8 });
-    let color_space = stream
+    let color_space_object = stream
         .dictionary
         .get(&PdfName(b"ColorSpace".to_vec()))
-        .and_then(color_space_name);
+        .map(|value| {
+            value.as_reference().map_or_else(
+                || Ok(value.clone()),
+                |id| document.object(id).map(|object| object.value),
+            )
+        })
+        .transpose()?;
+    let color_space = color_space_object.as_ref().and_then(color_space_name);
     let filters = filter_names(stream)?;
     let filter = (!filters.is_empty()).then(|| filters.join(","));
     let mut warnings = Vec::new();
+    for (key, code, message) in [
+        (
+            b"Decode".as_slice(),
+            "image_decode_array_unsupported",
+            "image Decode arrays are preserved but not applied to extracted samples",
+        ),
+        (
+            b"Mask".as_slice(),
+            "image_explicit_mask_unsupported",
+            "explicit image masks are preserved but not applied to extracted samples",
+        ),
+    ] {
+        if stream
+            .dictionary
+            .get(&PdfName(key.to_vec()))
+            .is_some_and(|value| !matches!(value, PdfObject::Null))
+        {
+            warnings.push(ImageWarning {
+                code: code.to_owned(),
+                message: message.to_owned(),
+            });
+        }
+    }
 
     let (format, data) = if filters.is_empty() {
         (ImageDataFormat::RawSamples, stream.data.clone())
     } else if filters.len() == 1 && matches!(filters[0].as_str(), "DCTDecode" | "DCT") {
         validate_jpeg_dimensions(&stream.data, width, height, &mut warnings)?;
         (ImageDataFormat::Jpeg, stream.data.clone())
-    } else if filters
-        .iter()
-        .all(|name| matches!(name.as_str(), "FlateDecode" | "Fl"))
-    {
+    } else if filters.iter().all(|name| {
+        matches!(
+            name.as_str(),
+            "FlateDecode"
+                | "Fl"
+                | "ASCIIHexDecode"
+                | "AHx"
+                | "ASCII85Decode"
+                | "A85"
+                | "RunLengthDecode"
+                | "RL"
+                | "LZWDecode"
+                | "LZW"
+        )
+    }) {
         (ImageDataFormat::RawSamples, document.decode_stream(stream)?)
     } else {
         warnings.push(ImageWarning {

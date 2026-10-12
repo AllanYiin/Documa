@@ -19,6 +19,7 @@ pub(crate) struct PageVectorPaths {
     pub segments: Vec<VectorSegment>,
     pub image_placements: Vec<LayoutImagePlacement>,
     pub image_placement_error: Option<String>,
+    pub direct_ocr_rejection: Option<crate::DirectOcrReason>,
     next_image_paint_ordinal: u64,
 }
 
@@ -105,6 +106,29 @@ fn process_operations(
     let mut graphics_stack = Vec::new();
     let mut path = PathState::default();
     for operation in operations {
+        // Direct-image OCR cannot reproduce compositing, clipping or extra page
+        // marks. Reject conservatively even if a later q/Q restores that state.
+        let rejection = match operation.operator.as_slice() {
+            b"W" | b"W*" => Some(crate::DirectOcrReason::ClippingUnsupported),
+            b"gs" => Some(crate::DirectOcrReason::GraphicsStateUnsupported),
+            b"BI" => Some(crate::DirectOcrReason::InlineImageUnsupported),
+            b"S" | b"s" | b"B" | b"B*" | b"b" | b"b*" | b"f" | b"F" | b"f*" | b"sh" => {
+                Some(crate::DirectOcrReason::OtherPageMarks)
+            }
+            b"Tr"
+                if operation
+                    .operands
+                    .first()
+                    .and_then(PdfObject::as_integer)
+                    .is_some_and(|mode| mode >= 4) =>
+            {
+                Some(crate::DirectOcrReason::ClippingUnsupported)
+            }
+            _ => None,
+        };
+        if output.direct_ocr_rejection.is_none() {
+            output.direct_ocr_rejection = rejection;
+        }
         match operation.operator.as_slice() {
             b"BMC" => {
                 require_operands(operation, 1)?;
@@ -247,7 +271,7 @@ fn process_operations(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 fn process_form(
     document: &PdfDocument,
     page: &PdfPage,
@@ -320,6 +344,16 @@ fn process_form(
         }
         if !matches!(subtype, Some(PdfObject::Name(subtype)) if subtype.is(b"Form")) {
             return Ok(());
+        }
+        if stream.dictionary.contains_key(&PdfName(b"BBox".to_vec())) {
+            output
+                .direct_ocr_rejection
+                .get_or_insert(crate::DirectOcrReason::ClippingUnsupported);
+        }
+        if stream.dictionary.contains_key(&PdfName(b"Group".to_vec())) {
+            output
+                .direct_ocr_rejection
+                .get_or_insert(crate::DirectOcrReason::GraphicsStateUnsupported);
         }
         let form_resources = stream
             .dictionary

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 /// Resource limits applied to every input-derived parser operation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(default, deny_unknown_fields))]
 pub struct ParseLimits {
     pub max_file_bytes: usize,
     pub max_object_depth: usize,

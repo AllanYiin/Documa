@@ -14,7 +14,6 @@ version = "0.2.0"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT OR Apache-2.0"
-repository = "https://example.invalid/rust-pdf-parser"
 
 [workspace.dependencies]
 encoding_rs = "0.8"

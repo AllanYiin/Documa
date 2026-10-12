@@ -4,7 +4,6 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-repository.workspace = true
 description = "Direct-image OCR orchestration and optional RapidOCR-compatible ONNX backend"
 
 [features]

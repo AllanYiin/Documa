@@ -193,6 +193,7 @@ impl GlyphMarkedContent {
 pub(crate) struct GlyphLayoutGeometry {
     pub(crate) top: [f64; 2],
     pub(crate) bottom: [f64; 2],
+    pub(crate) vertical_quad: Option<[[f64; 2]; 4]>,
 }
 
 type InternalTextExtraction = (
@@ -426,7 +427,21 @@ impl PdfDocument {
     ///
     /// Returns a structured error for malformed page trees, content streams, fonts, or limits.
     pub fn extract_text(&self, options: TextExtractionOptions) -> PdfResult<ExtractedText> {
-        self.extract_text_internal(options, false, false)
+        self.extract_text_internal(options, false, false, &crate::PageSelection::all())
+            .map(|result| result.0)
+    }
+
+    /// Extract legacy text from selected pages without decoding unselected page content.
+    ///
+    /// # Errors
+    ///
+    /// Returns selection, parser or limit errors.
+    pub fn extract_text_pages(
+        &self,
+        options: TextExtractionOptions,
+        selection: &crate::PageSelection,
+    ) -> PdfResult<ExtractedText> {
+        self.extract_text_internal(options, false, false, selection)
             .map(|result| result.0)
     }
 
@@ -454,6 +469,20 @@ impl PdfDocument {
     ///
     /// Returns a structured error for malformed page trees, content streams, fonts, or limits.
     pub fn extract_text_v2(&self, options: TextExtractionOptionsV2) -> PdfResult<ExtractedTextV2> {
+        self.extract_text_v2_pages(options, &crate::PageSelection::all())
+    }
+
+    /// Extract V2 text only from selected source pages. Source page indices are retained.
+    /// Glyph ordinals describe this extraction; unselected glyphs are never visited.
+    ///
+    /// # Errors
+    ///
+    /// Returns selection, parser or limit errors.
+    pub fn extract_text_v2_pages(
+        &self,
+        options: TextExtractionOptionsV2,
+        selection: &crate::PageSelection,
+    ) -> PdfResult<ExtractedTextV2> {
         let use_auto_layout = options.mode == ExtractionMode::Auto;
         let (extracted, glyphs, _, separators, quality, _, _) = self.extract_text_internal(
             TextExtractionOptions {
@@ -462,6 +491,7 @@ impl PdfDocument {
             },
             use_auto_layout,
             false,
+            selection,
         )?;
         Ok(ExtractedTextV2 {
             mode: options.mode,
@@ -489,8 +519,9 @@ impl PdfDocument {
         options: TextExtractionOptions,
         use_auto_layout: bool,
         collect_vector_paths: bool,
+        selection: &crate::PageSelection,
     ) -> PdfResult<InternalTextExtraction> {
-        let pages = self.pages()?;
+        let pages = selection.select(self.pages()?)?;
         let mut page_results = Vec::with_capacity(pages.len());
         let mut glyphs = Vec::new();
         let mut glyph_marked_content = Vec::new();
@@ -1048,7 +1079,7 @@ fn process_operation(
                                 0.0,
                             ),
                             WritingMode::Vertical => {
-                                translate_text_matrix(state, 0.0, -displacement);
+                                translate_text_matrix(state, 0.0, displacement);
                             }
                         }
                         state.legacy_text_matrix.e +=
@@ -1141,10 +1172,7 @@ fn close_marked_content_frame(
         return Ok(());
     };
     let first_glyph = collector.glyphs.get(frame.glyph_start).cloned();
-    let first_layout_geometry = collector
-        .glyph_layout_geometry
-        .get(frame.glyph_start)
-        .copied();
+    let first_layout_geometry = actual_text_geometry(collector, frame.glyph_start);
     let last_glyph = collector
         .glyphs
         .last()
@@ -1235,6 +1263,50 @@ fn close_marked_content_frame(
         y: origin[1],
     });
     Ok(())
+}
+
+fn actual_text_geometry(collector: &PageCollector, start: usize) -> Option<GlyphLayoutGeometry> {
+    let mut geometry = collector.glyph_layout_geometry.get(start).copied()?;
+    if geometry.vertical_quad.is_some() {
+        geometry.vertical_quad = Some(actual_text_quad(collector, start));
+    }
+    Some(geometry)
+}
+
+fn actual_text_quad(collector: &PageCollector, start: usize) -> [[f64; 2]; 4] {
+    let mut minimum = [f64::INFINITY; 2];
+    let mut maximum = [f64::NEG_INFINITY; 2];
+    for (glyph, geometry) in collector.glyphs[start..]
+        .iter()
+        .zip(&collector.glyph_layout_geometry[start..])
+    {
+        let corners = geometry.vertical_quad.unwrap_or([
+            geometry.top,
+            [
+                geometry.top[0] + glyph.advance[0],
+                geometry.top[1] + glyph.advance[1],
+            ],
+            [
+                geometry.bottom[0] + glyph.advance[0],
+                geometry.bottom[1] + glyph.advance[1],
+            ],
+            geometry.bottom,
+        ]);
+        for point in corners {
+            for axis in 0..2 {
+                minimum[axis] = minimum[axis].min(point[axis]);
+                maximum[axis] = maximum[axis].max(point[axis]);
+            }
+        }
+    }
+    // ActualText may span several vertical glyphs (or mixed transforms). Keep a
+    // conservative enclosure of every replaced glyph, not only the first box.
+    [
+        [minimum[0], maximum[1]],
+        maximum,
+        [maximum[0], minimum[1]],
+        minimum,
+    ]
 }
 
 #[allow(
@@ -1347,12 +1419,11 @@ fn show_text(
                 "positioned glyph limit exceeded",
             ));
         }
-        let origin = page_text_point(state, 0.0, state.rise)?;
         let baseline = page_baseline(state)?;
         let writing_mode = font.map_or(WritingMode::Horizontal, FontDecoder::writing_mode);
         let vertical_metrics =
             font.map_or_else(FontVerticalMetrics::default, FontDecoder::vertical_metrics);
-        let layout_geometry = glyph_layout_geometry(state, vertical_metrics)?;
+        let mut layout_geometry = glyph_layout_geometry(state, vertical_metrics)?;
         let width = font.map_or(500.0, |font| font.glyph_width(glyph.code));
         if !width.is_finite() {
             return Err(PdfError::new(
@@ -1368,11 +1439,39 @@ fn show_text(
         } else {
             0.0
         };
-        let displacement = width / 1_000.0 * state.font_size + state.char_spacing + word_spacing;
-        let (text_x, text_y) = match writing_mode {
-            WritingMode::Horizontal => (displacement * state.horizontal_scaling / 100.0, 0.0),
-            WritingMode::Vertical => (0.0, -displacement),
+        let scale = state.font_size / 1_000.0;
+        let horizontal_scale = state.horizontal_scaling / 100.0;
+        let (text_x, text_y, offset) = match writing_mode {
+            WritingMode::Horizontal => (
+                (width * scale + state.char_spacing + word_spacing) * horizontal_scale,
+                0.0,
+                [0.0, state.rise],
+            ),
+            WritingMode::Vertical => {
+                let metrics = font
+                    .expect("vertical writing requires a font")
+                    .cid_vertical_metrics(glyph.code);
+                let offset = [
+                    -metrics.position[0] * scale * horizontal_scale,
+                    state.rise - metrics.position[1] * scale,
+                ];
+                let right = offset[0] + width * scale * horizontal_scale;
+                let top = offset[1] + vertical_metrics.ascent * scale;
+                let bottom = offset[1] + vertical_metrics.descent * scale;
+                layout_geometry.vertical_quad = Some([
+                    page_text_point(state, offset[0], top)?,
+                    page_text_point(state, right, top)?,
+                    page_text_point(state, right, bottom)?,
+                    page_text_point(state, offset[0], bottom)?,
+                ]);
+                (
+                    0.0,
+                    metrics.displacement * scale + state.char_spacing + word_spacing,
+                    offset,
+                )
+            }
         };
+        let origin = page_text_point(state, offset[0], offset[1])?;
         if !text_x.is_finite() || !text_y.is_finite() {
             return Err(PdfError::new(
                 ErrorCode::InvalidObject,
@@ -1381,7 +1480,7 @@ fn show_text(
             ));
         }
         translate_text_matrix(state, text_x, text_y);
-        let next_origin = page_text_point(state, 0.0, state.rise)?;
+        let next_origin = page_text_point(state, offset[0], offset[1])?;
         let text_origin = if glyph.missing_mapping || glyph.unicode.contains('\u{fffd}') {
             TextOrigin::Replacement
         } else if glyph.used_fallback {
@@ -1494,7 +1593,11 @@ fn glyph_layout_geometry(
         0.0,
         state.rise + state.font_size * metrics.descent / 1_000.0,
     )?;
-    Ok(GlyphLayoutGeometry { top, bottom })
+    Ok(GlyphLayoutGeometry {
+        top,
+        bottom,
+        vertical_quad: None,
+    })
 }
 
 fn page_baseline(state: &TextState) -> PdfResult<[f64; 2]> {

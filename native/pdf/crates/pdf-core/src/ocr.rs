@@ -1,6 +1,6 @@
 use crate::{
-    BBox, ErrorCode, ExtractedImage, LayoutExtractionOptions, ObjectId, PdfDocument, PdfError,
-    PdfResult, Point, Quad,
+    BBox, ErrorCode, ExtractedImage, ObjectId, PdfDocument, PdfError, PdfObject, PdfResult, Point,
+    Quad, TextExtractionOptions,
 };
 
 #[cfg(feature = "serde")]
@@ -35,6 +35,14 @@ pub enum DirectOcrReason {
     ImageMaskUnsupported,
     SoftMaskUnsupported,
     UnsupportedImageFormat,
+    DecodeArrayUnsupported,
+    ExplicitMaskUnsupported,
+    ClippingUnsupported,
+    GraphicsStateUnsupported,
+    InlineImageUnsupported,
+    OtherPageMarks,
+    InvalidImageData,
+    InvalidImagePlacement,
 }
 
 impl DirectOcrReason {
@@ -50,6 +58,14 @@ impl DirectOcrReason {
             Self::ImageMaskUnsupported => "image_mask_unsupported",
             Self::SoftMaskUnsupported => "soft_mask_unsupported",
             Self::UnsupportedImageFormat => "unsupported_image_format",
+            Self::DecodeArrayUnsupported => "decode_array_unsupported",
+            Self::ExplicitMaskUnsupported => "explicit_mask_unsupported",
+            Self::ClippingUnsupported => "clipping_unsupported",
+            Self::GraphicsStateUnsupported => "graphics_state_unsupported",
+            Self::InlineImageUnsupported => "inline_image_unsupported",
+            Self::OtherPageMarks => "other_page_marks",
+            Self::InvalidImageData => "invalid_image_data",
+            Self::InvalidImagePlacement => "invalid_image_placement",
         }
     }
 }
@@ -169,6 +185,62 @@ impl PdfDocument {
     ///
     /// Returns a stable parser, geometry, option, image, or resource limit error.
     pub fn analyze_direct_ocr(&self, options: DirectOcrOptions) -> PdfResult<DirectOcrAnalysis> {
+        self.analyze_direct_ocr_selected(options, &crate::PageSelection::all())
+    }
+
+    /// Collect selected candidates with an aggregate retained-image byte bound.
+    /// Use the iterator for scans whose cumulative images exceed this bound.
+    ///
+    /// # Errors
+    ///
+    /// Returns parser, option or limit errors. Retained image bytes may not exceed
+    /// the document's configured `max_total_decoded_bytes`.
+    pub fn analyze_direct_ocr_selected(
+        &self,
+        options: DirectOcrOptions,
+        selection: &crate::PageSelection,
+    ) -> PdfResult<DirectOcrAnalysis> {
+        let mut pages = Vec::new();
+        let mut retained = 0_usize;
+        for page in self.direct_ocr_pages_selected(options, selection)? {
+            let page = page?;
+            let bytes = page
+                .candidate
+                .as_ref()
+                .map_or(0, |candidate| candidate.image.data.len());
+            if bytes > self.limits.max_total_decoded_bytes.saturating_sub(retained) {
+                return Err(PdfError::new(
+                    ErrorCode::LimitExceeded,
+                    None,
+                    "collected OCR candidate image bytes exceed the document output budget",
+                ));
+            }
+            retained += bytes;
+            pages.push(page);
+        }
+        Ok(DirectOcrAnalysis { pages })
+    }
+
+    /// Analyze and decode only one painted image candidate at a time.
+    /// Dropping the iterator cancels further page work. Errors terminate it.
+    ///
+    /// # Errors
+    ///
+    /// Returns option or page-tree errors now; later content errors are yielded.
+    pub fn direct_ocr_pages(&self, options: DirectOcrOptions) -> PdfResult<DirectOcrPageProducer> {
+        self.direct_ocr_pages_selected(options, &crate::PageSelection::all())
+    }
+
+    /// Lazily analyze selected pages, preserving original page indices.
+    ///
+    /// # Errors
+    ///
+    /// Returns selection, option or page-tree errors; later page errors are yielded.
+    pub fn direct_ocr_pages_selected(
+        &self,
+        options: DirectOcrOptions,
+        selection: &crate::PageSelection,
+    ) -> PdfResult<DirectOcrPageProducer> {
         if !options.min_page_coverage.is_finite()
             || !(0.0..=1.0).contains(&options.min_page_coverage)
         {
@@ -178,87 +250,154 @@ impl PdfDocument {
                 "min_page_coverage must be finite and in [0, 1]",
             ));
         }
-        let layout = self.extract_layout(LayoutExtractionOptions::default())?;
-        let images = self.extract_images()?;
-        let mut pages = Vec::with_capacity(layout.pages.len());
-        for page in layout.pages {
-            let native_chars = page.text.chars().filter(|ch| !ch.is_whitespace()).count();
-            if native_chars > options.max_native_text_chars {
-                pages.push(rejected(
-                    page.page_index,
-                    DirectOcrReason::NativeTextPresent,
-                ));
-                continue;
-            }
-            let placements: Vec<_> = page
-                .image_placements
-                .iter()
-                .filter(|placement| !placement.artifact)
-                .collect();
-            let placement = match placements.as_slice() {
-                [] => {
-                    pages.push(rejected(page.page_index, DirectOcrReason::NoPaintedImage));
-                    continue;
-                }
-                [placement] => *placement,
-                _ => {
-                    pages.push(rejected(
-                        page.page_index,
-                        DirectOcrReason::MultiplePaintedImages,
-                    ));
-                    continue;
-                }
-            };
-            let page_area =
-                page.geometry.layout_bounds.width() * page.geometry.layout_bounds.height();
-            let coverage =
-                visible_quad_area(placement.quad, page.geometry.layout_bounds) / page_area;
-            if coverage < options.min_page_coverage {
-                pages.push(rejected(
-                    page.page_index,
-                    DirectOcrReason::ImageDoesNotCoverPage,
-                ));
-                continue;
-            }
-            let image = images.iter().find(|image| {
-                image.page_index == page.page_index
-                    && match (placement.object, image.object_id) {
-                        (Some(left), Some(right)) => left == right,
-                        _ => image.resource_name == placement.resource_name,
-                    }
-            });
-            let Some(image) = image else {
-                pages.push(rejected(
-                    page.page_index,
-                    DirectOcrReason::ImageResourceMissing,
-                ));
-                continue;
-            };
-            let reason = if image.image_mask {
-                DirectOcrReason::ImageMaskUnsupported
-            } else if image.has_soft_mask {
-                DirectOcrReason::SoftMaskUnsupported
-            } else if matches!(image.format, crate::ImageDataFormat::EncodedUnknown) {
-                DirectOcrReason::UnsupportedImageFormat
-            } else {
-                DirectOcrReason::Eligible
-            };
-            let candidate = (reason == DirectOcrReason::Eligible).then(|| DirectOcrCandidate {
-                page_index: page.page_index,
-                placement_id: placement.id.clone(),
-                object_id: image.object_id,
-                resource_name: image.resource_name.clone(),
-                page_coverage: coverage.min(1.0),
-                image_quad: placement.quad,
-                image: image.clone(),
-            });
-            pages.push(DirectOcrPage {
-                page_index: page.page_index,
-                reason,
-                candidate,
-            });
+        let pages = selection.select(self.pages()?)?;
+        Ok(DirectOcrPageProducer {
+            document: self.clone(),
+            text_pages: self.extract_text_page_producer(
+                &pages,
+                TextExtractionOptions {
+                    normalize_unicode: false,
+                    layout: false,
+                },
+                false,
+                true,
+            ),
+            options,
+            done: false,
+        })
+    }
+}
+
+/// Owned, fallible direct-image candidate iterator. Retains no accepted page payload.
+pub struct DirectOcrPageProducer {
+    document: PdfDocument,
+    text_pages: crate::text::TextPageProducer,
+    options: DirectOcrOptions,
+    done: bool,
+}
+
+impl Iterator for DirectOcrPageProducer {
+    type Item = PdfResult<DirectOcrPage>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
         }
-        Ok(DirectOcrAnalysis { pages })
+        let Some(page) = self.text_pages.next() else {
+            self.done = true;
+            return None;
+        };
+        let result = page.and_then(|page| analyze_page(&self.document, page, self.options));
+        if result.is_err() {
+            self.done = true;
+        }
+        Some(result)
+    }
+}
+
+impl std::iter::FusedIterator for DirectOcrPageProducer {}
+
+fn analyze_page(
+    document: &PdfDocument,
+    extracted: crate::text::ExtractedPage,
+    options: DirectOcrOptions,
+) -> PdfResult<DirectOcrPage> {
+    let page = extracted.source_page;
+    let reject = |reason| Ok(rejected(page.index, reason));
+    if extracted
+        .page
+        .text
+        .chars()
+        .filter(|ch| !ch.is_whitespace())
+        .count()
+        > options.max_native_text_chars
+    {
+        return reject(DirectOcrReason::NativeTextPresent);
+    }
+    let paths = extracted.vector_paths.transpose()?.unwrap_or_default();
+    if let Some(reason) = paths.direct_ocr_rejection {
+        return reject(reason);
+    }
+    if paths.image_placement_error.is_some() {
+        return reject(DirectOcrReason::InvalidImagePlacement);
+    }
+    let mut placements = paths
+        .image_placements
+        .into_iter()
+        .filter(|placement| !placement.artifact);
+    let Some(placement) = placements.next() else {
+        return reject(DirectOcrReason::NoPaintedImage);
+    };
+    if placements.next().is_some() {
+        return reject(DirectOcrReason::MultiplePaintedImages);
+    }
+    let bounds = page.geometry.layout_bounds;
+    let coverage = visible_quad_area(placement.quad, bounds) / (bounds.width() * bounds.height());
+    if coverage < options.min_page_coverage || coverage <= 0.0 {
+        return reject(DirectOcrReason::ImageDoesNotCoverPage);
+    }
+    let Some(object) = placement.object else {
+        return reject(DirectOcrReason::ImageResourceMissing);
+    };
+    let PdfObject::Stream(stream) = document.object(object)?.value else {
+        return reject(DirectOcrReason::ImageResourceMissing);
+    };
+    let image = crate::images::extract_image(
+        document,
+        page.index,
+        placement.resource_name,
+        Some(object),
+        &stream,
+    )?;
+    let has_warning = |code: &str| image.warnings.iter().any(|warning| warning.code == code);
+    let reason = if image.image_mask {
+        DirectOcrReason::ImageMaskUnsupported
+    } else if image.has_soft_mask {
+        DirectOcrReason::SoftMaskUnsupported
+    } else if has_warning("image_explicit_mask_unsupported") {
+        DirectOcrReason::ExplicitMaskUnsupported
+    } else if has_warning("image_decode_array_unsupported") {
+        DirectOcrReason::DecodeArrayUnsupported
+    } else if image.width == 0
+        || image.height == 0
+        || has_warning("jpeg_dimension_mismatch")
+        || has_warning("raw_sample_length_mismatch")
+    {
+        DirectOcrReason::InvalidImageData
+    } else if !supported_samples(&image) {
+        DirectOcrReason::UnsupportedImageFormat
+    } else {
+        DirectOcrReason::Eligible
+    };
+    if reason != DirectOcrReason::Eligible {
+        return reject(reason);
+    }
+    Ok(DirectOcrPage {
+        page_index: page.index,
+        reason,
+        candidate: Some(DirectOcrCandidate {
+            page_index: page.index,
+            placement_id: placement.id,
+            object_id: image.object_id,
+            resource_name: image.resource_name.clone(),
+            page_coverage: coverage.min(1.0),
+            image_quad: placement.quad,
+            image,
+        }),
+    })
+}
+
+fn supported_samples(image: &ExtractedImage) -> bool {
+    match image.format {
+        crate::ImageDataFormat::EncodedUnknown => false,
+        crate::ImageDataFormat::Jpeg => matches!(
+            image.color_space.as_deref(),
+            Some("DeviceGray" | "DeviceRGB" | "DeviceCMYK")
+        ),
+        crate::ImageDataFormat::RawSamples => matches!(
+            (image.color_space.as_deref(), image.bits_per_component),
+            (Some("DeviceGray"), 1 | 8) | (Some("DeviceRGB" | "DeviceCMYK"), 8)
+        ),
     }
 }
 

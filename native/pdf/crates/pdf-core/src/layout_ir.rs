@@ -778,6 +778,7 @@ pub struct LayoutEventProducer {
     document_text: String,
     page_count: usize,
     emitted_pages: usize,
+    source_page_indices: Vec<usize>,
     timer: Option<LayoutTimer>,
     done: bool,
 }
@@ -802,7 +803,9 @@ impl LayoutEventProducer {
             warnings: page_warnings,
             vector_paths: page_vector_paths,
         } = extracted;
-        if page.index != page_text.page_index || page.index != self.emitted_pages {
+        if page.index != page_text.page_index
+            || self.source_page_indices.get(self.emitted_pages) != Some(&page.index)
+        {
             return Err(PdfError::new(
                 ErrorCode::InvalidObject,
                 None,
@@ -1129,6 +1132,53 @@ where
     I: IntoIterator,
     I::Item: LayoutEventItem,
 {
+    collect_layout_events_impl(events, limits, None)
+}
+
+/// Collect selected-page events while validating their original source identities.
+/// The legacy collector still requires contiguous identities starting at page zero.
+///
+/// # Errors
+///
+/// Returns a stable error for invalid selections, event protocol or limits.
+pub fn collect_selected_layout_events<I>(
+    events: I,
+    limits: &ParseLimits,
+    source_page_indices: &[usize],
+) -> PdfResult<DocumentLayout>
+where
+    I: IntoIterator,
+    I::Item: LayoutEventItem,
+{
+    if source_page_indices.len() > limits.max_pages
+        || source_page_indices
+            .iter()
+            .any(|&index| index >= limits.max_pages)
+    {
+        return Err(layout_event_limit(
+            "selected layout page indices exceed limits",
+        ));
+    }
+    if source_page_indices
+        .windows(2)
+        .any(|pair| pair[0] >= pair[1])
+    {
+        return Err(layout_event_error(
+            "selected layout page indices must be sorted and unique",
+        ));
+    }
+    collect_layout_events_impl(events, limits, Some(source_page_indices))
+}
+
+fn collect_layout_events_impl<I>(
+    events: I,
+    limits: &ParseLimits,
+    selected: Option<&[usize]>,
+) -> PdfResult<DocumentLayout>
+where
+    I: IntoIterator,
+    I::Item: LayoutEventItem,
+{
     let mut events = events.into_iter();
     let Some(first) = events.next() else {
         return Err(layout_event_error(
@@ -1142,6 +1192,11 @@ where
     };
     if start.page_count > limits.max_pages {
         return Err(layout_event_limit("layout event page count exceeds limit"));
+    }
+    if selected.is_some_and(|indices| indices.len() != start.page_count) {
+        return Err(layout_event_error(
+            "selected page count differs from document_start",
+        ));
     }
 
     let mut pages = Vec::with_capacity(start.page_count);
@@ -1165,7 +1220,9 @@ where
                         "layout event stream contains more pages than declared",
                     ));
                 }
-                if page.page_index != pages.len() || page.page_number != pages.len() + 1 {
+                let expected = selected.map_or(pages.len(), |indices| indices[pages.len()]);
+                if page.page_index != expected || Some(page.page_number) != expected.checked_add(1)
+                {
                     return Err(layout_event_error(
                         "layout event page identity is not contiguous",
                     ));
@@ -1224,6 +1281,11 @@ fn apply_layout_finalizations(
         ));
     }
     let mut seen_pages = BTreeSet::new();
+    let page_positions = pages
+        .iter()
+        .enumerate()
+        .map(|(position, page)| (page.page_index, position))
+        .collect::<BTreeMap<_, _>>();
     let mut total_updates = 0usize;
     for finalization in finalizations {
         if !seen_pages.insert(finalization.page_index) {
@@ -1239,9 +1301,12 @@ fn apply_layout_finalizations(
                 "layout node finalization count exceeds limit",
             ));
         }
-        let page = pages.get_mut(finalization.page_index).ok_or_else(|| {
-            layout_event_error("layout page finalization references an unknown page")
-        })?;
+        let page = page_positions
+            .get(&finalization.page_index)
+            .and_then(|&position| pages.get_mut(position))
+            .ok_or_else(|| {
+                layout_event_error("layout page finalization references an unknown page")
+            })?;
         let node_indices = page
             .semantic_nodes
             .iter()
@@ -1322,17 +1387,50 @@ impl PdfDocument {
         &self,
         options: LayoutExtractionOptions,
     ) -> PdfResult<LayoutEventProducer> {
-        self.build_layout_event_producer(options)
+        self.build_layout_event_producer(options, &crate::PageSelection::all())
     }
 
+    /// Collect Layout IR for selected pages, retaining source page numbers.
+    /// Document indexes remain global; furniture evidence uses selected pages only.
+    ///
+    /// # Errors
+    ///
+    /// Returns selection, parser, protocol or limit errors.
+    pub fn extract_layout_pages(
+        &self,
+        options: LayoutExtractionOptions,
+        selection: &crate::PageSelection,
+    ) -> PdfResult<DocumentLayout> {
+        let events = self.extract_layout_events_pages(options, selection)?;
+        let indices = events.source_page_indices.clone();
+        collect_selected_layout_events(events, &self.limits, &indices)
+    }
+
+    /// Produce lazy Layout events only for selected pages.
+    ///
+    /// # Errors
+    ///
+    /// Returns document-level preparation errors now and page-local errors on iteration.
+    pub fn extract_layout_events_pages(
+        &self,
+        options: LayoutExtractionOptions,
+        selection: &crate::PageSelection,
+    ) -> PdfResult<LayoutEventProducer> {
+        self.build_layout_event_producer(options, selection)
+    }
+
+    #[allow(clippy::too_many_lines)] // One auditable initialization of document indexes and selected page state.
     fn build_layout_event_producer(
         &self,
         options: LayoutExtractionOptions,
+        selection: &crate::PageSelection,
     ) -> PdfResult<LayoutEventProducer> {
         #[cfg_attr(target_arch = "wasm32", allow(clippy::let_unit_value))]
         let timer = start_layout_timer(options.include_timings)?;
         let pages = self.pages()?;
-        let page_count = pages.len();
+        let source_page_count = pages.len();
+        let source_page_indices = selection.indices(source_page_count)?;
+        let page_count = source_page_indices.len();
         let (tagged, tagged_warnings) = extract_tagged_structure_index(self, &pages)?;
         validate_tagged_structure_index(&tagged)?;
         let crate::tagged_structure::TaggedStructureIndex {
@@ -1348,7 +1446,7 @@ impl PdfDocument {
         } = result;
         let (navigation, navigation_available, mut navigation_prelude_warnings) =
             extract_navigation_index(self, &pages)?;
-        if navigation.page_links.len() != page_count {
+        if navigation.page_links.len() != source_page_count {
             return Err(PdfError::new(
                 ErrorCode::InvalidObject,
                 None,
@@ -1373,12 +1471,17 @@ impl PdfDocument {
             parser: parser_info(),
             coordinate_space: CoordinateSpace::LayoutSpace,
             options,
-            options_digest: options_digest(options),
+            options_digest: selected_options_digest(
+                options,
+                &source_page_indices,
+                source_page_count,
+            ),
             capabilities: initial_capabilities,
             page_count,
         };
+        let selected_pages = selection.select(pages)?;
         let text_pages = self.extract_text_page_producer(
-            &pages,
+            &selected_pages,
             TextExtractionOptions {
                 normalize_unicode: options.normalize_unicode,
                 layout: false,
@@ -1395,7 +1498,17 @@ impl PdfDocument {
             associations,
             tables,
             unindexed_table_indices,
-            page_links: page_links.into_iter(),
+            page_links: page_links
+                .into_iter()
+                .enumerate()
+                .filter_map(|(index, links)| {
+                    source_page_indices
+                        .binary_search(&index)
+                        .is_ok()
+                        .then_some(links)
+                })
+                .collect::<Vec<_>>()
+                .into_iter(),
             named_destinations,
             outlines,
             navigation_available,
@@ -1420,6 +1533,7 @@ impl PdfDocument {
             document_text: String::new(),
             page_count,
             emitted_pages: 0,
+            source_page_indices,
             timer: Some(timer),
             done: false,
         })
@@ -1704,7 +1818,17 @@ fn project_glyph(
     } else {
         actual_end
     };
-    let quad = if glyph.writing_mode == WritingMode::Horizontal {
+    let quad = if let Some(corners) = geometry.vertical_quad {
+        let project = |point: [f64; 2]| {
+            checked_layout_point(&page.geometry, Point::try_new(point[0], point[1])?)
+        };
+        Quad {
+            top_left: project(corners[0])?,
+            top_right: project(corners[1])?,
+            bottom_right: project(corners[2])?,
+            bottom_left: project(corners[3])?,
+        }
+    } else if glyph.writing_mode == WritingMode::Horizontal {
         transformed_text_quad(&page.geometry, origin, quad_end, geometry)?.unwrap_or(text_quad(
             origin,
             quad_end,
@@ -2140,6 +2264,24 @@ fn options_digest(options: LayoutExtractionOptions) -> String {
         write!(output, "{byte:02x}").expect("writing to String cannot fail");
     }
     output
+}
+
+fn selected_options_digest(
+    options: LayoutExtractionOptions,
+    indices: &[usize],
+    source_count: usize,
+) -> String {
+    let base = options_digest(options);
+    if indices.len() == source_count {
+        return base;
+    }
+    let mut hash = Sha256::new();
+    hash.update(base.as_bytes());
+    hash.update(b"|selected-source-pages-v1|");
+    for &index in indices {
+        hash.update((index as u64).to_be_bytes());
+    }
+    format!("{:x}", hash.finalize())
 }
 
 impl From<TextWarning> for LayoutWarning {

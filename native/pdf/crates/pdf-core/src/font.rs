@@ -5,7 +5,7 @@ use encoding_rs::{MACINTOSH, WINDOWS_1252};
 use crate::{
     ErrorCode, PdfDictionary, PdfDocument, PdfError, PdfName, PdfObject, PdfResult,
     cmap::ToUnicodeCMap,
-    font_metrics::{FontMetrics, FontVerticalMetrics},
+    font_metrics::{CidVerticalMetrics, FontMetrics, FontVerticalMetrics},
     text_model::WritingMode,
 };
 
@@ -185,6 +185,10 @@ impl FontDecoder {
 
     pub(crate) const fn vertical_metrics(&self) -> FontVerticalMetrics {
         self.metrics.vertical_metrics()
+    }
+
+    pub(crate) fn cid_vertical_metrics(&self, code: u32) -> CidVerticalMetrics {
+        self.metrics.cid_vertical_metrics(code)
     }
 
     pub(crate) fn word_spacing_applies(&self, code: u32) -> bool {

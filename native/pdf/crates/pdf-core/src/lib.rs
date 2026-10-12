@@ -8,6 +8,7 @@ mod document;
 mod error;
 mod figure_flow;
 mod filter;
+mod filter_codecs;
 mod font;
 mod font_metrics;
 mod geometry;
@@ -26,6 +27,7 @@ mod ocr;
 mod page;
 mod parser;
 mod reading_order;
+mod selection;
 mod table_reconstruction;
 mod tagged_structure;
 mod text;
@@ -55,17 +57,18 @@ pub use layout_ir::{
     LayoutTableCell, LayoutTableCellRole, LayoutTableEvidence, LayoutTextSpan, LayoutTimings,
     LayoutVector, LayoutVisualBlock, LayoutVisualBlockOrder, LayoutVisualCue, LayoutVisualFocus,
     LayoutVisualReading, LayoutVisualTransition, LayoutVisualTransitionKind, LayoutWarning,
-    PageLayout, collect_layout_events, layout_coordinate_space,
+    PageLayout, collect_layout_events, collect_selected_layout_events, layout_coordinate_space,
 };
 pub use lexer::{Lexer, SpannedToken, Token};
 pub use limits::ParseLimits;
 pub use object::{ObjectId, PdfDictionary, PdfName, PdfObject, PdfStream, PdfString};
 pub use ocr::{
-    DirectOcrAnalysis, DirectOcrCandidate, DirectOcrOptions, DirectOcrPage, DirectOcrReason,
-    OcrImageQuad, OcrLayoutBlock, OcrPixelBlock,
+    DirectOcrAnalysis, DirectOcrCandidate, DirectOcrOptions, DirectOcrPage, DirectOcrPageProducer,
+    DirectOcrReason, OcrImageQuad, OcrLayoutBlock, OcrPixelBlock,
 };
 pub use page::PdfPage;
 pub use parser::{IndirectObject, parse_object, parse_object_with_limits};
+pub use selection::PageSelection;
 pub use text::{
     ExtractedText, ExtractedTextV2, ExtractionMode, PageText, TextExtractionOptions,
     TextExtractionOptionsV2, TextQuality, TextSpan, TextWarning,
@@ -89,6 +92,47 @@ pub const fn version_info() -> VersionInfo {
     VersionInfo {
         version: env!("CARGO_PKG_VERSION"),
         stage: "stage-11",
+    }
+}
+
+/// Development capabilities, separate from the stable compatibility version DTO.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
+pub struct BuildInfo {
+    pub release_version: &'static str,
+    pub compatibility_stage: &'static str,
+    pub development_line: &'static str,
+    pub core_features: &'static [&'static str],
+    pub native_ocr_onnx: bool,
+    pub default_msrv: &'static str,
+    pub native_ocr_msrv: &'static str,
+}
+
+/// Describe this core build without changing `version_info()` compatibility.
+#[must_use]
+pub const fn build_info() -> BuildInfo {
+    BuildInfo {
+        release_version: env!("CARGO_PKG_VERSION"),
+        compatibility_stage: "stage-11",
+        development_line: "priority-2026-10-12",
+        core_features: &[
+            "layout_ir",
+            "tagged_structure",
+            "tables",
+            "navigation",
+            "visual_reading",
+            "asciihex",
+            "ascii85",
+            "run_length",
+            "lzw",
+            "vertical_cid_metrics",
+            "page_selection",
+            "layout_events",
+            "direct_ocr_candidates",
+        ],
+        native_ocr_onnx: false,
+        default_msrv: "1.88",
+        native_ocr_msrv: "1.89",
     }
 }
 

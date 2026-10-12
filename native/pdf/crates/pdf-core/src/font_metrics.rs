@@ -17,6 +17,13 @@ pub(crate) struct FontVerticalMetrics {
     pub(crate) descent: f64,
 }
 
+/// CID vertical displacement and vector from horizontal to vertical origin.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CidVerticalMetrics {
+    pub(crate) displacement: f64,
+    pub(crate) position: [f64; 2],
+}
+
 impl Default for FontVerticalMetrics {
     fn default() -> Self {
         Self {
@@ -39,6 +46,8 @@ pub(crate) enum FontMetrics {
         widths: BTreeMap<u32, f64>,
         writing_mode: WritingMode,
         vertical: FontVerticalMetrics,
+        default_vertical: [f64; 2],
+        vertical_widths: BTreeMap<u32, CidVerticalMetrics>,
     },
 }
 
@@ -86,6 +95,26 @@ impl FontMetrics {
     pub(crate) const fn vertical_metrics(&self) -> FontVerticalMetrics {
         match self {
             Self::Simple { vertical, .. } | Self::Cid { vertical, .. } => *vertical,
+        }
+    }
+
+    pub(crate) fn cid_vertical_metrics(&self, code: u32) -> CidVerticalMetrics {
+        match self {
+            Self::Cid {
+                default_vertical,
+                vertical_widths,
+                ..
+            } => vertical_widths
+                .get(&code)
+                .copied()
+                .unwrap_or(CidVerticalMetrics {
+                    displacement: default_vertical[1],
+                    position: [self.width(code) / 2.0, default_vertical[0]],
+                }),
+            Self::Simple { .. } => CidVerticalMetrics {
+                displacement: -1000.0,
+                position: [self.width(code) / 2.0, 880.0],
+            },
         }
     }
 }
@@ -174,6 +203,9 @@ fn parse_cid_metrics(document: &PdfDocument, dictionary: &PdfDictionary) -> PdfR
         .unwrap_or_default();
     let writing_mode = dictionary
         .get(&PdfName(b"Encoding".to_vec()))
+        .map(|object| resolve_object(document, object))
+        .transpose()?
+        .as_ref()
         .and_then(|object| match object {
             PdfObject::Name(name) if name.as_bytes().ends_with(b"-V") => {
                 Some(WritingMode::Vertical)
@@ -181,6 +213,26 @@ fn parse_cid_metrics(document: &PdfDocument, dictionary: &PdfDictionary) -> PdfR
             _ => None,
         })
         .unwrap_or(WritingMode::Horizontal);
+    let default_vertical = match descendant.get(&PdfName(b"DW2".to_vec())) {
+        Some(object) => {
+            let values = resolve_array(document, object, "CIDFont DW2")?;
+            let [position, displacement] = values.as_slice() else {
+                return invalid("CIDFont DW2 must contain exactly two numbers");
+            };
+            [
+                finite_number(position, "CIDFont DW2 position")?,
+                finite_number(displacement, "CIDFont DW2 displacement")?,
+            ]
+        }
+        None => [880.0, -1000.0],
+    };
+    let vertical_widths = descendant
+        .get(&PdfName(b"W2".to_vec()))
+        .map(|object| resolve_array(document, object, "CIDFont W2"))
+        .transpose()?
+        .map(|values| parse_cid_vertical_widths(&values, document.limits.max_array_items))
+        .transpose()?
+        .unwrap_or_default();
     let vertical = descendant
         .get(&PdfName(b"FontDescriptor".to_vec()))
         .map(|object| resolve_dictionary(document, object, "FontDescriptor"))
@@ -194,7 +246,96 @@ fn parse_cid_metrics(document: &PdfDocument, dictionary: &PdfDictionary) -> PdfR
         widths,
         writing_mode,
         vertical,
+        default_vertical,
+        vertical_widths,
     })
+}
+
+fn parse_cid_vertical_widths(
+    values: &[PdfObject],
+    limit: usize,
+) -> PdfResult<BTreeMap<u32, CidVerticalMetrics>> {
+    let mut metrics = BTreeMap::new();
+    let mut index = 0;
+    while index < values.len() {
+        let start = integer_u32(&values[index])?;
+        let next = values.get(index + 1).ok_or_else(|| {
+            PdfError::new(
+                ErrorCode::InvalidObject,
+                None,
+                "CIDFont W2 entry is truncated",
+            )
+        })?;
+        index += 2;
+        let (end, entries) = match next {
+            PdfObject::Array(entries) => {
+                if entries.len() % 3 != 0 {
+                    return invalid("CIDFont W2 metrics must be complete triples");
+                }
+                (None, entries.as_slice())
+            }
+            PdfObject::Integer(_) => {
+                let end = integer_u32(next)?;
+                if end < start {
+                    return invalid("CIDFont W2 range end precedes start");
+                }
+                let entries = values.get(index..index + 3).ok_or_else(|| {
+                    PdfError::new(
+                        ErrorCode::InvalidObject,
+                        None,
+                        "CIDFont W2 range is truncated",
+                    )
+                })?;
+                index += 3;
+                (Some(end), entries)
+            }
+            _ => return invalid("CIDFont W2 entry must be an array or range end"),
+        };
+        let count = end
+            .map_or(Some(entries.len() / 3), |end| {
+                usize::try_from(end - start)
+                    .ok()
+                    .and_then(|n| n.checked_add(1))
+            })
+            .ok_or_else(|| {
+                PdfError::new(
+                    ErrorCode::LimitExceeded,
+                    None,
+                    "CIDFont W2 range size overflow",
+                )
+            })?;
+        if count > limit.saturating_sub(metrics.len()) {
+            return Err(PdfError::new(
+                ErrorCode::LimitExceeded,
+                None,
+                "CIDFont vertical metric limit exceeded",
+            ));
+        }
+        for offset in 0..count {
+            let triple = if end.is_some() {
+                entries
+            } else {
+                &entries[offset * 3..offset * 3 + 3]
+            };
+            let code = u32::try_from(offset)
+                .ok()
+                .and_then(|offset| start.checked_add(offset))
+                .ok_or_else(|| {
+                    PdfError::new(ErrorCode::LimitExceeded, None, "CIDFont W2 code overflow")
+                })?;
+            metrics.insert(
+                code,
+                CidVerticalMetrics {
+                    displacement: finite_number(&triple[0], "CIDFont W2 displacement")?,
+                    position: [
+                        finite_number(&triple[1], "CIDFont W2 x origin")?,
+                        finite_number(&triple[2], "CIDFont W2 y origin")?,
+                    ],
+                },
+            );
+        }
+    }
+    Ok(metrics)
 }
 
 fn parse_vertical_metrics(dictionary: &PdfDictionary) -> PdfResult<FontVerticalMetrics> {

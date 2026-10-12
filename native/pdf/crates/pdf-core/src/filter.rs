@@ -13,6 +13,7 @@ struct PredictorParameters {
     colors: usize,
     bits_per_component: usize,
     columns: usize,
+    early_change: usize,
 }
 
 impl Default for PredictorParameters {
@@ -22,6 +23,7 @@ impl Default for PredictorParameters {
             colors: 1,
             bits_per_component: 8,
             columns: 1,
+            early_change: 1,
         }
     }
 }
@@ -102,6 +104,27 @@ fn decode_stream_impl(
                 budget.begin_decode()?;
                 decode_flate(&current, stage_limit, budget)?
             }
+            b"ASCIIHexDecode" | b"AHx" => {
+                budget.begin_decode()?;
+                crate::filter_codecs::ascii_hex(&current, stage_limit, budget)?
+            }
+            b"ASCII85Decode" | b"A85" => {
+                budget.begin_decode()?;
+                crate::filter_codecs::ascii85(&current, stage_limit, budget)?
+            }
+            b"RunLengthDecode" | b"RL" => {
+                budget.begin_decode()?;
+                crate::filter_codecs::run_length(&current, stage_limit, budget)?
+            }
+            b"LZWDecode" | b"LZW" => {
+                budget.begin_decode()?;
+                crate::filter_codecs::lzw(
+                    &current,
+                    parameters[index].early_change,
+                    stage_limit,
+                    budget,
+                )?
+            }
             _ => {
                 return Err(PdfError::new(
                     ErrorCode::UnsupportedFeature,
@@ -113,7 +136,14 @@ fn decode_stream_impl(
                 ));
             }
         };
-        current = apply_predictor(decoded, parameters[index], limits, budget)?;
+        current = if matches!(
+            filter.as_bytes(),
+            b"FlateDecode" | b"Fl" | b"LZWDecode" | b"LZW"
+        ) {
+            apply_predictor(decoded, parameters[index], limits, budget)?
+        } else {
+            decoded
+        };
     }
     if current.len() > limits.max_decoded_stream_bytes
         || structural_limit.is_some_and(|maximum| current.len() > maximum)
@@ -204,6 +234,7 @@ fn parse_predictor_parameters(dictionary: &PdfDictionary) -> PdfResult<Predictor
         colors: parameter(dictionary, b"Colors", 1)?,
         bits_per_component: parameter(dictionary, b"BitsPerComponent", 8)?,
         columns: parameter(dictionary, b"Columns", 1)?,
+        early_change: parameter(dictionary, b"EarlyChange", 1)?,
     };
     if parameters.colors == 0 || parameters.columns == 0 {
         return Err(PdfError::new(
