@@ -1,0 +1,18 @@
+{
+  "selected-pages.pdf": {
+    "sha256": "9a2dbe04ab778e880796f2ea4b1ed39c6dfddb2f1d6600979a96b1b43ff13c23",
+    "bytes": 1181
+  },
+  "vertical-w2.pdf": {
+    "sha256": "b2e26a94c465bd534d320b74a82ff8ff6133ddea87baf7a3373e865e08b892cb",
+    "bytes": 936
+  },
+  "ocr-pages.pdf": {
+    "sha256": "3e7a887e08c70c71d85d8fe8945dee20f57387df0b530aa9e97060e41f3ca8dc",
+    "bytes": 805
+  },
+  "filters.pdf": {
+    "sha256": "6c6cbccf630313e16cb880a177c36d8238d36de5986c31f4d3d9990e1f1ac5c4",
+    "bytes": 664
+  }
+}

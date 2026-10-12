@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "model_license": "Apache-2.0 (upstream model card)",
+  "model_source": "https://huggingface.co/SWHL/RapidOCR/tree/5e7ff7a3692252dd21f42d8c7fd07b9905a1b114/PP-OCRv4",
+  "runtime_version": "1.27.1",
+  "onnx_tool_version": "1.18.0",
+  "assets": [
+    {"name": "ch_PP-OCRv4_det_infer.onnx", "url": "https://huggingface.co/SWHL/RapidOCR/resolve/5e7ff7a3692252dd21f42d8c7fd07b9905a1b114/PP-OCRv4/ch_PP-OCRv4_det_infer.onnx", "sha256": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9", "bytes": 4745517},
+    {"name": "ch_PP-OCRv4_rec_infer.onnx", "url": "https://huggingface.co/SWHL/RapidOCR/resolve/5e7ff7a3692252dd21f42d8c7fd07b9905a1b114/PP-OCRv4/ch_PP-OCRv4_rec_infer.onnx", "sha256": "48fc40f24f6d2a207a2b1091d3437eb3cc3eb6b676dc3ef9c37384005483683b", "bytes": 10857958},
+    {"name": "ppocr_keys_v1.txt", "url": "https://raw.githubusercontent.com/PaddlePaddle/PaddleOCR/release/2.7/ppocr/utils/ppocr_keys_v1.txt", "sha256": "28b2362ad4ab2dc38769aa72feb535e3a9ddb3fd2a7585a05920e6393b1dc7f7", "bytes": 26249}
+  ],
+  "runtime_assets": {
+    "windows": {"name": "onnxruntime-win-x64-1.27.1.zip", "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.27.1/onnxruntime-win-x64-1.27.1.zip", "sha256": "2e00414a63fdef0914cd5a5ede6c707844878e0c08e1b6693842f0451b2df2a1", "bytes": 77242362},
+    "linux": {"name": "onnxruntime-linux-x64-1.27.1.tgz", "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.27.1/onnxruntime-linux-x64-1.27.1.tgz", "sha256": "25b1ef1fea1acd210d63f8f24dc870ad6e077795ce1f54876252c6d3803c15af", "bytes": 8828892}
+  },
+  "prepared": {
+    "recognition": {"name": "recognition-h48.onnx", "transform": "Set graph.input[0] NCHW height dimension to 48; deterministic protobuf serialization", "sha256": "13fe547e525d201ad755ec024a6f66fc270219563a59bda922586fff034765ed"},
+    "dictionary": {"name": "dictionary.txt", "transform": "Strip terminal CR/LF, append LF + space token + LF", "sha256": "c084fa990ecf0ce7fcb6bd5a3b689382645ec454e6f6af712b3d6be0addfdaf5"}
+  },
+  "fixture": {
+    "pdf": "scan.pdf", "pdf_sha256": "6b3629d9ff77eb8b96e20c1bcaae0190fcc02507a99fe6510ae5b2cfddc56dbb",
+    "png": "scan.png", "png_sha256": "628d0782cfdaca0ad8c62ade6d3d2ccfbd56378ad09041715f6ea2eb1a423432",
+    "text": "PDF OCR 12345", "min_confidence": 0.9,
+    "origin": "Original generated grayscale text image; no private document or embedded font program",
+    "human_gold": false
+  }
+}

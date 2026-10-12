@@ -1,4 +1,8 @@
 use wasm_bindgen::prelude::*;
+mod document;
+pub use document::{
+    LayoutEventIterator, OcrCandidateIterator, WasmDocument, extract_layout_events,
+};
 
 /// Return parser package and stage information as a JavaScript value.
 ///
@@ -8,6 +12,15 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen(js_name = versionInfo)]
 pub fn version_info() -> Result<JsValue, JsValue> {
     serde_wasm_bindgen::to_value(&pdf_core::version_info()).map_err(serialization_error)
+}
+
+/// Report core development capabilities separately from compatibility versioning.
+///
+/// # Errors
+/// Returns a serialization error.
+#[wasm_bindgen(js_name = buildInfo)]
+pub fn build_info() -> Result<JsValue, JsValue> {
+    serde_wasm_bindgen::to_value(&pdf_core::build_info()).map_err(serialization_error)
 }
 
 /// Inspect PDF header and cross-reference metadata.
@@ -65,11 +78,13 @@ pub fn extract_structured(
 }
 
 #[derive(Debug, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
+#[serde(default, deny_unknown_fields, rename_all = "camelCase")]
 struct ExtractionOptions {
     normalize_unicode: bool,
     mode: String,
     quality: bool,
+    pages: Option<String>,
+    limits: Option<pdf_core::ParseLimits>,
 }
 
 impl Default for ExtractionOptions {
@@ -78,6 +93,8 @@ impl Default for ExtractionOptions {
             normalize_unicode: false,
             mode: "auto".to_owned(),
             quality: true,
+            pages: None,
+            limits: None,
         }
     }
 }
@@ -89,31 +106,39 @@ impl Default for ExtractionOptions {
 /// Returns a structured JavaScript error for invalid options, malformed input, or serialization.
 #[wasm_bindgen(js_name = extractWithOptions)]
 pub fn extract_with_options(data: &[u8], options: JsValue) -> Result<JsValue, JsValue> {
-    let options = if options.is_null() || options.is_undefined() {
+    let mut options = if options.is_null() || options.is_undefined() {
         ExtractionOptions::default()
     } else {
         serde_wasm_bindgen::from_value(options).map_err(option_deserialization_error)?
     };
     let mode = parse_extraction_mode(&options.mode).map_err(pdf_error)?;
-    let document = pdf_core::PdfDocument::parse(data).map_err(pdf_error)?;
+    let document =
+        pdf_core::PdfDocument::parse_with_limits(data, options.limits.take().unwrap_or_default())
+            .map_err(pdf_error)?;
+    let selection = document::selection(options.pages.as_deref())?;
     let result = document
-        .extract_text_v2(pdf_core::TextExtractionOptionsV2 {
-            normalize_unicode: options.normalize_unicode,
-            mode,
-            include_quality_metadata: options.quality,
-        })
+        .extract_text_v2_pages(
+            pdf_core::TextExtractionOptionsV2 {
+                normalize_unicode: options.normalize_unicode,
+                mode,
+                include_quality_metadata: options.quality,
+            },
+            &selection,
+        )
         .map_err(pdf_error)?;
     serde_wasm_bindgen::to_value(&result).map_err(serialization_error)
 }
 
 #[derive(Debug, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
+#[serde(default, deny_unknown_fields, rename_all = "camelCase")]
 #[allow(clippy::struct_excessive_bools)] // Mirrors JavaScript option fields.
 struct LayoutOptions {
     normalize_unicode: bool,
     quality: bool,
     debug_glyphs: bool,
     timings: bool,
+    pages: Option<String>,
+    limits: Option<pdf_core::ParseLimits>,
 }
 
 impl Default for LayoutOptions {
@@ -123,6 +148,8 @@ impl Default for LayoutOptions {
             quality: true,
             debug_glyphs: false,
             timings: false,
+            pages: None,
+            limits: None,
         }
     }
 }
@@ -134,19 +161,25 @@ impl Default for LayoutOptions {
 /// Returns a structured JavaScript error for invalid options, malformed input, or serialization.
 #[wasm_bindgen(js_name = extractLayout)]
 pub fn extract_layout(data: &[u8], options: JsValue) -> Result<JsValue, JsValue> {
-    let options = if options.is_null() || options.is_undefined() {
+    let mut options = if options.is_null() || options.is_undefined() {
         LayoutOptions::default()
     } else {
         serde_wasm_bindgen::from_value(options).map_err(option_deserialization_error)?
     };
-    let document = pdf_core::PdfDocument::parse(data).map_err(pdf_error)?;
+    let document =
+        pdf_core::PdfDocument::parse_with_limits(data, options.limits.take().unwrap_or_default())
+            .map_err(pdf_error)?;
+    let selection = document::selection(options.pages.as_deref())?;
     let result = document
-        .extract_layout(pdf_core::LayoutExtractionOptions {
-            normalize_unicode: options.normalize_unicode,
-            include_quality_metadata: options.quality,
-            include_debug_glyphs: options.debug_glyphs,
-            include_timings: options.timings,
-        })
+        .extract_layout_pages(
+            pdf_core::LayoutExtractionOptions {
+                normalize_unicode: options.normalize_unicode,
+                include_quality_metadata: options.quality,
+                include_debug_glyphs: options.debug_glyphs,
+                include_timings: options.timings,
+            },
+            &selection,
+        )
         .map_err(pdf_error)?;
     serde_wasm_bindgen::to_value(&result).map_err(serialization_error)
 }

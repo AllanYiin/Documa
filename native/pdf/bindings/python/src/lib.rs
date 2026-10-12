@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+mod document;
 
 use pyo3::prelude::*;
 
@@ -11,40 +12,61 @@ fn version_info() -> (String, String) {
     (info.version.to_owned(), info.stage.to_owned())
 }
 
+#[pyfunction]
+fn build_info_json() -> PyResult<String> {
+    let mut info = pdf_core::build_info();
+    info.native_ocr_onnx = cfg!(feature = "ocr-onnx");
+    serde_json::to_string(&info).map_err(serialization_error)
+}
+
 /// Extract plain Unicode text from PDF bytes.
 #[pyfunction]
 #[pyo3(signature = (data, normalize_unicode=false, layout=true))]
-fn extract_text(data: &[u8], normalize_unicode: bool, layout: bool) -> PyResult<String> {
-    let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
-    document
-        .extract_text(pdf_core::TextExtractionOptions {
-            normalize_unicode,
-            layout,
-        })
-        .map(|result| result.text)
-        .map_err(to_python_error)
+fn extract_text(
+    py: Python<'_>,
+    data: &[u8],
+    normalize_unicode: bool,
+    layout: bool,
+) -> PyResult<String> {
+    py.detach(|| {
+        let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
+        document
+            .extract_text(pdf_core::TextExtractionOptions {
+                normalize_unicode,
+                layout,
+            })
+            .map(|result| result.text)
+            .map_err(to_python_error)
+    })
 }
 
 /// Extract structured pages, spans, warnings, and text as a JSON string.
 #[pyfunction]
 #[pyo3(signature = (data, normalize_unicode=false, layout=true))]
-fn extract_json(data: &[u8], normalize_unicode: bool, layout: bool) -> PyResult<String> {
-    let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
-    let result = document
-        .extract_text(pdf_core::TextExtractionOptions {
-            normalize_unicode,
-            layout,
-        })
-        .map_err(to_python_error)?;
-    serde_json::to_string(&result).map_err(|error| {
-        PdfParseError::new_err(
-            serde_json::json!({
-                "code": "serialization_error",
-                "offset": null,
-                "message": error.to_string(),
+fn extract_json(
+    py: Python<'_>,
+    data: &[u8],
+    normalize_unicode: bool,
+    layout: bool,
+) -> PyResult<String> {
+    py.detach(|| {
+        let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
+        let result = document
+            .extract_text(pdf_core::TextExtractionOptions {
+                normalize_unicode,
+                layout,
             })
-            .to_string(),
-        )
+            .map_err(to_python_error)?;
+        serde_json::to_string(&result).map_err(|error| {
+            PdfParseError::new_err(
+                serde_json::json!({
+                    "code": "serialization_error",
+                    "offset": null,
+                    "message": error.to_string(),
+                })
+                .to_string(),
+            )
+        })
     })
 }
 
@@ -52,21 +74,24 @@ fn extract_json(data: &[u8], normalize_unicode: bool, layout: bool) -> PyResult<
 #[pyfunction]
 #[pyo3(signature = (data, mode="auto", normalize_unicode=false, quality=true))]
 fn extract_v2_json(
+    py: Python<'_>,
     data: &[u8],
     mode: &str,
     normalize_unicode: bool,
     quality: bool,
 ) -> PyResult<String> {
-    let mode = parse_extraction_mode(mode).map_err(to_python_error)?;
-    let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
-    let result = document
-        .extract_text_v2(pdf_core::TextExtractionOptionsV2 {
-            normalize_unicode,
-            mode,
-            include_quality_metadata: quality,
-        })
-        .map_err(to_python_error)?;
-    serde_json::to_string(&result).map_err(serialization_error)
+    py.detach(|| {
+        let mode = parse_extraction_mode(mode).map_err(to_python_error)?;
+        let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
+        let result = document
+            .extract_text_v2(pdf_core::TextExtractionOptionsV2 {
+                normalize_unicode,
+                mode,
+                include_quality_metadata: quality,
+            })
+            .map_err(to_python_error)?;
+        serde_json::to_string(&result).map_err(serialization_error)
+    })
 }
 
 /// Extract versioned Layout IR as a JSON string.
@@ -74,22 +99,25 @@ fn extract_v2_json(
 #[pyo3(signature = (data, normalize_unicode=false, quality=true, debug_glyphs=false, timings=false))]
 #[allow(clippy::fn_params_excessive_bools)] // Mirrors explicit Python keyword options.
 fn extract_layout_json(
+    py: Python<'_>,
     data: &[u8],
     normalize_unicode: bool,
     quality: bool,
     debug_glyphs: bool,
     timings: bool,
 ) -> PyResult<String> {
-    let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
-    let result = document
-        .extract_layout(pdf_core::LayoutExtractionOptions {
-            normalize_unicode,
-            include_quality_metadata: quality,
-            include_debug_glyphs: debug_glyphs,
-            include_timings: timings,
-        })
-        .map_err(to_python_error)?;
-    serde_json::to_string(&result).map_err(serialization_error)
+    py.detach(|| {
+        let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
+        let result = document
+            .extract_layout(pdf_core::LayoutExtractionOptions {
+                normalize_unicode,
+                include_quality_metadata: quality,
+                include_debug_glyphs: debug_glyphs,
+                include_timings: timings,
+            })
+            .map_err(to_python_error)?;
+        serde_json::to_string(&result).map_err(serialization_error)
+    })
 }
 
 /// Page-at-a-time Layout IR JSON stream backed by the native lazy event producer.
@@ -100,7 +128,7 @@ fn extract_layout_json(
 struct LayoutJsonStream {
     metadata_json: String,
     start: pdf_core::LayoutDocumentStart,
-    events: pdf_core::LayoutEventProducer,
+    events: Option<pdf_core::LayoutEventProducer>,
     finalizations: VecDeque<pdf_core::LayoutPageFinalization>,
     finalized: bool,
 }
@@ -114,26 +142,21 @@ impl LayoutJsonStream {
     }
 
     /// Produce and release the next page as JSON, or `None` after finalization.
-    fn next_page_json(&mut self) -> PyResult<Option<String>> {
-        match self.events.next() {
-            Some(Ok(pdf_core::LayoutEvent::Page(page))) => serde_json::to_string(&page)
-                .map(Some)
-                .map_err(serialization_error),
-            Some(Ok(pdf_core::LayoutEvent::DocumentFinalize(mut finalize))) => {
-                self.metadata_json = finalized_stream_metadata(&self.start, &finalize)?;
-                self.finalizations = std::mem::take(&mut finalize.page_finalizations).into();
-                self.finalized = true;
-                Ok(None)
-            }
-            Some(Ok(pdf_core::LayoutEvent::DocumentStart(_))) => Err(stream_protocol_error(
-                "native Layout stream emitted duplicate document_start",
-            )),
-            Some(Err(error)) => Err(to_python_error(error)),
-            None if self.finalized => Ok(None),
-            None => Err(stream_protocol_error(
-                "native Layout stream ended before document_finalize",
-            )),
+    fn next_page_json(&mut self, py: Python<'_>) -> PyResult<Option<String>> {
+        py.detach(|| self.next_page_json_detached())
+    }
+
+    /// Explicitly release native producer state. Partial metadata stays provisional.
+    fn close(&mut self) -> PyResult<()> {
+        self.events = None;
+        self.finalizations.clear();
+        if !self.finalized {
+            let mut metadata: serde_json::Value =
+                serde_json::from_str(&self.metadata_json).map_err(serialization_error)?;
+            metadata["streaming"]["cancelled"] = serde_json::json!(true);
+            self.metadata_json = serde_json::to_string(&metadata).map_err(serialization_error)?;
         }
+        Ok(())
     }
 
     /// Return and release the next stable-ID page finalization as JSON.
@@ -158,7 +181,41 @@ impl LayoutJsonStream {
     /// Number of native page events not yet produced.
     #[getter]
     fn remaining_pages(&self) -> usize {
-        self.events.remaining_pages()
+        self.events
+            .as_ref()
+            .map_or(0, pdf_core::LayoutEventProducer::remaining_pages)
+    }
+}
+
+impl LayoutJsonStream {
+    /// Produce one page while the Python interpreter is detached.
+    fn next_page_json_detached(&mut self) -> PyResult<Option<String>> {
+        let Some(events) = self.events.as_mut() else {
+            return Ok(None);
+        };
+        match events.next() {
+            Some(Ok(pdf_core::LayoutEvent::Page(page))) => serde_json::to_string(&page)
+                .map(Some)
+                .map_err(serialization_error),
+            Some(Ok(pdf_core::LayoutEvent::DocumentFinalize(mut finalize))) => {
+                self.metadata_json = finalized_stream_metadata(&self.start, &finalize)?;
+                self.finalizations = std::mem::take(&mut finalize.page_finalizations).into();
+                self.finalized = true;
+                self.events = None;
+                Ok(None)
+            }
+            Some(Ok(pdf_core::LayoutEvent::DocumentStart(_))) => Err(stream_protocol_error(
+                "native Layout stream emitted duplicate document_start",
+            )),
+            Some(Err(error)) => {
+                self.events = None;
+                Err(to_python_error(error))
+            }
+            None if self.finalized => Ok(None),
+            None => Err(stream_protocol_error(
+                "native Layout stream ended before document_finalize",
+            )),
+        }
     }
 }
 
@@ -167,42 +224,45 @@ impl LayoutJsonStream {
 #[pyo3(signature = (data, normalize_unicode=false, quality=true, debug_glyphs=false, timings=false))]
 #[allow(clippy::fn_params_excessive_bools)] // Mirrors explicit Python keyword options.
 fn extract_layout_stream(
+    py: Python<'_>,
     data: &[u8],
     normalize_unicode: bool,
     quality: bool,
     debug_glyphs: bool,
     timings: bool,
 ) -> PyResult<LayoutJsonStream> {
-    let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
-    let mut events = document
-        .extract_layout_events(pdf_core::LayoutExtractionOptions {
-            normalize_unicode,
-            include_quality_metadata: quality,
-            include_debug_glyphs: debug_glyphs,
-            include_timings: timings,
+    py.detach(|| {
+        let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
+        let mut events = document
+            .extract_layout_events(pdf_core::LayoutExtractionOptions {
+                normalize_unicode,
+                include_quality_metadata: quality,
+                include_debug_glyphs: debug_glyphs,
+                include_timings: timings,
+            })
+            .map_err(to_python_error)?;
+        let start = match events.next() {
+            Some(Ok(pdf_core::LayoutEvent::DocumentStart(start))) => start,
+            Some(Ok(_)) => {
+                return Err(stream_protocol_error(
+                    "native Layout stream did not begin with document_start",
+                ));
+            }
+            Some(Err(error)) => return Err(to_python_error(error)),
+            None => {
+                return Err(stream_protocol_error(
+                    "native Layout stream ended before document_start",
+                ));
+            }
+        };
+        let metadata_json = initial_stream_metadata(&start)?;
+        Ok(LayoutJsonStream {
+            metadata_json,
+            start,
+            events: Some(events),
+            finalizations: VecDeque::new(),
+            finalized: false,
         })
-        .map_err(to_python_error)?;
-    let start = match events.next() {
-        Some(Ok(pdf_core::LayoutEvent::DocumentStart(start))) => start,
-        Some(Ok(_)) => {
-            return Err(stream_protocol_error(
-                "native Layout stream did not begin with document_start",
-            ));
-        }
-        Some(Err(error)) => return Err(to_python_error(error)),
-        None => {
-            return Err(stream_protocol_error(
-                "native Layout stream ended before document_start",
-            ));
-        }
-    };
-    let metadata_json = initial_stream_metadata(&start)?;
-    Ok(LayoutJsonStream {
-        metadata_json,
-        start,
-        events,
-        finalizations: VecDeque::new(),
-        finalized: false,
     })
 }
 
@@ -268,49 +328,59 @@ fn stream_protocol_error(message: &str) -> PyErr {
 }
 /// Inspect the PDF header and cross-reference summary as a JSON string.
 #[pyfunction]
-fn inspect_json(data: &[u8]) -> PyResult<String> {
-    let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
-    let summary = document.summary().map_err(to_python_error)?;
-    serde_json::to_string(&summary).map_err(|error| {
-        PdfParseError::new_err(
-            serde_json::json!({
-                "code": "serialization_error",
-                "offset": null,
-                "message": error.to_string(),
-            })
-            .to_string(),
-        )
+fn inspect_json(py: Python<'_>, data: &[u8]) -> PyResult<String> {
+    py.detach(|| {
+        let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
+        let summary = document.summary().map_err(to_python_error)?;
+        serde_json::to_string(&summary).map_err(|error| {
+            PdfParseError::new_err(
+                serde_json::json!({
+                    "code": "serialization_error",
+                    "offset": null,
+                    "message": error.to_string(),
+                })
+                .to_string(),
+            )
+        })
     })
 }
 
 /// Extract image `XObjects` and encoded/raw bytes as a JSON string.
 #[pyfunction]
-fn extract_images_json(data: &[u8]) -> PyResult<String> {
-    let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
-    let images = document.extract_images().map_err(to_python_error)?;
-    serde_json::to_string(&images).map_err(|error| {
-        PdfParseError::new_err(
-            serde_json::json!({
-                "code": "serialization_error",
-                "offset": null,
-                "message": error.to_string(),
-            })
-            .to_string(),
-        )
+fn extract_images_json(py: Python<'_>, data: &[u8]) -> PyResult<String> {
+    py.detach(|| {
+        let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
+        let images = document.extract_images().map_err(to_python_error)?;
+        serde_json::to_string(&images).map_err(|error| {
+            PdfParseError::new_err(
+                serde_json::json!({
+                    "code": "serialization_error",
+                    "offset": null,
+                    "message": error.to_string(),
+                })
+                .to_string(),
+            )
+        })
     })
 }
 
 #[pyfunction]
 #[pyo3(signature = (data, min_page_coverage=0.9))]
-fn analyze_direct_ocr_json(data: &[u8], min_page_coverage: f64) -> PyResult<String> {
-    let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
-    let analysis = document
-        .analyze_direct_ocr(pdf_core::DirectOcrOptions {
-            min_page_coverage,
-            ..pdf_core::DirectOcrOptions::default()
-        })
-        .map_err(to_python_error)?;
-    serde_json::to_string(&analysis).map_err(serialization_error)
+fn analyze_direct_ocr_json(
+    py: Python<'_>,
+    data: &[u8],
+    min_page_coverage: f64,
+) -> PyResult<String> {
+    py.detach(|| {
+        let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
+        let analysis = document
+            .analyze_direct_ocr(pdf_core::DirectOcrOptions {
+                min_page_coverage,
+                ..pdf_core::DirectOcrOptions::default()
+            })
+            .map_err(to_python_error)?;
+        serde_json::to_string(&analysis).map_err(serialization_error)
+    })
 }
 
 #[cfg(feature = "ocr-onnx")]
@@ -324,6 +394,7 @@ fn analyze_direct_ocr_json(data: &[u8], min_page_coverage: f64) -> PyResult<Stri
     min_confidence=0.0
 ))]
 fn ocr_direct_json(
+    py: Python<'_>,
     data: &[u8],
     detection_model: &[u8],
     recognition_model: &[u8],
@@ -331,23 +402,26 @@ fn ocr_direct_json(
     min_page_coverage: f64,
     min_confidence: f32,
 ) -> PyResult<String> {
-    let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
-    let engine = pdf_ocr::RapidOcrOnnxEngine::new(detection_model, recognition_model, dictionary)
-        .map_err(to_python_ocr_error)?;
-    let result = pdf_ocr::ocr_document(
-        &document,
-        &engine,
-        pdf_ocr::OcrOptions {
-            direct_image: pdf_core::DirectOcrOptions {
-                min_page_coverage,
-                ..pdf_core::DirectOcrOptions::default()
+    py.detach(|| {
+        let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
+        let engine =
+            pdf_ocr::RapidOcrOnnxEngine::new(detection_model, recognition_model, dictionary)
+                .map_err(to_python_ocr_error)?;
+        let result = pdf_ocr::ocr_document(
+            &document,
+            &engine,
+            pdf_ocr::OcrOptions {
+                direct_image: pdf_core::DirectOcrOptions {
+                    min_page_coverage,
+                    ..pdf_core::DirectOcrOptions::default()
+                },
+                min_confidence,
+                ..pdf_ocr::OcrOptions::default()
             },
-            min_confidence,
-            ..pdf_ocr::OcrOptions::default()
-        },
-    )
-    .map_err(to_python_ocr_error)?;
-    serde_json::to_string(&result).map_err(serialization_error)
+        )
+        .map_err(to_python_ocr_error)?;
+        serde_json::to_string(&result).map_err(serialization_error)
+    })
 }
 
 #[cfg(feature = "ocr-onnx")]
@@ -406,11 +480,16 @@ fn to_python_error(error: pdf_core::PdfError) -> PyErr {
 fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add("PdfParseError", module.py().get_type::<PdfParseError>())?;
     module.add_function(wrap_pyfunction!(version_info, module)?)?;
+    module.add_function(wrap_pyfunction!(build_info_json, module)?)?;
     module.add_function(wrap_pyfunction!(extract_text, module)?)?;
     module.add_function(wrap_pyfunction!(extract_json, module)?)?;
     module.add_function(wrap_pyfunction!(extract_v2_json, module)?)?;
     module.add_function(wrap_pyfunction!(extract_layout_json, module)?)?;
     module.add_class::<LayoutJsonStream>()?;
+    module.add_class::<document::NativeDocument>()?;
+    module.add_class::<document::OcrCandidateStream>()?;
+    #[cfg(feature = "ocr-onnx")]
+    module.add_class::<document::OcrJsonStream>()?;
     module.add_function(wrap_pyfunction!(extract_layout_stream, module)?)?;
     module.add_function(wrap_pyfunction!(inspect_json, module)?)?;
     module.add_function(wrap_pyfunction!(extract_images_json, module)?)?;

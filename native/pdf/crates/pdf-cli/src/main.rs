@@ -1,4 +1,8 @@
-use std::{path::PathBuf, process::ExitCode};
+use std::{
+    io::{Read, Write},
+    path::PathBuf,
+    process::ExitCode,
+};
 
 use clap::{Parser, Subcommand, ValueEnum};
 use pdf_core::{
@@ -11,12 +15,20 @@ use serde_json::{Value, json};
 #[derive(Debug, Parser)]
 #[command(name = "rust-pdf", version, about = "From-scratch Rust PDF parser")]
 struct Cli {
+    /// JSON file containing partial `ParseLimits` overrides (`snake_case` keys).
+    #[arg(long, global = true)]
+    limits: Option<PathBuf>,
     #[command(subcommand)]
     command: Option<Command>,
 }
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Report development capabilities separately from the compatibility version.
+    BuildInfo {
+        #[arg(long)]
+        json: bool,
+    },
     /// Print workspace version and implementation stage.
     Version {
         /// Emit JSON instead of plain text.
@@ -55,6 +67,12 @@ enum Command {
         /// Include non-deterministic layout timing data.
         #[arg(long)]
         timings: bool,
+        /// One-based page selection, for example 1,3-5.
+        #[arg(long)]
+        pages: Option<String>,
+        /// Write one native Layout event per line; only `document_finalize` completes the stream.
+        #[arg(long, conflicts_with = "json")]
+        ndjson: bool,
     },
     /// Resolve and print one indirect object.
     Object {
@@ -85,6 +103,9 @@ enum Command {
         /// Preserve content-stream order instead of approximate visual line order.
         #[arg(long)]
         no_layout: bool,
+        /// One-based page selection, for example 1,3-5.
+        #[arg(long)]
+        pages: Option<String>,
     },
     /// Parse every in-use xref object and validate the catalog.
     Validate {
@@ -104,6 +125,11 @@ enum Command {
         /// Minimum fraction of page area covered by the single painted image.
         #[arg(long, default_value_t = 0.9)]
         min_page_coverage: f64,
+        #[arg(long)]
+        pages: Option<String>,
+        /// Stream one candidate/rejection per line without retaining prior image bytes.
+        #[arg(long)]
+        ndjson: bool,
     },
     /// Run RapidOCR-compatible detection and recognition ONNX models.
     #[cfg(feature = "ocr-onnx")]
@@ -128,6 +154,13 @@ enum Command {
         /// Emit structured pages, quads, confidence, and text.
         #[arg(long)]
         json: bool,
+        #[arg(long)]
+        pages: Option<String>,
+        #[arg(long, conflicts_with = "json")]
+        ndjson: bool,
+        /// JSON file containing partial `OcrDocumentLimits` overrides.
+        #[arg(long)]
+        ocr_limits: Option<PathBuf>,
     },
 }
 
@@ -170,22 +203,45 @@ fn main() -> ExitCode {
 
 #[allow(clippy::too_many_lines)] // CLI dispatch remains a flat, auditable command table.
 fn run(cli: Cli) -> PdfResult<()> {
+    let limits: ParseLimits = load_json_options(cli.limits.as_ref())?;
     match cli.command.unwrap_or(Command::Version { json: false }) {
+        Command::BuildInfo { json: use_json } => {
+            let mut info = pdf_core::build_info();
+            info.native_ocr_onnx = cfg!(feature = "ocr-onnx");
+            if use_json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&info)
+                        .map_err(|error| serialization_error(&error))?
+                );
+            } else {
+                println!(
+                    "{}: {} (compatibility {}), native OCR: {}",
+                    info.release_version,
+                    info.development_line,
+                    info.compatibility_stage,
+                    info.native_ocr_onnx
+                );
+            }
+            Ok(())
+        }
         Command::Version { json: use_json } => {
             print_version(use_json);
             Ok(())
         }
-        Command::Inspect { file, json } => print_inspection(&file, json),
+        Command::Inspect { file, json } => print_inspection(&file, json, &limits),
         Command::Geometry {
             file,
             json: use_json,
-        } => print_geometry(&file, use_json),
+        } => print_geometry(&file, use_json, &limits),
         Command::Layout {
             file,
             json: use_json,
             normalize_unicode,
             debug_glyphs,
             timings,
+            pages,
+            ndjson,
         } => print_layout(
             &file,
             use_json,
@@ -195,6 +251,9 @@ fn run(cli: Cli) -> PdfResult<()> {
                 include_debug_glyphs: debug_glyphs,
                 include_timings: timings,
             },
+            &page_selection(pages.as_deref())?,
+            ndjson,
+            &limits,
         ),
         Command::Object {
             file,
@@ -202,7 +261,7 @@ fn run(cli: Cli) -> PdfResult<()> {
             generation,
             json: use_json,
         } => {
-            let document = open_document(&file)?;
+            let document = open_document(&file, &limits)?;
             let object = document.object(ObjectId::new(number, generation))?;
             if use_json {
                 println!(
@@ -221,14 +280,19 @@ fn run(cli: Cli) -> PdfResult<()> {
             normalize_unicode,
             mode,
             no_layout,
+            pages,
         } => {
-            let document = open_document(&file)?;
+            let document = open_document(&file, &limits)?;
+            let selection = page_selection(pages.as_deref())?;
             if let Some(mode) = mode {
-                let extracted = document.extract_text_v2(TextExtractionOptionsV2 {
-                    normalize_unicode,
-                    mode: mode.into(),
-                    include_quality_metadata: true,
-                })?;
+                let extracted = document.extract_text_v2_pages(
+                    TextExtractionOptionsV2 {
+                        normalize_unicode,
+                        mode: mode.into(),
+                        include_quality_metadata: true,
+                    },
+                    &selection,
+                )?;
                 if use_json {
                     println!(
                         "{}",
@@ -240,10 +304,13 @@ fn run(cli: Cli) -> PdfResult<()> {
                     print_text_warnings(extracted.warnings);
                 }
             } else {
-                let extracted = document.extract_text(TextExtractionOptions {
-                    normalize_unicode,
-                    layout: !no_layout,
-                })?;
+                let extracted = document.extract_text_pages(
+                    TextExtractionOptions {
+                        normalize_unicode,
+                        layout: !no_layout,
+                    },
+                    &selection,
+                )?;
                 if use_json {
                     println!(
                         "{}",
@@ -261,16 +328,23 @@ fn run(cli: Cli) -> PdfResult<()> {
             file,
             json: use_json,
             diagnostics,
-        } => validate_document(&file, use_json, diagnostics),
+        } => validate_document(&file, use_json, diagnostics, &limits),
         Command::OcrCandidates {
             file,
             min_page_coverage,
+            pages,
+            ndjson,
         } => {
-            let document = open_document(&file)?;
-            let analysis = document.analyze_direct_ocr(pdf_core::DirectOcrOptions {
+            let document = open_document(&file, &limits)?;
+            let selection = page_selection(pages.as_deref())?;
+            let options = pdf_core::DirectOcrOptions {
                 min_page_coverage,
                 ..pdf_core::DirectOcrOptions::default()
-            })?;
+            };
+            if ndjson {
+                return print_ndjson(document.direct_ocr_pages_selected(options, &selection)?);
+            }
+            let analysis = document.analyze_direct_ocr_selected(options, &selection)?;
             println!(
                 "{}",
                 serde_json::to_string_pretty(&analysis)
@@ -287,6 +361,9 @@ fn run(cli: Cli) -> PdfResult<()> {
             min_page_coverage,
             min_confidence,
             json,
+            pages,
+            ndjson,
+            ocr_limits,
         } => print_ocr(
             &file,
             &det_model,
@@ -295,12 +372,16 @@ fn run(cli: Cli) -> PdfResult<()> {
             min_page_coverage,
             min_confidence,
             json,
+            &page_selection(pages.as_deref())?,
+            ndjson,
+            load_json_options(ocr_limits.as_ref())?,
+            &limits,
         ),
     }
 }
 
-fn print_inspection(file: &PathBuf, use_json: bool) -> PdfResult<()> {
-    let document = open_document(file)?;
+fn print_inspection(file: &PathBuf, use_json: bool, limits: &ParseLimits) -> PdfResult<()> {
+    let document = open_document(file, limits)?;
     let summary = document.summary()?;
     if use_json {
         println!(
@@ -321,8 +402,8 @@ fn print_inspection(file: &PathBuf, use_json: bool) -> PdfResult<()> {
     }
     Ok(())
 }
-fn print_geometry(file: &PathBuf, use_json: bool) -> PdfResult<()> {
-    let document = open_document(file)?;
+fn print_geometry(file: &PathBuf, use_json: bool, limits: &ParseLimits) -> PdfResult<()> {
+    let document = open_document(file, limits)?;
     let pages = document.pages()?;
     if use_json {
         let page_values = pages
@@ -363,9 +444,19 @@ fn print_geometry(file: &PathBuf, use_json: bool) -> PdfResult<()> {
     Ok(())
 }
 
-fn print_layout(file: &PathBuf, use_json: bool, options: LayoutExtractionOptions) -> PdfResult<()> {
-    let document = open_document(file)?;
-    let layout = document.extract_layout(options)?;
+fn print_layout(
+    file: &PathBuf,
+    use_json: bool,
+    options: LayoutExtractionOptions,
+    selection: &pdf_core::PageSelection,
+    ndjson: bool,
+    limits: &ParseLimits,
+) -> PdfResult<()> {
+    let document = open_document(file, limits)?;
+    if ndjson {
+        return print_ndjson(document.extract_layout_events_pages(options, selection)?);
+    }
+    let layout = document.extract_layout_pages(options, selection)?;
     if use_json {
         println!(
             "{}",
@@ -404,8 +495,13 @@ fn print_text_warnings(warnings: Vec<pdf_core::TextWarning>) {
     }
 }
 
-fn validate_document(file: &PathBuf, use_json: bool, diagnostics: bool) -> PdfResult<()> {
-    let document = open_document(file)?;
+fn validate_document(
+    file: &PathBuf,
+    use_json: bool,
+    diagnostics: bool,
+    limits: &ParseLimits,
+) -> PdfResult<()> {
+    let document = open_document(file, limits)?;
     document.catalog()?;
     let mut validated = 0_usize;
     for (&number, entry) in document.xref_entries() {
@@ -462,6 +558,7 @@ fn print_version(use_json: bool) {
 }
 
 #[cfg(feature = "ocr-onnx")]
+#[allow(clippy::too_many_arguments)] // Flat CLI option forwarding; PDF and OCR rules stay in their libraries.
 fn print_ocr(
     file: &PathBuf,
     det_model: &PathBuf,
@@ -470,26 +567,34 @@ fn print_ocr(
     min_page_coverage: f64,
     min_confidence: f32,
     use_json: bool,
+    selection: &pdf_core::PageSelection,
+    ndjson: bool,
+    ocr_limits: pdf_ocr::OcrDocumentLimits,
+    limits: &ParseLimits,
 ) -> PdfResult<()> {
-    let document = open_document(file)?;
+    let document = open_document(file, limits)?;
     let detection = read_bounded(det_model, 512 * 1024 * 1024)?;
     let recognition = read_bounded(rec_model, 512 * 1024 * 1024)?;
     let keys = read_bounded(dictionary, 16 * 1024 * 1024)?;
     let engine =
         pdf_ocr::RapidOcrOnnxEngine::new(&detection, &recognition, &keys).map_err(map_ocr_error)?;
-    let result = pdf_ocr::ocr_document(
-        &document,
-        &engine,
-        pdf_ocr::OcrOptions {
-            direct_image: pdf_core::DirectOcrOptions {
-                min_page_coverage,
-                ..pdf_core::DirectOcrOptions::default()
-            },
-            min_confidence,
-            ..pdf_ocr::OcrOptions::default()
+    let options = pdf_ocr::OcrOptions {
+        direct_image: pdf_core::DirectOcrOptions {
+            min_page_coverage,
+            ..pdf_core::DirectOcrOptions::default()
         },
-    )
-    .map_err(map_ocr_error)?;
+        min_confidence,
+        ..pdf_ocr::OcrOptions::default()
+    };
+    if ndjson {
+        return print_ndjson(
+            pdf_ocr::ocr_pages_selected(&document, &engine, options, ocr_limits, selection)
+                .map_err(map_ocr_error)?
+                .map(|page| page.map_err(map_ocr_error)),
+        );
+    }
+    let result = pdf_ocr::ocr_document_selected(&document, &engine, options, ocr_limits, selection)
+        .map_err(map_ocr_error)?;
     if use_json {
         println!(
             "{}",
@@ -501,7 +606,6 @@ fn print_ocr(
     Ok(())
 }
 
-#[cfg(feature = "ocr-onnx")]
 fn read_bounded(path: &PathBuf, max_bytes: usize) -> PdfResult<Vec<u8>> {
     let metadata = std::fs::metadata(path).map_err(|error| {
         PdfError::new(
@@ -517,13 +621,27 @@ fn read_bounded(path: &PathBuf, max_bytes: usize) -> PdfResult<Vec<u8>> {
             format!("{} exceeds the configured byte limit", path.display()),
         ));
     }
-    std::fs::read(path).map_err(|error| {
-        PdfError::new(
-            ErrorCode::Io,
+    let file = std::fs::File::open(path).map_err(io_error)?;
+    let bound = u64::try_from(max_bytes)
+        .ok()
+        .and_then(|value| value.checked_add(1))
+        .ok_or_else(|| {
+            PdfError::new(
+                ErrorCode::InvalidOption,
+                None,
+                "file byte limit is too large",
+            )
+        })?;
+    let mut bytes = Vec::new();
+    file.take(bound).read_to_end(&mut bytes).map_err(io_error)?;
+    if bytes.len() > max_bytes {
+        return Err(PdfError::new(
+            ErrorCode::LimitExceeded,
             None,
-            format!("cannot read {}: {error}", path.display()),
-        )
-    })
+            "file grew beyond its configured byte limit",
+        ));
+    }
+    Ok(bytes)
 }
 
 #[cfg(feature = "ocr-onnx")]
@@ -540,8 +658,7 @@ fn map_ocr_error(error: pdf_ocr::OcrError) -> PdfError {
     PdfError::new(code, None, error.message)
 }
 
-fn open_document(path: &PathBuf) -> PdfResult<PdfDocument> {
-    let limits = ParseLimits::default();
+fn open_document(path: &PathBuf, limits: &ParseLimits) -> PdfResult<PdfDocument> {
     let metadata = std::fs::metadata(path).map_err(|error| {
         PdfError::new(
             ErrorCode::Io,
@@ -556,14 +673,50 @@ fn open_document(path: &PathBuf) -> PdfResult<PdfDocument> {
             "input byte limit exceeded before file allocation",
         ));
     }
-    let bytes = std::fs::read(path).map_err(|error| {
-        PdfError::new(
-            ErrorCode::Io,
-            None,
-            format!("cannot read {}: {error}", path.display()),
-        )
-    })?;
-    PdfDocument::parse_with_limits(&bytes, limits)
+    let bytes = read_bounded(path, limits.max_file_bytes)?;
+    PdfDocument::parse_with_limits(&bytes, limits.clone())
+}
+
+fn load_json_options<T: serde::de::DeserializeOwned + Default>(
+    path: Option<&PathBuf>,
+) -> PdfResult<T> {
+    path.map_or_else(
+        || Ok(T::default()),
+        |path| {
+            let bytes = read_bounded(path, 65_536)?;
+            serde_json::from_slice(&bytes).map_err(|error| {
+                PdfError::new(
+                    ErrorCode::InvalidOption,
+                    None,
+                    format!("invalid options file {}: {error}", path.display()),
+                )
+            })
+        },
+    )
+}
+
+fn page_selection(value: Option<&str>) -> PdfResult<pdf_core::PageSelection> {
+    value.map_or_else(|| Ok(pdf_core::PageSelection::all()), str::parse)
+}
+
+fn print_ndjson<T: serde::Serialize>(
+    events: impl IntoIterator<Item = PdfResult<T>>,
+) -> PdfResult<()> {
+    let stdout = std::io::stdout();
+    let mut output = std::io::BufWriter::new(stdout.lock());
+    for event in events {
+        let event = event?;
+        serde_json::to_writer(&mut output, &event).map_err(|error| serialization_error(&error))?;
+        output.write_all(b"\n").map_err(io_error)?;
+        // Deliver each page before decoding the next one; broken pipes cancel production.
+        output.flush().map_err(io_error)?;
+    }
+    Ok(())
+}
+
+#[allow(clippy::needless_pass_by_value)] // map_err transfers ownership.
+fn io_error(error: std::io::Error) -> PdfError {
+    PdfError::new(ErrorCode::Io, None, error.to_string())
 }
 
 fn object_to_json(object: &PdfObject) -> Value {
