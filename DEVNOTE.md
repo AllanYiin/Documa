@@ -12,6 +12,7 @@
 **最後更新**：2026-10-12
 
 ### 需求狀態
+- [x] 2026-10-12：真人試評已完成並獲使用者明確核准，Stage 7.4 與後續開發允許繼續，不再等待第二位評閱者或計時紀錄。實測 3 頁／71 個框／27 個人工區塊；第二位／裁決／計時未執行且未冒充。文字 Tlm 位移修正、未分類框定位與單人草稿驗證修正均完成；Rust 266 PASS／1 ignored，Python 17 PASS／2 ONNX skipped，fmt／Clippy／UI self-tests／Ruff PASS。現行政策見 native/pdf/docs/specs/stage-12/human-acceptance-2026-10-12.md。
 - [x] 2026-10-12：Rust Office 0.2.0 以九個主題同步至 native/office 與 src/rust_office，包含 P0–P2 parser/API/CLI、typed error/options 轉接及三平台 CI。依使用者最後指示只提交程式碼與測試機制；未包含私人 Office 文件、golden／抽取內容、授權收據或本機報告，未推送的舊候選歷史也不納入。以 main 64c1480 為基底保留最新 PDF/Documa 0.9.0 更新。相關測試 116 passed／1 intentional skipped，詳見 docs/RUST_OFFICE_0_2_SYNC_20261012.md。
 - [x] 2026-10-12：獨立 Rust PDF 的 P0–P2 工程增量已整合至 native/pdf，安裝包裝 src/rust_pdf 同步；依時間／主題分組提交，保留既有 0.9.0 與遠端 main 的 CI 修正。整合驗證 Rust 264 PASS／1 existing ignored、Documa 613 PASS、doctor 9/9、fmt／Clippy／Ruff／schema／plugin gates PASS。Windows 並行 replace 暫態失敗後全套重跑通過。提交目標 origin/main；未變更 provider 預設、未更新全域 runtime／發行 tag／registry，真人品質驗收仍延後。細節與提交序列見 docs/PDF_PRIORITY_INTEGRATION_20261012.md。
 - [x] 2026-10-12：PDF Differences 間接參照修正已回到 Documa/native/pdf 與獨立 rust-pdf_parser 源頭，新增原生及 adapter 回歸。另找出 Documa-only 的 CTM/Form、詞間空白、旋轉旁註與窄欄/段落修正，已回補獨立源頭且保留其 OCR 功能。源頭 workspace 236 passed／1 existing ignored，fmt／Clippy PASS；Documa source 相關 81 passed。源頭編譯模組解析使用者 19 頁原 PDF：rust_pdf、0 U+FFFD、無警告、原檔 hash 不變。Rust Office 已查 native+wrapper 一致；LingXi 尚有編譯 __version__ 匯出的整合差異；SkillNow 固定 sdist 尚未納入 Documa 10/08 遠端來源 Python 增量。詳見 docs/NATIVE_UPSTREAM_SYNC_20261012.md。本輪僅改來源，保留現有 dirty Python/README，未 commit/push/發布/更新安裝版。
@@ -529,3 +530,15 @@
 - 保留 synthetic fixtures 及 opt-in local corpus 工具；私人資料、收據、golden 和 reports 由 ignore／sdist prune 排除。
 - Office 與 adapter 116 passed，缺少私人 corpus 的一項參數化測試刻意 skip。
 - 後續 push 結果以遠端 main 的 Git 紀錄為準，這不是 package release 或 CI 全綠的宣告。
+
+
+## [2026-10-12] 單人真人試評入口與繁體中文操作介面
+
+- [ ] 2026-10-12：真人品質已進入單人試評準備完成狀態；使用者暫任 Reviewer A，正式雙人驗收保留待完成。main 64c1480 對應 native 已重解析 7 份／1,113 頁，凍結 29 頁盲評包與 3 頁試評，candidate finalizations 已套用。私人資料留在獨立工作區 target/human-quality-20261012-main64c1480。介面／操作提示改繁中並保留草稿識別；UI syntax、packet/gold/pilot self-tests、Ruff／diff PASS。尚無真人完成結果；正式品質與 Stage 7.4 gate 仍 BLOCKED。
+- UI 改動限 native/pdf/tools/stage12_order_review_ui.html 與 packet builder 的繁中顯示／自檢文案；parser、匯出 schema、packet key 與草稿 storage identity 不變。已先匯出使用者當前草稿備份，未代填 human labels，未 commit/push 本輪介面修改。
+
+
+## [2026-10-12] 真人驗收核准與 PDF 座標修正
+
+- [x] 2026-10-12：真人試評已完成並獲使用者明確核准，Stage 7.4 與後續開發允許繼續，不再等待第二位評閱者或計時紀錄。實測 3 頁／71 個框／27 個人工區塊；第二位／裁決／計時未執行且未冒充。文字 Tlm 位移修正、未分類框定位與單人草稿驗證修正均完成；Rust 266 PASS／1 ignored，Python 17 PASS／2 ONNX skipped，fmt／Clippy／UI self-tests／Ruff PASS。現行政策見 native/pdf/docs/specs/stage-12/human-acceptance-2026-10-12.md。
+- 使用者已要求將剩餘變更依主題／時間提交並推送 main。已同步遠端 Office 0.2 的 9 筆提交，保留其 DEVNOTE／封裝／adapter 更新。私人標註、PDF、頁面圖片與建置產物不進 Git。

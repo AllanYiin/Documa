@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "decision_date": "2026-10-12",
+  "status": "ACCEPTED_FOR_CONTINUED_DEVELOPMENT",
+  "human_testing_complete": true,
+  "completion_basis": "user_accepted_single_reviewer_trial",
+  "authorization": "The project owner explicitly accepted the completed human trial and requested continuation to subsequent development stages.",
+  "reviewer_count": 1,
+  "reviewer_id": "reviewer-a",
+  "pages": 3,
+  "classified_nodes": 71,
+  "human_blocks": 27,
+  "reviewed_parser_revision": "64c1480ee4b40740bb2cb5aac3268945b43b283b",
+  "reviewer_export_sha256": "bbb50a4ee08bbc47e1bfbb1bd3c2f4041b24ef434462be653c3d9e00787a98d9",
+  "candidate_sha256": "1effda44ec0e7055541a4fb3149c9f86b47c2732f88b433c5ae5cf9fcdb883aa",
+  "single_reviewer_pair_concordance": 0.9878542510121457,
+  "diagnostic_precedence_pairs": 19,
+  "two_reviewer_protocol_completed": false,
+  "adjudication_performed": false,
+  "active_time_measured": false,
+  "stage_7_4_allowed": true,
+  "subsequent_development_allowed": true,
+  "default_provider_cutover_authorized": false,
+  "private_source_or_labels_included": false,
+  "remaining_nonblocking_work": [
+    "coordinate-fix revision follow-up verification",
+    "embedded-image text and image/table quality coverage"
+  ]
+}

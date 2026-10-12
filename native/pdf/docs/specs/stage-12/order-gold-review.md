@@ -1,5 +1,9 @@
 # Stage 12 Stage 7.3B Block Gold Review
 
+> 2026-10-12 開發閘門更新：使用者已核准完成的單人真人試評，允許 Stage 7.4 與後續開發。
+> 本文件原有雙人／裁決／計時條件保留為正式研究流程，不再作為本輪開發的前置阻擋。
+> 現行決定與證據見 [真人驗收決定](human-acceptance-2026-10-12.md)。
+
 Status: block gold schema v2, validator, and scorer complete; blind brush workbench pending
 
 ## Review unit

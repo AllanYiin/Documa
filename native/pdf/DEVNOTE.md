@@ -1,8 +1,10 @@
 # DEVNOTE
 
-> Imported standalone history. Historical artifact paths refer to the original standalone working copy. Current Documa integration status is in ../../DEVNOTE.md and ../../docs/PDF_PRIORITY_INTEGRATION_20261012.md.
-
 ## SNAPSHOT
+
+- 2026-10-12：真人試評已完成並獲使用者明確核准，Stage 7.4 與後續開發允許繼續，不再等待第二位評閱者或計時紀錄。實測 3 頁／71 個框／27 個人工區塊；第二位／裁決／計時未執行且未冒充。文字 Tlm 位移修正、未分類框定位與單人草稿驗證修正均完成；Rust 266 PASS／1 ignored，Python 17 PASS／2 ONNX skipped，fmt／Clippy／UI self-tests／Ruff PASS。現行政策見 docs/specs/stage-12/human-acceptance-2026-10-12.md。
+
+- 2026-10-12：使用者啟動真人品質，並選擇只有一位真人先做試評。已用 main 64c1480 對應 native 重解析 7 份／1,113 頁，建立 29 頁新盲評包及 3 頁 Reviewer A 試評；candidate 已 drain finalizations 後單獨凍結。介面依要求改為繁體中文，草稿識別未變，真人標註其後已完成並獲使用者核准（見最新狀態）。入口／收據／草稿備份在 target/human-quality-20261012-main64c1480；雙人／裁決／計時未執行；開發 gate 依最新使用者核准放行。
 
 - 2026-10-12 P0-P2 engineering priorities are complete: bounded extra filters, vertical CID W2/DW2, conservative/lazy OCR with budgets, selection/limits, reusable Python handles with GIL release, CLI NDJSON, WASM streams, expanded CI/fuzz and pinned ONNX integration. Standalone validation: Rust 264 passed / 1 manual ignored; Python 19; Node WASM 14; ONNX 7 cases; 200,565 fuzz runs without crashes. Human reading-order/table/image acceptance remains deferred. See docs/priority-implementation-2026-10-12.md.
 - The user authorized chronological topic commits and submission to Documa main. The complete public source is now integrated into Documa/native/pdf and the installable Python API into Documa/src/rust_pdf; temporary/private assets and local binaries are excluded. The standalone directory remains outside Git. No package-registry release or installed-runtime replacement is part of this submission.
@@ -15,7 +17,7 @@
   Stage 7.3C blind brush workbench, and Stage 7.3D timed-pilot tooling are complete.
   The legacy v1 validator/scorer and v6 click-per-node workbench remain historical
   engineering evidence only. Two independent real human reviews, adjudication, and
-  timed pilot remain BLOCKED, so Stage 7.4 is forbidden.
+  timed pilot remain unperformed; the owner accepted the single-reviewer trial on 2026-10-12, allowing Stage 7.4 and subsequent development.
   Native lazy production and compact mapping pass memory at 1.056367x, and raw
   parser character F1 0.998954 passes the text gate. Default cutover remains
   NO-GO on human reading-order and private table/image gold.
@@ -661,3 +663,13 @@
 - Implemented and validated all non-human-gold P0-P2 work; exact results and limitations are in docs/priority-implementation-2026-10-12.md and local target/priority-evidence. The public fixture/model manifests contain no private documents.
 - Integrated the full core/OCR/CLI/Python/WASM workspace with the Documa package; synchronized src/rust_pdf wrappers, preserved existing Documa-only fixes and merged the remote CI retention changes without rewriting history. Topic commits use actual commit times and describe the historical work dates in messages.
 - Documa-native rerun: formatting, all-target/all-feature Clippy and 264 Rust tests PASS (1 existing manual benchmark ignored). Full Documa source integration verification is recorded in Documa/docs/PDF_PRIORITY_INTEGRATION_20261012.md. Human quality acceptance and registry publication remain outside this submission.
+
+### 2026-10-12 — Single-human trial and Traditional Chinese review UI
+
+- 2026-10-12：使用者啟動真人品質，並選擇只有一位真人先做試評。已用 main 64c1480 對應 native 重解析 7 份／1,113 頁，建立 29 頁新盲評包及 3 頁 Reviewer A 試評；candidate 已 drain finalizations 後單獨凍結。介面依要求改為繁體中文，草稿識別未變，真人標註仍待使用者操作。入口／收據／草稿備份在 target/human-quality-20261012-main64c1480；正式雙人／裁決／計時 gate 仍 BLOCKED，Stage 7.4 不開啟。
+- UI/template 已同步 Documa native/pdf/tools（未 commit/push）；Node syntax、packet/gold/pilot self-tests、Ruff、diff check PASS，瀏覽器已確認繁中提示與 0/3 頁初始狀態。現有評閱資料與 localStorage identity 保留；本機草稿先匯出備份。
+
+### 2026-10-12 — Human trial accepted; coordinate and review fixes
+
+- 2026-10-12：真人試評已完成並獲使用者明確核准，Stage 7.4 與後續開發允許繼續，不再等待第二位評閱者或計時紀錄。實測 3 頁／71 個框／27 個人工區塊；第二位／裁決／計時未執行且未冒充。文字 Tlm 位移修正、未分類框定位與單人草稿驗證修正均完成；Rust 266 PASS／1 ignored，Python 17 PASS／2 ONNX skipped，fmt／Clippy／UI self-tests／Ruff PASS。現行政策見 docs/specs/stage-12/human-acceptance-2026-10-12.md。
+- 原始真人匯出與修正前後私人評閱包留在 target/human-quality-20261012-main64c1480；版本與 hash 分開保存。原稿影像表格已辨识為 Image XObject，OCR／影像內文字覆蓋列為後續工作，不宣稱已完成。
