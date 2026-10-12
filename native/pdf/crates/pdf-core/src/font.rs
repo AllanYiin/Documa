@@ -297,7 +297,10 @@ fn parse_simple_encoding(
                 .unwrap_or(FontFallback::ByteIdentity);
             let differences = encoding_dictionary
                 .get(&PdfName(b"Differences".to_vec()))
-                .map(parse_differences)
+                .map(|object| {
+                    let resolved = resolve_encoding_object(document, object)?;
+                    parse_differences(&resolved)
+                })
                 .transpose()?
                 .unwrap_or_default();
             Ok((fallback, differences))
