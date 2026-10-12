@@ -363,7 +363,10 @@ def validate_manifest(value: Any) -> dict[str, Any]:
                 set(reason_codes) <= ADJUDICATION_REASON_CODES,
                 f"{page_location} has invalid adjudication reason code",
             )
-            if any(
+            # Reviewer-only exports intentionally leave the other review blank.
+            # A draft remains BLOCKED; disagreement reasons are required only
+            # when publishing a fully adjudicated, complete manifest.
+            if not review_required and any(
                 not labels_equivalent(review, validated_reviews[0])
                 for review in validated_reviews[1:]
             ):
@@ -725,6 +728,15 @@ def self_test() -> None:
         "artifact"
     )
     expect_invalid(disagreement, "requires adjudication reason code")
+
+    draft = json.loads(json.dumps(disagreement))
+    draft["status"] = "review_required"
+    draft_page = draft["documents"][0]["pages"][0]
+    draft_page["reviews"][1]["labels"] = {"blocks": [], "block_precedence_pairs": []}
+    draft_page["adjudicated"] = {"blocks": [], "block_precedence_pairs": []}
+    draft_result = validate_manifest(draft)
+    assert draft_result["status"] == "BLOCKED"
+    assert draft_result["reason"] == "human_order_review_incomplete"
 
     forbidden = json.loads(json.dumps(manifest))
     forbidden["documents"][0]["pages"][0]["text"] = "forbidden"
