@@ -19,3 +19,11 @@ prune native/pdf/fuzz/corpus
 prune native/pdf/fuzz/artifacts
 prune native/pdf/tests/real-world/.private
 exclude native/pdf/tests/real-world/manifest.local.toml
+
+prune native/office/fuzz/target
+prune native/office/fuzz/corpus
+prune native/office/fuzz/artifacts
+prune native/office/tmp
+prune native/office/.local-corpus
+prune native/office/fixtures/real-world
+prune native/office/reports
