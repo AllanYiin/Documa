@@ -6,49 +6,108 @@ use office_core::{
     Block, LogicalUnit, OfficeDocument, OfficeError, OfficeFormat, ParseOptions, Result, Table,
     Warning,
 };
-use office_ooxml::{OoxmlPackage, attr, local_name, xml_error};
+use office_ooxml::{Node, OoxmlPackage, asset_id, attr, local_name, parse_xml, xml_error};
 use quick_xml::Reader;
 use quick_xml::events::Event;
 use serde_json::json;
 
 const EMU_PER_POINT: f64 = 12_700.0;
+mod enrich;
+use enrich::enrich_slide;
 
 pub fn parse_pptx(path: &Path, bytes: &[u8], options: &ParseOptions) -> Result<OfficeDocument> {
+    options.validate()?;
     let package = OoxmlPackage::open(bytes, &options.limits)?;
     let mut document = OfficeDocument::new(OfficeFormat::Pptx, path, bytes, "slide_points");
     document
         .metadata
         .insert("page_ref_kind".into(), json!("slide"));
-    let (slide_width, slide_height) = presentation_size(package.get("ppt/presentation.xml")?)?;
-
-    let mut slide_names: Vec<_> = package
-        .names_with_prefix("ppt/slides/slide")
-        .filter(|name| name.ends_with(".xml"))
-        .collect();
-    slide_names.sort_by_key(|name| natural_number(name));
-    if slide_names.len() > options.limits.max_shapes {
+    let presentation = package.get("ppt/presentation.xml")?;
+    let (slide_width, slide_height) = presentation_size(presentation)?;
+    let root = parse_xml(presentation, &options.limits)?;
+    if root.name != "presentation" {
         return Err(OfficeError::new(
-            "PARSE_LIMIT_EXCEEDED",
-            "Slide count exceeds configured limits.",
+            "OOXML_PRESENTATION_INVALID",
+            "Expected presentation root.",
             false,
         ));
     }
-
-    for (index, name) in slide_names.iter().enumerate() {
-        let placeholders = slide_placeholders(&package, name)?;
-        let mut unit = parse_slide(package.get(name)?, index + 1, name, &placeholders, options)?;
+    let mut budget = office_core::ParseBudget::default();
+    for (index, slide_id) in root.descendants("sldId").iter().enumerate() {
+        let id = slide_id.attrs.get("r:id").ok_or_else(|| {
+            OfficeError::new(
+                "INVALID_RELATIONSHIP",
+                "Slide has no relationship ID.",
+                false,
+            )
+        })?;
+        let name = package
+            .related_part("ppt/presentation.xml", id)?
+            .ok_or_else(|| {
+                OfficeError::new("INVALID_RELATIONSHIP", "Missing slide relationship.", false)
+            })?;
+        let slide = parse_xml(package.get(&name)?, &options.limits)?;
+        if slide.name != "sld" {
+            return Err(OfficeError::new(
+                "OOXML_SLIDE_INVALID",
+                "Expected slide root.",
+                false,
+            ));
+        }
+        let hidden = matches!(slide.attr("show"), Some("0" | "false"));
+        if hidden && !options.include_hidden {
+            continue;
+        }
+        let shapes = slide.descendants("sp").len()
+            + slide.descendants("pic").len()
+            + slide.descendants("graphicFrame").len()
+            + slide.descendants("cxnSp").len();
+        budget.add_shapes(shapes, &options.limits)?;
+        budget.add_text(&slide.content(), &options.limits)?;
+        let placeholders = slide_placeholders(&package, &name)?;
+        let mut unit = parse_slide(
+            package.get(&name)?,
+            index + 1,
+            &name,
+            &placeholders,
+            options,
+        )?;
+        unit.hidden = hidden;
         unit.width = slide_width;
         unit.height = slide_height;
-        if let Some(notes) = matching_notes(&package, index + 1) {
-            let note_text = all_drawing_text(notes)?;
+        enrich_slide(
+            &package,
+            &name,
+            &slide,
+            &mut unit,
+            &mut document.warnings,
+            options,
+            &mut budget,
+        )?;
+        for notes_part in package.related_by_type(&name, "notesSlide")? {
+            let notes = parse_xml(package.get(&notes_part)?, &options.limits)?;
+            let note_text = notes
+                .descendants("sp")
+                .iter()
+                .filter(|s| {
+                    !s.descendants("ph").iter().any(|ph| {
+                        matches!(
+                            ph.attr("type"),
+                            Some("sldNum" | "hdr" | "ftr" | "dt" | "sldImg")
+                        )
+                    })
+                })
+                .map(|s| s.drawing_text())
+                .collect::<Vec<_>>()
+                .join("\n");
+            budget.add_text(&note_text, &options.limits)?;
             if !note_text.trim().is_empty() {
-                let order = unit.blocks.len() + 1;
                 let mut block = Block::new(
                     format!("pptx_s{}_notes", index + 1),
                     "paragraph",
                     note_text.trim(),
-                    order,
-                    format!("pptx:slide:{}:speaker_notes", index + 1),
+                    unit.blocks.len() + 1,
+                    format!("pptx:part:{notes_part}"),
                 );
                 block
                     .metadata
@@ -61,7 +120,35 @@ pub fn parse_pptx(path: &Path, bytes: &[u8], options: &ParseOptions) -> Result<O
     }
 
     if options.extract_images {
-        document.assets = package.media_assets("ppt/media/");
+        document.assets = package.assets("ppt/media/", options);
+        for unit in &document.units {
+            for block in &unit.blocks {
+                if let Some(ids) = block.metadata.get("asset_ids").and_then(|v| v.as_array()) {
+                    for id in ids {
+                        if let Some(asset) = document
+                            .assets
+                            .iter_mut()
+                            .find(|a| Some(a.id.as_str()) == id.as_str())
+                        {
+                            if asset.alt_text.is_none() {
+                                asset.alt_text = block
+                                    .metadata
+                                    .get("alt_text")
+                                    .and_then(|v| v.as_str())
+                                    .map(str::to_owned);
+                            }
+                            asset
+                                .metadata
+                                .entry("block_ids".into())
+                                .or_insert(json!([]))
+                                .as_array_mut()
+                                .unwrap()
+                                .push(json!(block.id));
+                        }
+                    }
+                }
+            }
+        }
     }
     let chart_count = package
         .names_with_prefix("ppt/charts/")
@@ -77,18 +164,6 @@ pub fn parse_pptx(path: &Path, bytes: &[u8], options: &ParseOptions) -> Result<O
     document
         .metadata
         .insert("smartart_inventory_count".into(), json!(smartart_count));
-    if chart_count + smartart_count > 0 {
-        document.warnings.push(Warning {
-            code: "COMPLEX_GRAPHICS_METADATA_ONLY".into(),
-            message:
-                "Charts and SmartArt are inventoried but not rendered or semantically evaluated."
-                    .into(),
-            context: BTreeMap::from([
-                ("chart_count".into(), json!(chart_count)),
-                ("smartart_count".into(), json!(smartart_count)),
-            ]),
-        });
-    }
     Ok(document)
 }
 
@@ -278,6 +353,14 @@ fn parse_slide(
             Ok(Event::End(element)) => {
                 let qualified_name = element.name();
                 let name = local_name(qualified_name.as_ref());
+                if name == b"p" {
+                    if let Some(current) = shape.as_mut() {
+                        current.text.push('\n');
+                    }
+                    if in_table_cell {
+                        table_cell.push('\n');
+                    }
+                }
                 if name == b"tc" && table_depth > 0 {
                     table_row.push(
                         (!table_cell.trim().is_empty()).then(|| table_cell.trim().to_string()),
@@ -437,14 +520,14 @@ fn slide_placeholders(
     else {
         return Ok(BTreeMap::new());
     };
-    let layout_part = resolve_target(slide_part, &layout_relationship.target);
+    let layout_part = office_ooxml::resolve_target(slide_part, &layout_relationship.target)?;
     let mut geometry = BTreeMap::new();
     if let Some(master_relationship) = package
         .relationships(&layout_part)?
         .into_iter()
         .find(|relationship| relationship.relationship_type.ends_with("/slideMaster"))
     {
-        let master_part = resolve_target(&layout_part, &master_relationship.target);
+        let master_part = office_ooxml::resolve_target(&layout_part, &master_relationship.target)?;
         if let Some(bytes) = package.get_optional(&master_part) {
             geometry.extend(parse_placeholder_geometry(bytes)?);
         }
@@ -517,60 +600,6 @@ fn parse_placeholder_geometry(bytes: &[u8]) -> Result<BTreeMap<String, [f64; 4]>
         buffer.clear();
     }
     Ok(geometry)
-}
-
-fn resolve_target(base_part: &str, target: &str) -> String {
-    let mut parts: Vec<String> = base_part.split('/').map(str::to_string).collect();
-    parts.pop();
-    let normalized_target = target.replace('\\', "/");
-    for segment in normalized_target.split('/') {
-        match segment {
-            "" | "." => {}
-            ".." => {
-                parts.pop();
-            }
-            value => parts.push(value.to_string()),
-        }
-    }
-    parts.join("/")
-}
-fn matching_notes(package: &OoxmlPackage, slide_index: usize) -> Option<&[u8]> {
-    package.get_optional(&format!("ppt/notesSlides/notesSlide{slide_index}.xml"))
-}
-
-fn all_drawing_text(bytes: &[u8]) -> Result<String> {
-    let mut reader = Reader::from_reader(Cursor::new(bytes));
-    reader.config_mut().trim_text(false);
-    let mut buffer = Vec::new();
-    let mut text = Vec::new();
-    loop {
-        match reader.read_event_into(&mut buffer) {
-            Ok(Event::Text(value)) => {
-                let decoded = value
-                    .decode()
-                    .map_err(|error| OfficeError::new("INVALID_XML", error.to_string(), false))?;
-                if !decoded.trim().is_empty() {
-                    text.push(decoded.into_owned());
-                }
-            }
-            Ok(Event::Eof) => break,
-            Err(error) => return Err(xml_error(error)),
-            _ => {}
-        }
-        buffer.clear();
-    }
-    Ok(text.join("\n"))
-}
-
-fn natural_number(name: &str) -> u32 {
-    name.rsplit('/')
-        .next()
-        .unwrap_or(name)
-        .chars()
-        .filter(char::is_ascii_digit)
-        .collect::<String>()
-        .parse()
-        .unwrap_or(0)
 }
 
 #[cfg(test)]
