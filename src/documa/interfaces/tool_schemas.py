@@ -27,11 +27,12 @@ def documa_tool_schemas(profile: str = "admin") -> list[dict[str, Any]]:
         {
             "name": "documa_parse",
             "title": "Parse document into Documa IR",
-            "description": "Parse a PDF or document through Documa adapters and return UTF-8 JSON metadata for structured document understanding.",
+            "description": "Parse a local document, HTTP(S) PDF URL or Google Drive PDF link. For connector files, pass workspace_path or HTTP(S) download URL as source and canonical Drive URL as source_url; opaque file_uri needs host materialization.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "source": {"type": "string"},
+                    "source": {"type": "string", "description": "Local path, HTTP(S) PDF download, or Google Drive PDF link."},
+                    "source_url": {"type": ["string", "null"], "description": "Canonical URL for a materialized PDF or temporary HTTP(S) download."},
                     "out": {"type": ["string", "null"]},
                     "lang": {"type": "string", "default": "auto"},
                     "pdf_provider": {"type": "string", "enum": ["auto", "rust", "pymupdf"], "default": "auto"},
@@ -66,12 +67,15 @@ def documa_tool_schemas(profile: str = "admin") -> list[dict[str, Any]]:
                 "Process a large PDF or long document. Pass the required source field (not input_path) "
                 "and set out for large files so the full IR is written to disk instead of returned inline. "
                 "The response includes a one-line-per-stage pipeline summary; full stage diagnostics are "
-                "written to pipeline_report_path when out is set."
+                "written to pipeline_report_path when out is set. "
+                "source accepts HTTP(S) PDF and Drive links. For connector files, resolve file_uri "
+                "to workspace_path or HTTP(S) download URL and retain the canonical Drive URL in source_url."
             ),
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "source": {"type": "string"},
+                    "source": {"type": "string", "description": "Local path, HTTP(S) PDF download, or Google Drive PDF link."},
+                    "source_url": {"type": ["string", "null"], "description": "Canonical URL for a materialized PDF or temporary HTTP(S) download."},
                     "out": {"type": ["string", "null"]},
                     "lang": {"type": "string", "default": "auto"},
                     "max_chars": {"type": "integer", "minimum": 1, "default": 1200},

@@ -116,6 +116,34 @@ documa summarize .\out\report\documa.ir.json --top-k 8
 
 `top_k` 是一般候選的軟上限；Lingxi 0.4.5 將它映射為 ranked block 數量，保留結構與事實時可能回傳更多原文片段。schema v2 的 UTF-8 byte spans 經驗證後轉為既有 Unicode code-point offset，保留 block/source/page 證據。v2 `final_score`／`signal` 分別映射至 `weight`／`explainability`，不與舊版分數直接比較；未評分的保留區塊以零值及 `signals.score_available=false` 明示。預設使用獨立保存的 normalized text；`--text-form raw` 可改選原始文字，兩者不互相覆寫。
 
+### 網路 PDF 與 Google Drive PDF
+
+`parse`／`process` 的 `source` 同時接受本地路徑、HTTP(S) PDF 下載網址與 Google Drive 檔案分享連結；網址不必以 `.pdf` 結尾。原有 parser／OCR／搜尋／引用流程保持相容。
+
+```powershell
+documa process "https://example.org/download?id=report" --out .\out\web-pdf
+documa process "https://drive.google.com/file/d/FILE_ID/view" --out .\out\drive-pdf
+```
+
+公開 Drive 檔案使用分享連結下載。私人檔案有兩個入口：
+
+- **Google Drive connector**：先讀取 MIME／權限 metadata，再以 `fetch(url=..., download_raw_file=True, include_base64=False)` 取得完整原檔。使用 host 已物化的 `workspace_path` 或可直接下載的 HTTP(S) `file_uri` 作為 `source`，以 `source_url` 保留原始 Drive 連結；CLI 對應 `--source-url`。原檔即使沒有 `.pdf` 副檔名也可接入。只有 opaque `file_uri` 時須由所屬 host／connector 先物化；Documa 的本機程序無法繼承 connector 登入狀態，不能把 opaque reference 當成公開下載網址。HTTP(S) 參照若仍需 host 授權，也須先物化，不自行添加 connector cookie 或憑證。
+- **Drive API OAuth**：呼叫者在本機程序環境配置 `DOCUMA_GOOGLE_DRIVE_ACCESS_TOKEN` 後，直接傳入分享連結或 `gdrive://FILE_ID`。token 須有該檔案的讀取權限；Documa 先檢查 PDF MIME 與 `canDownload`，再以 `files.get?alt=media` 下載，支援 shared drives 與 resource key。不負責登入或自動刷新 token，不把 token 放進工具參數、IR 或 log。[Google 官方下載契約](https://developers.google.com/workspace/drive/api/guides/manage-downloads)、[resource key](https://developers.google.com/workspace/drive/api/guides/resource-keys)。
+
+```powershell
+documa process .\downloaded-file --source-url "https://drive.google.com/file/d/FILE_ID/view" --out .\out\drive-pdf
+```
+
+成功回應與 IR `metadata.source_access` 保留來源 URL（移除下載 query／fragment）、Drive file id、實際 byte count 與 SHA-256。每次呼叫重新下載，處理結束清除暫存 PDF；IR、assets 與輸出檔仍由原有 `out` 管理。既有本地來源不增加遠端 metadata。
+
+下載限制為 100 MiB、單次 socket 等待 30 秒、總下載 120 秒、最多 5 次 redirect；每次 DNS／redirect 都只允許公開網路位址，socket 綁定已驗證的 DNS 結果。HTTPS 保持憑證驗證，禁止降級至 HTTP，跨 origin redirect 不傳 OAuth headers。直接連線，不使用環境中的 HTTP proxy。
+
+Drive `usercontent`／`uc` 下載網址會保留確認與簽章參數送出，輸出仍只保存 canonical Drive URL。若遠端 PDF 只有掃描影像，`process` 回傳 `reading_status="ocr_required"` 與明確警告；成功建立 IR 不代表已讀取文字。啟用 CLI `--ocr` 或 MCP `ocr=true` 後再搜尋／引用；OCR 未產生文字時仍回報 `no_readable_text`，應檢查頁面與診斷。
+
+connector 的 `file_uri` 若是物件，取其 `download_url` 字串作為 `source`，不要把整個物件或 `sediment://` 的 `file_id` 傳給 Documa。暫時網址失效時重新 fetch；來源引用仍使用 `source_url` 中的 Drive 連結。
+
+HTML 登入／確認頁、401／403、TLS 錯誤、超時、超限與下載不完整都回傳 `status="error"` 及結構化 error code／suggested action，不建立成功 IR。Drive 的大檔確認頁須改用 connector 或 OAuth；不要把 TLS 驗證失敗誤判為已讀取，也不要關閉憑證驗證。PDF 標頭驗證後仍由既有 parser 驗證完整文件結構。
+
 ### 3. 搜尋相關 blocks
 
 ```powershell

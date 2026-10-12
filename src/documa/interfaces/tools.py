@@ -41,6 +41,7 @@ from documa.viewer import VIEWER_FORMATS, ViewerOptions, build_universal_viewer,
 from documa.quality import BenchmarkOptions, DoctorOptions, run_doctor, run_fixture_benchmark
 from documa.search.sidecar import build_search_sidecar, route_sections, section_sketches, sidecar_path, source_digest
 from documa.summarization import SummaryError, SummaryOptions, summarize_document
+from documa.sources import MaterializedSource, materialize_source
 
 
 ToolPayload = dict[str, Any]
@@ -215,6 +216,25 @@ def parse_document_tool(
     progress: str = "text",
     pdf_provider: str = "auto",
     office_provider: str = "auto",
+    source_url: str | None = None,
+) -> ToolPayload:
+    try:
+        with materialize_source(source, source_url) as resolved:
+            return _parse_local_document_tool(
+                resolved.path, out, lang, progress, pdf_provider, office_provider, resolved,
+            )
+    except DocumaError as exc:
+        return _documa_error_payload(exc)
+
+
+def _parse_local_document_tool(
+    source: str,
+    out: str | None,
+    lang: str,
+    progress: str,
+    pdf_provider: str,
+    office_provider: str,
+    resolved: MaterializedSource,
 ) -> ToolPayload:
     output_dir = Path(out) if out else None
     asset_dir = output_dir / "assets" if output_dir else None
@@ -236,6 +256,7 @@ def parse_document_tool(
     except DocumaError as exc:
         return _documa_error_payload(exc)
 
+    resolved.stamp(document)
     _stamp_provenance(document)
     payload = to_plain_data(document)
     output_path = None
@@ -251,6 +272,7 @@ def parse_document_tool(
         "parser": document.parser,
         "output_path": str(output_path) if output_path else None,
         "document": None if output_path else payload,
+        **({"source_access": resolved.provenance} if resolved.provenance else {}),
     }
 
 
@@ -264,6 +286,30 @@ def process_document_tool(
     pdf_provider: str = "auto",
     office_provider: str = "auto",
     keyword_provider: str = "lingxi",
+    source_url: str | None = None,
+) -> ToolPayload:
+    try:
+        # Keep the PDF alive through OCR, pipeline stages and exports.
+        with materialize_source(source, source_url) as resolved:
+            return _process_local_document_tool(
+                resolved.path, out, lang, max_chars, export_formats, ocr,
+                pdf_provider, office_provider, keyword_provider, resolved,
+            )
+    except DocumaError as exc:
+        return _documa_error_payload(exc)
+
+
+def _process_local_document_tool(
+    source: str,
+    out: str | None,
+    lang: str,
+    max_chars: int,
+    export_formats: list[str] | str | None,
+    ocr: bool,
+    pdf_provider: str,
+    office_provider: str,
+    keyword_provider: str,
+    resolved: MaterializedSource,
 ) -> ToolPayload:
     output_dir = Path(out) if out else None
     asset_dir = output_dir / "assets" if output_dir else None
@@ -286,6 +332,7 @@ def process_document_tool(
     except DocumaError as exc:
         return _documa_error_payload(exc)
 
+    resolved.stamp(document)
     if effective_pdf_provider != pdf_provider:
         document.metadata["pdf_provider"] = {
             "requested": pdf_provider,
@@ -311,6 +358,20 @@ def process_document_tool(
         reason = stage.report.get("skipped_reason")
         if stage.stage_name == "ocr" and ocr and reason:
             warnings.append(f"ocr: {reason}")
+    reading_receipt = {}
+    if resolved.provenance and not any(
+        block.text and block.text.raw_text.strip()
+        for page in pipeline_run.document.pages for block in page.blocks
+    ):
+        # Successful parsing of image pages does not mean the PDF was read.
+        warnings.append("PDF_NO_READABLE_TEXT: the PDF has no extracted text.")
+        reading_receipt = {
+            "reading_status": "no_readable_text" if ocr else "ocr_required",
+            "suggested_action": (
+                "Inspect OCR diagnostics or PDF pages; do not report the document as read."
+                if ocr else "Reprocess with ocr=true (requires documa[all]) before answering from this PDF."
+            ),
+        }
     output_path = None
     pipeline_report_path = None
     search_index_path = None
@@ -355,6 +416,8 @@ def process_document_tool(
         "pipeline_report_path": str(pipeline_report_path) if pipeline_report_path else None,
         "search_index_path": str(search_index_path) if search_index_path else None,
         "document": None if output_path else payload,
+        **({"source_access": resolved.provenance} if resolved.provenance else {}),
+        **reading_receipt,
     }
 
 

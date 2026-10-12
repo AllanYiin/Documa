@@ -145,8 +145,14 @@ def create_mcp_server(profile: str | None = None) -> Any:
         lang: str = "auto",
         pdf_provider: str = "auto",
         office_provider: str = "auto",
+        source_url: str | None = None,
     ) -> dict[str, Any]:
-        """Parse a document into Documa IR."""
+        """Parse a local document, HTTP(S) PDF URL or Google Drive PDF link into IR.
+
+        For a private Drive connector file, materialize file_uri first; pass its
+        workspace_path (or HTTP(S) download URL) as source and canonical Drive
+        link as source_url.
+        """
 
         return parse_document_tool(
             source=source,
@@ -154,6 +160,7 @@ def create_mcp_server(profile: str | None = None) -> Any:
             lang=lang,
             pdf_provider=pdf_provider,
             office_provider=office_provider,
+            source_url=source_url,
         )
 
     @_documa_tool
@@ -166,6 +173,8 @@ def create_mcp_server(profile: str | None = None) -> Any:
         pdf_provider: str = "auto",
         office_provider: str = "auto",
         keyword_provider: str = "lingxi",
+        source_url: str | None = None,
+        ocr: bool = False,
     ) -> dict[str, Any]:
         """Parse and process a document.
 
@@ -173,6 +182,10 @@ def create_mcp_server(profile: str | None = None) -> Any:
         set out so the full IR is written to disk instead of returned inline.
         The response carries a one-line-per-stage pipeline summary; full stage
         diagnostics are written to pipeline_report_path when out is set.
+        source also accepts HTTP(S) PDF URLs and Google Drive PDF links. For
+        connector files, pass workspace_path or HTTP(S) download URL as source and
+        canonical Drive URL as source_url; opaque file_uri needs host resolution.
+        For scanned/image-only PDFs, set ocr=true to extract readable text.
         """
 
         return process_document_tool(
@@ -184,6 +197,8 @@ def create_mcp_server(profile: str | None = None) -> Any:
             pdf_provider=pdf_provider,
             office_provider=office_provider,
             keyword_provider=keyword_provider,
+            source_url=source_url,
+            ocr=ocr,
         )
 
     @_documa_tool

@@ -67,7 +67,8 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command")
 
     parse_cmd = subparsers.add_parser("parse", help="Parse a document into Documa IR.")
-    parse_cmd.add_argument("source", help="Path to the source document.")
+    parse_cmd.add_argument("source", help="Local document path, HTTP(S) PDF URL, or Google Drive PDF link.")
+    parse_cmd.add_argument("--source-url", help="Canonical source URL for a materialized PDF or temporary download URL.")
     parse_cmd.add_argument("--out", help="Output directory.")
     parse_cmd.add_argument("--lang", default="auto", help="Comma-separated language hints.")
     parse_cmd.add_argument("--progress", choices=["text", "jsonl"], default="text")
@@ -75,7 +76,8 @@ def build_parser() -> argparse.ArgumentParser:
     parse_cmd.add_argument("--office-provider", choices=["auto", "rust", "python"], default="auto")
 
     process_cmd = subparsers.add_parser("process", help="Parse and run the default Documa pipeline.")
-    process_cmd.add_argument("source", help="Path to the source document.")
+    process_cmd.add_argument("source", help="Local document path, HTTP(S) PDF URL, or Google Drive PDF link.")
+    process_cmd.add_argument("--source-url", help="Canonical source URL for a materialized PDF or temporary download URL.")
     process_cmd.add_argument("--out", help="Output directory.")
     process_cmd.add_argument("--lang", default="auto", help="Comma-separated language hints.")
     process_cmd.add_argument("--max-chars", type=int, default=1200, help="Target max characters per generated chunk.")
@@ -441,6 +443,7 @@ def main(argv: list[str] | None = None) -> int:
             progress=args.progress,
             pdf_provider=args.pdf_provider,
             office_provider=args.office_provider,
+            source_url=args.source_url,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
@@ -455,6 +458,7 @@ def main(argv: list[str] | None = None) -> int:
             pdf_provider=args.pdf_provider,
             office_provider=args.office_provider,
             keyword_provider=args.keyword_provider,
+            source_url=args.source_url,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 

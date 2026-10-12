@@ -82,7 +82,11 @@ class MarkdownExporter(Exporter):
                     label = re.match(r"\s*((?:Figure|Fig\.?|圖)\s*[\dA-Za-z]+)", block_text(caption), re.I)
                     label = label.group(1) if label else "Figure"
                     lines.extend([f"<details><summary>{escape(label)}：圖內文字與素材</summary>", ""])
-                    if document.source_name.lower().endswith('.pdf'):
+                    remote_source = document.metadata.get("source_access", {}).get("source_url")
+                    if remote_source:
+                        source_url = quote(remote_source, safe='/:?=&%')
+                        lines.extend([f"[查看原始圖頁（PDF p.{page.page_number}）]({source_url}#page={page.page_number})", ""])
+                    elif document.source_name.lower().endswith('.pdf'):
                         source_url = quote(Path(document.source_name).as_posix(), safe='/:')
                         lines.extend([f"[查看原始圖頁（PDF p.{page.page_number}）]({source_url}#page={page.page_number})", ""])
                     for member in members:
