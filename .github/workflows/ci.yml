@@ -59,7 +59,7 @@ jobs:
         with:
           name: token-economy-benchmark
           path: token-economy.json
-          retention-days: 30
+          retention-days: 7
 
   # Observational quality gate: never blocks merges while thresholds are being
   # calibrated. Promotion to a hard gate is documented in CHANGELOG.md.
@@ -85,4 +85,4 @@ jobs:
         with:
           name: quality-benchmark
           path: bench.json
-          retention-days: 30
+          retention-days: 7
