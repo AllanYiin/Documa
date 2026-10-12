@@ -27,8 +27,21 @@ Parser 不執行巨集、不啟動外部程序、不存取網路，external rela
 
 - `LEGACY_OFFICE_NOT_SUPPORTED`：DOC/PPT。
 - `MACRO_ENABLED_OFFICE_NOT_SUPPORTED`：DOCM/XLSM/PPTM。
-- `ENCRYPTED_OFFICE_NOT_SUPPORTED`：加密/密碼保護。
-- `BIFF_REVISION_NOT_SUPPORTED`：非 BIFF8 XLS。
+- `ENCRYPTED_OFFICE_NOT_SUPPORTED`：內容加密；編輯保護不等同加密。
+- `XLS_BIFF_VERSION_NOT_SUPPORTED`：非 BIFF8 XLS。
 - `INPUT_LIMIT_EXCEEDED`、`ZIP_LIMIT_EXCEEDED`、`ZIP_PATH_TRAVERSAL`：資源/容器限制。
-- `OOXML_*_INVALID`、`XLS_OPEN_FAILED`：損壞或結構不合法。
+- `OOXML_*_INVALID`、`SPREADSHEET_OPEN_FAILED`：損壞或結構不合法。
 
+
+## 0.2 擴充與序列化
+
+事件結構維持 v1，完整 Schema 由 `rust_office.schema()` 或 CLI `schema` 提供；原始定義位於 `crates/office-core/src/schema.json`。
+Python native stream 在完整解析成功後，逐筆序列化事件；不預先建立全部 JSON 字串。損壞來源或超限仍在第一筆事件交付前失敗。
+CLI 亦逐筆轉換事件，單檔輸出 IO 失敗不能被視為成功完成。
+
+- 合併表格的覆蓋格為 null；跨度與每格來源存於 `metadata.cells`。
+- `sparse=true` 的 worksheet table `rows=[]`；實際值與來源存於 block `metadata.cell_records`。
+- `batch_rows` 只切分 table blocks，不改變 unit event 的工作表語意。
+- 圖片 metadata mode 保留 hash 與來源，`data_base64=""` 並設 `metadata.data_omitted=true`。
+- 增加型別值、display/cache 狀態、圖片／超連結／註解關聯及 graphics metadata，詳見 [API reference](api-reference.md)。
+- 同版 parser 對相同內容的 IDs 與順序穩定；0.2 修正解析語意後，不能假設與 0.1 的 IDs／閱讀順序相同。下游應以 parser version 使快取失效。

@@ -12,6 +12,7 @@
 **最後更新**：2026-10-12
 
 ### 需求狀態
+- [x] 2026-10-12：Rust Office 0.2.0 以九個主題同步至 native/office 與 src/rust_office，包含 P0–P2 parser/API/CLI、typed error/options 轉接及三平台 CI。依使用者最後指示只提交程式碼與測試機制；未包含私人 Office 文件、golden／抽取內容、授權收據或本機報告，未推送的舊候選歷史也不納入。以 main 64c1480 為基底保留最新 PDF/Documa 0.9.0 更新。相關測試 116 passed／1 intentional skipped，詳見 docs/RUST_OFFICE_0_2_SYNC_20261012.md。
 - [x] 2026-10-12：獨立 Rust PDF 的 P0–P2 工程增量已整合至 native/pdf，安裝包裝 src/rust_pdf 同步；依時間／主題分組提交，保留既有 0.9.0 與遠端 main 的 CI 修正。整合驗證 Rust 264 PASS／1 existing ignored、Documa 613 PASS、doctor 9/9、fmt／Clippy／Ruff／schema／plugin gates PASS。Windows 並行 replace 暫態失敗後全套重跑通過。提交目標 origin/main；未變更 provider 預設、未更新全域 runtime／發行 tag／registry，真人品質驗收仍延後。細節與提交序列見 docs/PDF_PRIORITY_INTEGRATION_20261012.md。
 - [x] 2026-10-12：PDF Differences 間接參照修正已回到 Documa/native/pdf 與獨立 rust-pdf_parser 源頭，新增原生及 adapter 回歸。另找出 Documa-only 的 CTM/Form、詞間空白、旋轉旁註與窄欄/段落修正，已回補獨立源頭且保留其 OCR 功能。源頭 workspace 236 passed／1 existing ignored，fmt／Clippy PASS；Documa source 相關 81 passed。源頭編譯模組解析使用者 19 頁原 PDF：rust_pdf、0 U+FFFD、無警告、原檔 hash 不變。Rust Office 已查 native+wrapper 一致；LingXi 尚有編譯 __version__ 匯出的整合差異；SkillNow 固定 sdist 尚未納入 Documa 10/08 遠端來源 Python 增量。詳見 docs/NATIVE_UPSTREAM_SYNC_20261012.md。本輪僅改來源，保留現有 dirty Python/README，未 commit/push/發布/更新安裝版。
 - [x] 2026-10-08：新增 HTTP(S)／Drive PDF 接入與 `source_url` 來源收據，保留確認／簽章下載參數、TLS／DNS/socket／redirect／大小／完整性驗證；connector 物件取 `download_url`，opaque ref 需 host 物化。MCP 補齊 `ocr`，掃描件無文字時明載 `ocr_required|no_readable_text`。指定 Drive PDF（276,074 bytes／2 頁）實測 OCR→11 chunks→search/read/cite PASS；OCR 字誤仍須核對原頁，OAuth API 為 mock 契約驗證。0.9.0 本機 wheel build `1remote20261008` 沿用已驗證三個 native hashes、Python source exact match；隔離全套 612 passed，Ruff／schema／plugin gates PASS。受控離線 no-deps 更新 D:/Python310 0.8.0→此 build，6 個 MCP 正常退出、無 force；installed MCP 實檔流程 PASS，其他 distributions 未變，pip check 61 既有／0 新增問題。證據、安裝包與舊版備份在 `build/remote-install`；未發布／推送／升版／重裝插件 manifest，現有 chat 需重新連線取得新 schema。
@@ -520,3 +521,11 @@
 
 - 核心含 bounded filters、CID vertical metrics、OCR eligibility 與選頁；OCR runtime 含 lazy budgets／ONNX validation；SDK 含 Python Document/GIL release、CLI NDJSON 與 WASM streams。root Rust PDF workflow 從 native/pdf 執行，完整授權文字與公開驗證收據已納入。
 - Python 驗證使用當前來源隔離副本與同源已驗證 native；本地 tests namespace、PYTHONPATH 與 Windows concurrent replace 的檢查過程見 integration report。私人資料、模型、暫存與編譯產物留在本機，無強制推送或歷史重寫。
+
+
+## [2026-10-12] Office 0.2.0 code-only 同步
+
+- 依最新指示排除私人文件與抽取內容，從更新後 main 重建未推送的 Office 提交；舊的含語料候選提交不作為這批提交的祖先。
+- 保留 synthetic fixtures 及 opt-in local corpus 工具；私人資料、收據、golden 和 reports 由 ignore／sdist prune 排除。
+- Office 與 adapter 116 passed，缺少私人 corpus 的一項參數化測試刻意 skip。
+- 後續 push 結果以遠端 main 的 Git 紀錄為準，這不是 package release 或 CI 全綠的宣告。
