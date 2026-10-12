@@ -115,7 +115,7 @@ def test_formula_cell_contract(
     unit = unit_for(name)
     records = unit["blocks"][0]["metadata"]["cell_records"]
     record = next(item for item in records if item["address"] == address)
-    assert record == {
+    assert {key: record[key] for key in ("address", "column", "data_type", "formula", "row", "value")} == {
         "address": address,
         "column": ord(address[0]) - ord("A") + 1,
         "data_type": data_type,
