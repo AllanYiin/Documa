@@ -1,0 +1,5 @@
+{
+  "schema_version": 1,
+  "purpose": "Empty example; local corpora are read from DOCUMA_OFFICE_CORPUS_DIR or .local-corpus.",
+  "fixtures": []
+}

@@ -1,0 +1,61 @@
+[package]
+name = "rust-office-parser-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+office-word = { path = "../crates/office-word" }
+libfuzzer-sys = "0.4"
+office-core = { path = "../crates/office-core" }
+office-ooxml = { path = "../crates/office-ooxml" }
+office-sheet = { path = "../crates/office-sheet" }
+office-slide = { path = "../crates/office-slide" }
+
+[[bin]]
+name = "ooxml"
+path = "fuzz_targets/ooxml.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "relationships"
+path = "fuzz_targets/relationships.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "biff"
+path = "fuzz_targets/biff.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "pptx"
+path = "fuzz_targets/pptx.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+
+
+[[bin]]
+name = "docx"
+path = "fuzz_targets/docx.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "xlsx"
+path = "fuzz_targets/xlsx.rs"
+test = false
+doc = false
+bench = false
