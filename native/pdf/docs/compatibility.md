@@ -19,7 +19,7 @@ Version／版本：`0.2.0`／`version_info().stage = stage-11`，包含工作區
 | Xref stream | Supported | `/W`、`/Index`、type 0/1/2、Flate/Predictor |
 | Hybrid xref | Supported | classic trailer `/XRefStm` |
 | Object stream | Supported | bounded `/N`、`/First`、validated ranges、document LRU |
-| Filters | Partial | FlateDecode/Fl only；single-stream、ratio、document-lifetime limits |
+| Filters | Partial | Flate/Fl、ASCIIHex/AHx、ASCII85/A85、RunLength/RL、LZW；LZW EarlyChange 0/1；single-stream、ratio、document-lifetime limits |
 | Predictors | Supported | TIFF 2；PNG 10–15；BPC 1/2/4/8/16 |
 | Page tree | Supported | `/Kids` order、cycle/depth/page limits |
 | Inherited page attributes | Partial | Resources、MediaBox、CropBox、Rotate；另提供 UserUnit 與座標轉換 |
@@ -29,7 +29,7 @@ Version／版本：`0.2.0`／`version_info().stage = stage-11`，包含工作區
 | ToUnicode CMap | Partial | codespace、bfchar、bfrange、UTF-16BE；invalid/missing distinguished |
 | Simple fonts | Partial | WinAnsi、MacRoman、Differences、glyph-name heuristics、Widths |
 | Type0/composite fonts | Partial | ToUnicode authoritative；Identity fallback warned；W/DW supported |
-| Vertical font metrics | Partial | writing mode retained；W2/DW2 not implemented |
+| Vertical font metrics | Partial | W2 array/range、DW2、垂直位移／位置向量、Tc/TJ/CTM；仍不解析 glyph outlines 或完整預定義 CJK CMap 字集 |
 | Marked content／ActualText | Partial | BMC/BDC/EMC、direct/named/indirect properties、nested replacement、MCID |
 | Tagged structure tree | Partial | StructTreeRoot、RoleMap、ParentTree、MCID、Alt、Artifact、tagged order；非完整 PDF 2.0 conformance |
 | Layout IR / streaming | Supported subset | versioned nodes/spans、四種 order、Rust lazy events、Python page stream 與 finalization patches |
@@ -63,6 +63,18 @@ Version／版本：`0.2.0`／`version_info().stage = stage-11`，包含工作區
 | mode | `auto` in Rust/Python/WASM V2; CLI requires `--mode` | extraction order／separator policy |
 | normalize Unicode | false | after decoding, apply NFC only when explicitly true |
 | quality | true | include aggregate quality object; false omits it |
+
+工作區 development APIs 另外支援 `pages="1,3-5"` 與 partial `ParseLimits` overrides。
+選頁保留原始頁碼；glyph source ordinals 屬於本次抽取。Layout 的 document indexes 仍屬全文件，
+但跨頁 furniture evidence 僅計算選取頁面；subset options digest 包含頁碼集合。
+Rust 的既有 `collect_layout_events` 仍要求連續頁碼，選頁請用 `collect_selected_layout_events`
+或 `PdfDocument::extract_layout_pages`。Python／WASM reusable handles 共用 monotonic decode budget；
+重複解碼會持續計量，需以新 handle 開啟新的 document lifetime。
+
+CLI `layout --ndjson`、WASM `extractLayoutEvents` 傳遞 start/page/finalize events。
+Python `LayoutStream.close()` 與 WASM iterator `close()` 可取消後續頁面；提早結束不代表成功 finalize。
+原生 OCR 另提供 `ocr_pages`／Python `ocr_direct_stream` 與 CLI `ocr --ndjson`，
+文件級輸出限額見 [OCR reference](ocr.md)。
 
 CLI 的 `--mode` 與 legacy `--no-layout` 互斥。Legacy `layout=false` 對應 ContentOrder，
 `layout=true` 對應 legacy Layout；legacy calls 不會默默改成 Auto。

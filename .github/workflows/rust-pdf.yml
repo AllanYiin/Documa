@@ -1,0 +1,119 @@
+name: Rust PDF CI
+
+on:
+  push:
+    paths: ["native/pdf/**", "src/rust_pdf/**", ".github/workflows/rust-pdf.yml"]
+  pull_request:
+    paths: ["native/pdf/**", "src/rust_pdf/**", ".github/workflows/rust-pdf.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: native/pdf
+
+jobs:
+  rust:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
+      - run: cargo fmt --check
+      - run: cargo check --workspace --all-targets
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - run: cargo check --workspace --all-targets --all-features --locked
+      - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+      - run: cargo test --workspace --all-features --locked
+      - run: cargo check -p pdf-wasm --target wasm32-unknown-unknown
+
+  msrv:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - toolchain: "1.88.0"
+            features: ""
+          - toolchain: "1.89.0"
+            features: "--all-features"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+      - run: cargo +${{ matrix.toolchain }} check --workspace --all-targets --locked ${{ matrix.features }}
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: python -m pip install maturin pytest
+      - run: maturin build --release --manifest-path bindings/python/Cargo.toml --out dist
+      - run: python -m pip install dist/*.whl
+      - run: python -m pytest bindings/python/tests -q
+
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: jetli/wasm-pack-action@v0.4.0
+      - run: wasm-pack build bindings/wasm --target web
+      - run: wasm-pack test --node bindings/wasm
+
+  fuzz:
+    runs-on: ubuntu-latest
+    env:
+      RUSTUP_TOOLCHAIN: nightly-2026-07-29
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-07-29
+      - run: cargo install cargo-fuzz --locked
+      - run: cargo fuzz build --fuzz-dir fuzz
+      - run: python tools/seed_fuzz.py
+      - run: cargo fuzz run parse_object --fuzz-dir fuzz -- -max_total_time=5
+      - run: cargo fuzz run parse_document --fuzz-dir fuzz -- -max_total_time=5
+      - run: cargo fuzz run parse_content --fuzz-dir fuzz -- -max_total_time=5
+      - run: cargo fuzz run layout_document --fuzz-dir fuzz -- -max_total_time=10 -max_len=262144 -rss_limit_mb=1024 -timeout=10
+      - run: cargo fuzz run images_ocr --fuzz-dir fuzz -- -max_total_time=10 -max_len=262144 -rss_limit_mb=1024 -timeout=10
+      - run: cargo fuzz run decode_filters --fuzz-dir fuzz -- -max_total_time=10 -max_len=262144 -rss_limit_mb=1024 -timeout=10
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install cargo-deny --locked
+      - run: cargo deny check
+
+  onnx-integration:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: python -m pip install onnx==1.18.0
+      - run: python tools/ocr_integration.py fetch
+      - run: cargo build --release -p pdf-cli --features ocr-onnx --locked
+      - run: python tools/ocr_integration.py verify --output target/onnx-integration-report.json

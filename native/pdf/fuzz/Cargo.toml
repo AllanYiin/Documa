@@ -19,6 +19,27 @@ doc = false
 bench = false
 
 [[bin]]
+name = "layout_document"
+path = "fuzz_targets/layout_document.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "images_ocr"
+path = "fuzz_targets/images_ocr.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "decode_filters"
+path = "fuzz_targets/decode_filters.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "parse_object"
 path = "fuzz_targets/parse_object.rs"
 test = false

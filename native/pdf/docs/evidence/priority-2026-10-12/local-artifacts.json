@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-12",
+  "development_line": "priority-2026-10-12",
+  "published": false,
+  "git_revision": null,
+  "human_quality_acceptance": "deferred",
+  "artifacts": [
+    {
+      "file": "pdf-core-0.2.0.crate",
+      "bytes": 180812,
+      "sha256": "e60aaec30d6abd7730d5767524e45c29405515263979bd5f4bcf2b95ba8fd79f"
+    },
+    {
+      "file": "wheels/rust_pdf_parser-0.2.0-cp310-cp310-win_amd64.whl",
+      "bytes": 2551924,
+      "sha256": "7db538bc6850d91dc64e3a5c38e02484c987b9748436feb057ce7a6445b82454"
+    },
+    {
+      "file": "rust-pdf-0.2.0-priority-20261012-windows-x86_64.zip",
+      "bytes": 2629981,
+      "sha256": "482bb9287744b5fe46b311fa0f899a3de120c94ec97f42d654db9c015e6e81f9"
+    },
+    {
+      "file": "pdf-wasm-0.2.0-priority-20261012.zip",
+      "bytes": 682074,
+      "sha256": "25f83906b30f551453c8a453b5a9ab3ecd9585c9900833352c33c1e7b33eed60"
+    }
+  ]
+}

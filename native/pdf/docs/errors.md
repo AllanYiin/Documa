@@ -105,8 +105,19 @@ Unicode 無效，後者表示 source code 根本沒有 mapping。不要把兩者
 | `unsupported_image_codec` | codec 未解碼；保留 encoded bytes 與 metadata |
 | `jpeg_dimension_mismatch` | JPEG header dimensions 與 PDF dictionary 不一致；保留資料並揭露 warning |
 | `raw_sample_length_mismatch` | decoded raw sample length 與 dimensions/components/BPC 不一致 |
+| `image_decode_array_unsupported` | 原始 samples 未套用 Decode array；direct OCR 拒絕 |
+| `image_explicit_mask_unsupported` | 原始 samples 未套用 explicit Mask；direct OCR 拒絕 |
+
+Direct OCR 的 rejection reason 另包含 `decode_array_unsupported`、`explicit_mask_unsupported`、
+`clipping_unsupported`、`graphics_state_unsupported`、`inline_image_unsupported`、`other_page_marks`、
+`invalid_image_data` 與 `invalid_image_placement`。這些是頁面不適合直接 OCR 的結果，不是成功辨識。
+原生模型／runtime 不相容回 `ocr_model`；推論錯誤回 `ocr_inference`。Python OCR 預算錯誤為
+`ocr_limit_exceeded`；CLI 使用既有 `limit_exceeded` 分類與 exit code。
 
 ## Error handling example
+
+WASM 的既有 parser error 由 `serde-wasm-bindgen` 以 JavaScript `Map` 傳遞；讀取 machine code
+使用 `error.get("code")`，不要假設是 `Error` instance 或以 `error.code` 取值。此形狀保留相容性。
 
 Rust caller 依 enum 分支：
 

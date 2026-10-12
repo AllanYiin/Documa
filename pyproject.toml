@@ -13,6 +13,8 @@ license-files = [
   "LICENSE",
   "native/office/LICENSE",
   "native/pdf/LICENSE",
+  "native/pdf/LICENSE-MIT",
+  "native/pdf/LICENSE-APACHE",
   "native/pdf/THIRD_PARTY_NOTICES.md",
   "native/lingxi/LICENSE",
   "native/lingxi/ASSETS.md",

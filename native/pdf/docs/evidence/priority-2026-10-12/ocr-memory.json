@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "contains_extracted_content": false,
+  "pages": 48,
+  "image_dimensions": [
+    512,
+    512
+  ],
+  "runs_per_mode": 3,
+  "scope": "complete CLI, including pretty JSON versus compact NDJSON serialization",
+  "results": {
+    "collected_pretty_json": {
+      "runs": [
+        {
+          "peak_rss_bytes": 260149248,
+          "seconds": 0.312082
+        },
+        {
+          "peak_rss_bytes": 273731584,
+          "seconds": 0.293789
+        },
+        {
+          "peak_rss_bytes": 262508544,
+          "seconds": 0.295396
+        }
+      ],
+      "peak_rss_bytes": 273731584
+    },
+    "streamed_compact_ndjson": {
+      "runs": [
+        {
+          "peak_rss_bytes": 6488064,
+          "seconds": 0.094431
+        },
+        {
+          "peak_rss_bytes": 6230016,
+          "seconds": 0.092087
+        },
+        {
+          "peak_rss_bytes": 6234112,
+          "seconds": 0.093506
+        }
+      ],
+      "peak_rss_bytes": 6488064
+    }
+  },
+  "stream_to_collect_peak_rss_ratio": 0.0237022849361804
+}

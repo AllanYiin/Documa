@@ -115,9 +115,16 @@ Expected result：workspace、Python、WASM tests 全綠，version 是 0.2.0/sta
 
 ## Known issues
 
-0.2.0 不提供 rendering、OCR、encryption、damaged-xref repair、完整 PDFDocEncoding、W2/DW2、tagged
-structure-tree logical order 或 PDF 2.0 normative conformance。Auto 是 deterministic extraction
+工作區 development line 已加入 direct-image OCR、W2/DW2 與 bounded tagged structure order，
+可由 `build_info()` 區分相容性版本與實際功能。仍不提供 rendering、encryption、damaged-xref
+repair、完整 PDFDocEncoding 或 PDF 2.0 normative conformance。Auto 是 deterministic extraction
 heuristic；多欄、重疊與混合方向可能回 `reading_order_ambiguous` 並局部回退 source order。
+
+選頁與 limits 都是 additive options，舊呼叫與 version tuple 保持。新增的直排度量修正會改變
+V2 vertical glyph origins/advances；1-bit raw samples 現在以每列 byte padding 計算。
+`ocr-onnx` 相依套件需要 Rust 1.89，預設功能 MSRV 仍為 1.88。
+`DirectOcrReason` 新增未支援效果／無效影像的拒絕 variants；Rust caller 若採 exhaustive match，
+需增加分支或 fallback arm。JSON consumer 應保留未知 reason，不把 rejected page 當作 OCR 成功。
 
 ## Rollback
 

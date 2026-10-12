@@ -13,3 +13,9 @@ recursive-include src/documa/_vendor/lingxi/assets *.bin
 prune native/pdf/bindings/wasm/pkg-*
 prune native/pdf/bindings/wasm/pkg
 global-exclude __pycache__ *.py[cod]
+
+prune native/pdf/fuzz/target
+prune native/pdf/fuzz/corpus
+prune native/pdf/fuzz/artifacts
+prune native/pdf/tests/real-world/.private
+exclude native/pdf/tests/real-world/manifest.local.toml

@@ -445,6 +445,7 @@ documa process .\report.xlsx --office-provider rust --out .\out\report
 - 中文關鍵詞預設使用內建 **Lingxi 0.4.5**；source checkout 仍相容外部 0.2.1／0.3.0／0.4.5。native binding 無法使用時會明確回退至 n-gram provider。
 - `documa summarize` 與 Python `summarize_*` 使用內建 **Lingxi 0.4.5 schema v2**，保留既有 Documa 回應格式與外部 0.3.0 舊版摘要契約。Documa 驗證版本、方法與原文 offset；缺少 provider 時回傳 `SUMMARY_PROVIDER_UNAVAILABLE`，不會以未標示的替代算法偽裝成功。
 - PDF extraction 的 `auto` 模式會在可用時選擇 Rust provider，否則回退至 PyMuPDF。
+- Rust PDF 的完整核心、CLI、Python／WASM SDK 與開發驗證流程見 [`native/pdf/README.md`](native/pdf/README.md)；安裝用 Python 包裝位於 [`src/rust_pdf`](src/rust_pdf)。
 - Rust PDF provider 仍在擴大版面品質驗證範圍。對表格、caption、footnote 或複雜版面特別敏感時，建議明確使用 `--pdf-provider pymupdf` 比較結果。
 - OCR 產物會標記 `origin: "ocr"` 與 confidence，不會冒充原生文字。
 

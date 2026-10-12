@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "human_gold": false,
+  "fixture_text": "PDF OCR 12345",
+  "confidence": 0.9757749,
+  "runtime_version": "1.27.1",
+  "manifest_sha256": "ff5c4c1ac2915edff841b2e49eb52fdedc6e2b36e242fb3eecbf02accfad55e8",
+  "platform": "Windows",
+  "cases": [
+    {
+      "case": "recognition_and_layout_mapping",
+      "passed": true,
+      "expected_error": null,
+      "seconds": 8.1226
+    },
+    {
+      "case": "streamed_page_output",
+      "passed": true,
+      "expected_error": null,
+      "seconds": 7.9173
+    },
+    {
+      "case": "missing_runtime_is_structured",
+      "passed": true,
+      "expected_error": "ocr_model",
+      "seconds": 0.0516
+    },
+    {
+      "case": "dictionary_class_mismatch",
+      "passed": true,
+      "expected_error": "ocr_model",
+      "seconds": 0.2755
+    },
+    {
+      "case": "dynamic_recognition_height_rejected",
+      "passed": true,
+      "expected_error": "ocr_model",
+      "seconds": 0.25
+    },
+    {
+      "case": "swapped_model_shape_rejected",
+      "passed": true,
+      "expected_error": "ocr_model",
+      "seconds": 0.1991
+    },
+    {
+      "case": "document_budget",
+      "passed": true,
+      "expected_error": "limit_exceeded",
+      "seconds": 8.1625
+    }
+  ]
+}

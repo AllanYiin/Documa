@@ -62,8 +62,9 @@ rotation bucket。`ContentOrder` 依 source ordinal 輸出；所有 glyph vector
 
 - Simple font：`FirstChar`、`Widths`、FontDescriptor `MissingWidth`；缺值回退 500 units。
 - Type0/CIDFont：`DW` 與 `W` 的 array／range forms；缺值回退 1000 units。
-- `Identity-V` 等 `-V` encoding 會保留 vertical writing mode；`W2`／`DW2` 尚未支援，
-  vertical advance 暫使用 horizontal width magnitude 並明示為已知限制。
+- `Identity-V` 等 `-V` encoding 支援 CID `W2` array/range 與 `DW2`（預設 `[880 -1000]`）。
+  垂直位移使用 `w1y`；V2 glyph origin 由 writing origin 減去位置向量，再套用 text matrix／CTM。
+  缺少 `W2` 時，位置向量的 x 分量是橫向字寬的一半，並不拿橫向字寬當作垂直 advance。
 - advance 納入 font size、horizontal scaling、`Tc`、`Tw`、`TJ`、text matrix、CTM 與
   Form matrix。
 - legacy spans 使用獨立 compatibility matrix，避免新 metrics 改變 0.1.x Layout golden。
@@ -162,7 +163,8 @@ prefix、malformed nesting、warning amplification、fuzz、benchmark、MSRV 與
 - legacy `Layout` 的多餘空白是刻意保留的 0.1.x compatibility artifact；新使用者應選 `Auto`。
 - Auto 不執行 rendering、OCR 或 tagged structure-tree navigation；多欄、重疊、混合方向只承諾
   deterministic bounded fallback，不承諾完整 logical reading order。
-- vertical writing 保留 writing mode，但 `W2`／`DW2` 尚未支援。
+- vertical writing 的 W2／DW2 度量已支援；Auto 仍保守保留來源順序並回 ambiguity warning。
+  glyph outlines、自訂／完整預定義 CJK Encoding CMap 字集仍不屬本次度量增量。
 - `/ActualText` 無 BOM 時只支援 ASCII 子集；完整 PDFDocEncoding 尚未實作。
 - 私有 corpus 未配置時，public gate 只能回報 `SKIP`，不能宣稱實檔已通過。
 - PDF 2.0 normative conformance、encryption、repair 與新增 codecs 不在 0.2.0 範圍。

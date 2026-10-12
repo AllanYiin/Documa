@@ -1,5 +1,10 @@
 # rust-pdf-parser
 
+此目錄是 Documa 內的完整 Rust workspace；以下命令從 `native/pdf` 執行。
+Documa 安裝使用的 Python API 位於 [`src/rust_pdf`](../../src/rust_pdf)，與本目錄的
+`bindings/python/python/rust_pdf` 同步。此同步保留 Documa 原有 provider 選擇；
+原生 direct-image OCR 為可選 SDK 功能，未取代 Documa 的 renderer／OCR pipeline。
+
 從零實作、唯讀、以「正確抽取內文」為第一優先的 Rust PDF parser。核心不依賴
 `lopdf`、`pdf-rs`、PDFium、MuPDF、Poppler 或其他 PDF-aware parser；同一份 safe Rust
 `pdf-core` 支援 Rust library、`rust-pdf` CLI、Python wheel 與 browser WASM package。
@@ -7,6 +12,11 @@
 目前版本：`0.2.0`（Stage 11）。適合需要 Unicode 內文、來源／閱讀順序、文字品質
 metadata、Image XObject 擷取，或以可選 ONNX 後端處理全頁掃描影像，但不需要一般頁面
 渲染、加密或編輯 PDF 的開發者。
+
+目前工作區的 development line 為 `priority-2026-10-12`，已加入 Stage 12、額外 filters、
+W2/DW2、選頁、可調 limits 與逐頁 OCR。`version_info()` 保留相容性標籤；可用 Rust／Python
+`build_info()`、CLI `build-info --json` 或 WASM `buildInfo()` 查實際功能與 ONNX build flag。
+這些工程增量不代表真人品質驗收完成，也不開啟預設 provider cutover。
 
 ## Overview／概覽
 
@@ -39,6 +49,7 @@ timed-pilot 工具也已完成，但真人雙人審閱、裁決與計時試跑�
 ## Prerequisites／Requirements／前置條件
 
 - Rust stable 1.88 以上；repository 預設 toolchain 記錄於 `rust-toolchain.toml`。
+- 啟用原生 `ocr-onnx`／`rapidocr-onnx` 時，相依套件需要 Rust 1.89 以上；CI 分別驗證兩個門檻。
 - 建立 Python package 時需要 Python 3.9+、maturin 與 pytest。
 - 建立 browser package 時需要 `wasm32-unknown-unknown` target、wasm-pack 與 Node。
 - 本 parser 將所有 PDF bytes 視為不可信輸入；解析外部檔案時仍建議使用低權限 process。
@@ -59,7 +70,7 @@ cargo run -p pdf-cli -- extract path/to/input.pdf --mode auto --json
 
 成功時，純文字寫到 stdout；JSON 頂層包含 `mode`、`text`、`pages`、`warnings`、
 `glyphs`、`separators` 與 `quality`。失敗時 stderr 為含 `code`、`offset`、`message`
-的 JSON，process exit code 非零。
+的 `error` object（外層為 `{"ok":false,"error":...}`），process exit code 非零。
 
 其他 CLI usage：
 
@@ -148,10 +159,16 @@ rust-pdf extract input.pdf --mode content-order --json
 rust-pdf extract input.pdf --mode layout --json
 rust-pdf extract input.pdf --mode auto --normalize-unicode --json
 rust-pdf layout input.pdf --json
+rust-pdf extract input.pdf --mode auto --pages 1,3-5 --json
+rust-pdf layout input.pdf --pages 1,3-5 --ndjson
+rust-pdf --limits limits.json extract input.pdf --mode auto
 ```
 
 plain mode 的文字只寫 stdout，warnings 寫 stderr，適合 pipeline。`validate
 --diagnostics` 可輸出文件級 decode/cache metrics，但不會記錄 PDF 內文。
+`limits.json` 可只指定要覆寫的欄位，例如 `{"max_file_bytes":16777216,"max_pages":100}`；
+未知欄位會回 `invalid_option`。`--pages` 使用一基底頁碼、去重並按文件順序輸出，保留原始
+`page_index`／`page_number`。NDJSON 頁面是 provisional；只有 `document_finalize` 才表示完整成功。
 
 ## Usage：Python
 
@@ -188,6 +205,13 @@ stream = rust_pdf.extract_layout_stream(data)
 assert stream.metadata["coordinate_space"] == "layout_unrotated_top_left"
 for page in stream:
     print(page["page_number"])
+
+# 重用 parser；原生計算釋放 GIL。decode budget 是 handle/streams 共用的單調預算。
+with rust_pdf.Document(data, limits={"max_pages": 100}) as document:
+    result = document.extract_v2(pages="1", mode="auto")
+    with document.extract_layout_stream(pages="1") as stream:
+        for page in stream:
+            print(page["page_number"])
 ```
 
 Legacy `rust_pdf.extract_text(data)` 與 `rust_pdf.extract(data, layout=True)` 保持 0.1.x
@@ -232,6 +256,11 @@ console.log(layout.pages[0].orders.tagged_order);
 console.log(extractText(bytes, false, true));
 ```
 
+WASM 另提供 `PdfDocument` handle、`extractLayoutEvents(bytes, options)` 與
+`document.directOcrPages(options)`。iterator 的 `next()` 回傳 `{done, value}`，`close()`
+取消後續工作，`free()` 釋放 wrapper。options 可帶 `pages: "1,3-5"`；free functions 的
+`limits` 與 handle constructor 使用 snake_case `ParseLimits` 欄位。
+
 WASM 不做檔案 I/O，caller 必須傳入 `Uint8Array`。預設 limits 與 native core 相同，
 無 hidden thread、global cache 或 telemetry。
 
@@ -258,9 +287,11 @@ human-readable message。
 已實作：
 
 - basic object、classic/incremental/xref stream、hybrid xref、object stream。
-- FlateDecode、TIFF Predictor 2、PNG Predictor 10–15。
+- FlateDecode、ASCIIHexDecode、ASCII85Decode、RunLengthDecode、LZWDecode（EarlyChange 0/1），
+  以及 Flate/LZW 的 TIFF Predictor 2、PNG Predictor 10–15。
 - page tree、inherited resources、text operators、nested Form XObject。
 - ToUnicode `bfchar`／`bfrange`、simple／CID font metrics、positioned glyphs。
+- CID W2／DW2 的直排位移與原點，包含 `TJ`、text／Form／CTM 變換；Auto 直排仍保守保留來源順序。
 - marked content、direct／named／indirect property list 與 `/ActualText` replacement。
 - bounded tagged structure: StructTreeRoot/K/Pg, RoleMap, ParentTree Nums/Kids, MCID, Alt, and Artifact metadata.
 - 三種 extraction modes、script-aware Auto、warnings 與 quality metadata。
@@ -280,7 +311,7 @@ object-stream cache 64 MiB／256 entries；完整欄位見
   詳見 [Direct-image OCR](docs/ocr.md)。
 - 加密或密碼保護 PDF。
 - 損毀 xref 的猜測式 repair。
-- LZW、ASCII85、RunLength、CCITT、JBIG2、JPEG 2000 解碼。
+- CCITT、JBIG2、JPEG 2000 解碼。
 - complete PDF 2.0 tagged-PDF normative conformance, OBJR ordering, and stream-associated MCR ordering.
 
 layout/Auto 是文字抽取 heuristic，不是渲染結果；重疊文字、多欄、混合方向或缺少字型
@@ -303,6 +334,10 @@ cargo fmt --all --check
 cargo check --workspace --all-targets
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features
+cargo +1.88.0 check --workspace --all-targets --locked
+cargo +1.89.0 check --workspace --all-targets --all-features --locked
 cargo test --workspace --doc
 cargo check -p pdf-wasm --target wasm32-unknown-unknown
 cargo clippy -p pdf-wasm --target wasm32-unknown-unknown -- -D warnings
@@ -338,3 +373,4 @@ Stage 11 acceptance、private corpus、benchmark、fuzz、MSRV 與 supply-chain 
 
 更多資訊：[architecture](docs/architecture.md)、[text fidelity](docs/text-fidelity.md)、
 [errors](docs/errors.md)、[security](docs/security.md)、[release runbook](docs/release.md)。
+本輪工作與驗證見 [P1/P2 implementation tracker](docs/priority-implementation-2026-10-12.md)。
