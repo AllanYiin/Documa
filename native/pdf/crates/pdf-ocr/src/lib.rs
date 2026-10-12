@@ -1,10 +1,26 @@
 #![forbid(unsafe_code)]
 
+#[cfg(feature = "rapidocr-onnx")]
+mod onnx_validation;
+mod stream;
+pub use stream::{
+    OcrDocumentLimits, OcrPageProducer, ocr_document_selected, ocr_document_with_limits, ocr_pages,
+    ocr_pages_owned, ocr_pages_selected,
+};
+
 use image::{DynamicImage, GrayImage, Rgb, RgbImage};
 use pdf_core::{
     DirectOcrOptions, DirectOcrReason, ImageDataFormat, OcrLayoutBlock, OcrPixelBlock, PdfDocument,
 };
 use serde::{Deserialize, Serialize};
+
+/// Report core capabilities plus this crate's optional native OCR backend.
+#[must_use]
+pub const fn build_info() -> pdf_core::BuildInfo {
+    let mut info = pdf_core::build_info();
+    info.native_ocr_onnx = cfg!(feature = "rapidocr-onnx");
+    info
+}
 
 #[cfg(feature = "rapidocr-onnx")]
 const MAX_MODEL_BYTES: usize = 512 * 1024 * 1024;
@@ -60,7 +76,11 @@ impl OcrError {
 impl From<pdf_core::PdfError> for OcrError {
     fn from(error: pdf_core::PdfError) -> Self {
         Self::new(
-            OcrErrorCode::Pdf,
+            if error.code == pdf_core::ErrorCode::LimitExceeded {
+                OcrErrorCode::LimitExceeded
+            } else {
+                OcrErrorCode::Pdf
+            },
             format!("{}: {}", error.code, error.message),
         )
     }
@@ -122,74 +142,7 @@ pub fn ocr_document(
     engine: &impl ImageOcrEngine,
     options: OcrOptions,
 ) -> Result<OcrDocumentResult, OcrError> {
-    validate_options(options)?;
-    let analysis = document.analyze_direct_ocr(options.direct_image)?;
-    let mut pages = Vec::with_capacity(analysis.pages.len());
-    let mut document_text = String::new();
-
-    for page in analysis.pages {
-        let Some(candidate) = page.candidate else {
-            pages.push(OcrPageResult {
-                page_index: page.page_index,
-                reason: page.reason,
-                blocks: Vec::new(),
-                text: String::new(),
-            });
-            continue;
-        };
-        let image = decode_candidate_image(&candidate.image)?;
-        let pixel_blocks = engine.recognize(&image, options.max_blocks_per_page)?;
-        if pixel_blocks.len() > options.max_blocks_per_page {
-            return Err(OcrError::new(
-                OcrErrorCode::LimitExceeded,
-                "OCR backend returned too many blocks",
-            ));
-        }
-        let mut text_bytes = 0_usize;
-        let mut blocks = Vec::with_capacity(pixel_blocks.len());
-        for block in pixel_blocks {
-            if !block.confidence.is_finite() {
-                return Err(OcrError::new(
-                    OcrErrorCode::Inference,
-                    "OCR backend returned non-finite confidence",
-                ));
-            }
-            if block.confidence < options.min_confidence || block.text.is_empty() {
-                continue;
-            }
-            text_bytes = text_bytes.checked_add(block.text.len()).ok_or_else(|| {
-                OcrError::new(OcrErrorCode::LimitExceeded, "OCR text length overflow")
-            })?;
-            if text_bytes > options.max_total_text_bytes_per_page {
-                return Err(OcrError::new(
-                    OcrErrorCode::LimitExceeded,
-                    "OCR page text length limit exceeded",
-                ));
-            }
-            blocks.push(candidate.map_block(&block)?);
-        }
-        let text = blocks
-            .iter()
-            .map(|block| block.text.as_str())
-            .collect::<Vec<_>>()
-            .join("\n");
-        if !text.is_empty() {
-            if !document_text.is_empty() {
-                document_text.push('\n');
-            }
-            document_text.push_str(&text);
-        }
-        pages.push(OcrPageResult {
-            page_index: page.page_index,
-            reason: DirectOcrReason::Eligible,
-            blocks,
-            text,
-        });
-    }
-    Ok(OcrDocumentResult {
-        pages,
-        text: document_text,
-    })
+    ocr_document_with_limits(document, engine, options, OcrDocumentLimits::default())
 }
 
 fn validate_options(options: OcrOptions) -> Result<(), OcrError> {
@@ -222,13 +175,42 @@ fn validate_options(options: OcrOptions) -> Result<(), OcrError> {
 ///
 /// Returns a stable decode, unsupported-image, or limit error.
 pub fn decode_candidate_image(image: &pdf_core::ExtractedImage) -> Result<DynamicImage, OcrError> {
+    decode_candidate_image_with_limit(image, OcrDocumentLimits::default().max_decoded_image_bytes)
+}
+
+fn decode_candidate_image_with_limit(
+    image: &pdf_core::ExtractedImage,
+    maximum: usize,
+) -> Result<DynamicImage, OcrError> {
+    let components = if image.format == ImageDataFormat::Jpeg {
+        4
+    } else if matches!(image.color_space.as_deref(), Some("DeviceGray") | None) {
+        1
+    } else {
+        3
+    };
+    let bytes = u64::from(image.width)
+        .checked_mul(u64::from(image.height))
+        .and_then(|pixels| pixels.checked_mul(components));
+    if image.width == 0 || image.height == 0 || bytes.is_none_or(|bytes| bytes > maximum as u64) {
+        return Err(OcrError::new(
+            OcrErrorCode::LimitExceeded,
+            "OCR decoded image byte limit exceeded or dimensions are empty",
+        ));
+    }
     match image.format {
         ImageDataFormat::Jpeg => {
             let reader = || {
-                image::ImageReader::with_format(
+                let mut reader = image::ImageReader::with_format(
                     std::io::Cursor::new(&image.data),
                     image::ImageFormat::Jpeg,
-                )
+                );
+                let mut limits = image::Limits::default();
+                limits.max_image_width = Some(image.width);
+                limits.max_image_height = Some(image.height);
+                limits.max_alloc = Some(maximum as u64);
+                reader.limits(limits);
+                reader
             };
             let decode_error = |error| {
                 OcrError::new(
@@ -343,6 +325,8 @@ fn ensure_sample_length(data: &[u8], expected: usize) -> Result<(), OcrError> {
 #[cfg(feature = "rapidocr-onnx")]
 pub struct RapidOcrOnnxEngine {
     inner: paddleocr_rs_onnx::OcrEngine,
+    failed: std::sync::atomic::AtomicBool,
+    inference_gate: std::sync::Mutex<()>,
 }
 
 #[cfg(feature = "rapidocr-onnx")]
@@ -369,15 +353,63 @@ impl RapidOcrOnnxEngine {
                 "OCR models/dictionary are empty or exceed configured limits",
             ));
         }
-        paddleocr_rs_onnx::OcrEngine::new(detection_model, recognition_model, dictionary)
-            .map(|inner| Self { inner })
-            .map_err(|error| OcrError::new(OcrErrorCode::Model, error.to_string()))
+        let result = std::panic::catch_unwind(|| {
+            onnx_validation::validate(detection_model, recognition_model, dictionary)?;
+            paddleocr_rs_onnx::OcrEngine::new(detection_model, recognition_model, dictionary)
+                .map(|inner| Self {
+                    inner,
+                    failed: std::sync::atomic::AtomicBool::new(false),
+                    inference_gate: std::sync::Mutex::new(()),
+                })
+                .map_err(|error| OcrError::new(OcrErrorCode::Model, error.to_string()))
+        });
+        result.unwrap_or_else(|_| {
+            Err(OcrError::new(
+                OcrErrorCode::Model,
+                "ONNX backend initialization panicked",
+            ))
+        })
     }
 }
 
 #[cfg(feature = "rapidocr-onnx")]
 impl ImageOcrEngine for RapidOcrOnnxEngine {
     fn recognize(
+        &self,
+        image: &DynamicImage,
+        max_blocks: usize,
+    ) -> Result<Vec<OcrPixelBlock>, OcrError> {
+        let _gate = self.inference_gate.lock().map_err(|_| {
+            OcrError::new(OcrErrorCode::Inference, "OCR inference lock was poisoned")
+        })?;
+        if self.failed.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err(OcrError::new(
+                OcrErrorCode::Inference,
+                "OCR engine must be recreated after a backend failure",
+            ));
+        }
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            self.recognize_checked(image, max_blocks)
+        }))
+        .unwrap_or_else(|_| {
+            Err(OcrError::new(
+                OcrErrorCode::Inference,
+                "ONNX backend inference panicked",
+            ))
+        });
+        if result.is_err() {
+            // The upstream recognizer loses a pooled session on failure. Do not
+            // repeatedly call it until its pool is empty and a caller deadlocks.
+            self.failed
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+        }
+        result
+    }
+}
+
+#[cfg(feature = "rapidocr-onnx")]
+impl RapidOcrOnnxEngine {
+    fn recognize_checked(
         &self,
         image: &DynamicImage,
         max_blocks: usize,
