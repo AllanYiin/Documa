@@ -1655,11 +1655,15 @@ fn push_warning_once(
 }
 
 fn move_text_line(state: &mut TextState, x: f64, y: f64) {
-    state.line_matrix.e += x;
-    state.line_matrix.f += y;
+    // Td/TD/T* translate in text-line coordinates, not in page/user space.
+    // ISO 32000-1, Table 108: pre-concatenate the translation with Tlm.
+    let (e, f) = state.line_matrix.transform(x, y);
+    state.line_matrix.e = e;
+    state.line_matrix.f = f;
     state.text_matrix = state.line_matrix;
-    state.legacy_line_matrix.e += x;
-    state.legacy_line_matrix.f += y;
+    let (e, f) = state.legacy_line_matrix.transform(x, y);
+    state.legacy_line_matrix.e = e;
+    state.legacy_line_matrix.f = f;
     state.legacy_text_matrix = state.legacy_line_matrix;
 }
 

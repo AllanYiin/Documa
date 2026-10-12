@@ -105,6 +105,62 @@ fn positioned_glyph_count_is_bounded() {
     assert_eq!(error.code, ErrorCode::LimitExceeded);
 }
 
+#[test]
+fn text_line_moves_apply_scaled_matrix_for_td_leading_and_quotes() {
+    let content = b"BT /F1 1 Tf 10 0 0 10 100 700 Tm (A) Tj \
+        0 -2 TD (B) Tj T* (C) Tj (D) ' 0 0 (E) \" ET";
+    let font = b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
+    let document = PdfDocument::parse(&single_page_pdf(content, font)).expect("scaled text PDF");
+    let result = document
+        .extract_text_v2(TextExtractionOptionsV2 {
+            mode: ExtractionMode::ContentOrder,
+            ..TextExtractionOptionsV2::default()
+        })
+        .expect("scaled text line moves");
+    assert_eq!(result.glyphs.len(), 5);
+    for (glyph, y) in result
+        .glyphs
+        .iter()
+        .zip([700.0, 680.0, 660.0, 640.0, 620.0])
+    {
+        assert!((glyph.origin[0] - 100.0).abs() < 1.0e-9);
+        assert!((glyph.origin[1] - y).abs() < 1.0e-9);
+    }
+    let legacy = document
+        .extract_text(TextExtractionOptions {
+            normalize_unicode: false,
+            layout: false,
+        })
+        .expect("legacy text line moves");
+    for (span, y) in legacy.pages[0]
+        .spans
+        .iter()
+        .zip([700.0, 680.0, 660.0, 640.0, 620.0])
+    {
+        assert!((span.x - 100.0).abs() < 1.0e-9);
+        assert!((span.y - y).abs() < 1.0e-9);
+    }
+}
+
+#[test]
+fn td_uses_rotated_line_matrix_before_page_ctm_and_ignores_text_advance() {
+    let content = b"q 2 0 0 3 5 7 cm BT /F1 1 Tf \
+        0 2 -3 0 100 200 Tm (AAAA) Tj 4 -5 Td (B) Tj ET Q";
+    let font = b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
+    let document = PdfDocument::parse(&single_page_pdf(content, font)).expect("rotated text PDF");
+    let result = document
+        .extract_text_v2(TextExtractionOptionsV2 {
+            mode: ExtractionMode::ContentOrder,
+            ..TextExtractionOptionsV2::default()
+        })
+        .expect("rotated text line move");
+    let glyph = result.glyphs.last().expect("B glyph");
+    assert_eq!(glyph.unicode, "B");
+    // Tlm(4, -5) = (115, 208), then CTM gives (235, 631).
+    assert!((glyph.origin[0] - 235.0).abs() < 1.0e-9);
+    assert!((glyph.origin[1] - 631.0).abs() < 1.0e-9);
+}
+
 fn assert_glyph(
     glyph: &pdf_core::PositionedGlyph,
     text: &str,
