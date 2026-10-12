@@ -1,0 +1,505 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rust-office:office-layout-v1",
+  "title": "Office Layout IR event",
+  "$defs": {
+    "span": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "styles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "metadata": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "styles",
+        "metadata"
+      ]
+    },
+    "block": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "order_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bbox": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 4,
+              "maxItems": 4
+            }
+          ]
+        },
+        "spans": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/span"
+          }
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "confidence": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "cells": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/table_cell"
+              }
+            },
+            "cell_records": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/cell_record"
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "text",
+        "order_index",
+        "bbox",
+        "spans",
+        "source_refs",
+        "confidence",
+        "metadata"
+      ]
+    },
+    "table": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "block_id": {
+          "type": "string"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "cells": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/table_cell"
+              }
+            },
+            "cell_records": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/cell_record"
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "id",
+        "block_id",
+        "rows",
+        "source_refs",
+        "metadata"
+      ]
+    },
+    "unit": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "label": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/block"
+          }
+        },
+        "tables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/table"
+          }
+        },
+        "metadata": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "label",
+        "kind",
+        "width",
+        "height",
+        "hidden",
+        "blocks",
+        "tables",
+        "metadata"
+      ]
+    },
+    "asset": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "mime_type": {
+          "type": "string"
+        },
+        "file_name": {
+          "type": "string"
+        },
+        "data_base64": {
+          "type": "string",
+          "contentEncoding": "base64"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "source_ref": {
+          "type": "string"
+        },
+        "alt_text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "metadata": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "mime_type",
+        "file_name",
+        "data_base64",
+        "sha256",
+        "source_ref",
+        "alt_text",
+        "metadata"
+      ]
+    },
+    "warning": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "context": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "context"
+      ]
+    },
+    "table_cell": {
+      "type": "object",
+      "required": [
+        "row",
+        "column",
+        "rowspan",
+        "colspan",
+        "text",
+        "source_ref"
+      ],
+      "properties": {
+        "row": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rowspan": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "colspan": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "text": {
+          "type": "string"
+        },
+        "source_ref": {
+          "type": "string"
+        },
+        "nested_table_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "paragraphs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/block"
+          }
+        }
+      }
+    },
+    "cell_record": {
+      "type": "object",
+      "required": [
+        "address",
+        "row",
+        "column",
+        "data_type",
+        "value",
+        "raw_value",
+        "display_text",
+        "display_exact",
+        "number_format",
+        "formula",
+        "cache_status",
+        "source_ref"
+      ],
+      "properties": {
+        "address": {
+          "type": "string",
+          "pattern": "^[A-Z]+[1-9][0-9]*$"
+        },
+        "row": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "data_type": {
+          "type": "string"
+        },
+        "value": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "raw_value": {
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ]
+        },
+        "display_text": {
+          "type": "string"
+        },
+        "display_exact": {
+          "type": "boolean"
+        },
+        "number_format": {
+          "type": "string"
+        },
+        "formula": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cache_status": {
+          "enum": [
+            "not_applicable",
+            "missing",
+            "present_unverified"
+          ]
+        },
+        "source_ref": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "document_start"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "format": {
+          "enum": [
+            "docx",
+            "xls",
+            "xlsx",
+            "pptx"
+          ]
+        },
+        "coordinate_space": {
+          "enum": [
+            "logical_flow",
+            "cell_grid",
+            "slide_points"
+          ]
+        },
+        "source_name": {
+          "type": "string"
+        },
+        "source_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "metadata": {
+          "type": "object"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/warning"
+          }
+        },
+        "unit_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "event",
+        "schema_version",
+        "format",
+        "coordinate_space",
+        "source_name",
+        "source_hash",
+        "metadata",
+        "warnings",
+        "unit_count"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "unit"
+        },
+        "unit": {
+          "$ref": "#/$defs/unit"
+        }
+      },
+      "required": [
+        "event",
+        "unit"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "asset"
+        },
+        "asset": {
+          "$ref": "#/$defs/asset"
+        }
+      },
+      "required": [
+        "event",
+        "asset"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "document_end"
+        },
+        "status": {
+          "const": "ok"
+        }
+      },
+      "required": [
+        "event",
+        "status"
+      ]
+    }
+  ]
+}

@@ -12,3 +12,5 @@ office-sheet = { path = "../office-sheet" }
 office-slide = { path = "../office-slide" }
 office-word = { path = "../office-word" }
 serde_json.workspace = true
+
+base64.workspace = true

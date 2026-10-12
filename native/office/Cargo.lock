@@ -405,6 +405,7 @@ dependencies = [
 name = "office-cli"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "clap",
  "office-core",
  "office-sheet",
@@ -432,6 +433,7 @@ dependencies = [
  "quick-xml",
  "serde",
  "serde_json",
+ "sha2",
  "zip",
 ]
 
@@ -444,6 +446,7 @@ dependencies = [
  "office-slide",
  "office-word",
  "pyo3",
+ "serde",
  "serde_json",
 ]
 
