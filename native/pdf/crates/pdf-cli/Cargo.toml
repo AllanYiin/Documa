@@ -7,6 +7,10 @@ license.workspace = true
 repository.workspace = true
 description = "Command-line interface for the from-scratch Rust PDF parser"
 
+[features]
+default = []
+ocr-onnx = ["dep:pdf-ocr", "pdf-ocr/rapidocr-onnx"]
+
 [[bin]]
 name = "rust-pdf"
 path = "src/main.rs"
@@ -15,6 +19,7 @@ path = "src/main.rs"
 clap = { version = "4", features = ["derive"] }
 pdf-core.workspace = true
 serde_json.workspace = true
+pdf-ocr = { workspace = true, optional = true }
 
 [dev-dependencies]
 sha2.workspace = true

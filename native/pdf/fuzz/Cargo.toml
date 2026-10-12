@@ -1,0 +1,33 @@
+[package]
+name = "pdf-core-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+pdf-core = { path = "../crates/pdf-core" }
+
+[[bin]]
+name = "parse_document"
+path = "fuzz_targets/parse_document.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_object"
+path = "fuzz_targets/parse_object.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_content"
+path = "fuzz_targets/parse_content.rs"
+test = false
+doc = false
+bench = false

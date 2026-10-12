@@ -1,0 +1,24 @@
+[package]
+name = "pdf-ocr"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Direct-image OCR orchestration and optional RapidOCR-compatible ONNX backend"
+
+[features]
+default = []
+rapidocr-onnx = ["dep:ort", "dep:paddleocr_rs_onnx"]
+
+[dependencies]
+image.workspace = true
+paddleocr_rs_onnx = { version = "0.2.7", optional = true, features = ["directml", "cuda", "openvino", "nnapi", "coreml", "cann"] }
+ort = { version = "2.0.0-rc.13", default-features = false, features = ["load-dynamic"], optional = true }
+pdf-core.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"

@@ -26,6 +26,9 @@ pub enum ErrorCode {
     ObjectIdMismatch,
     UnsupportedFeature,
     Io,
+    OcrImageDecode,
+    OcrModel,
+    OcrInference,
 }
 
 impl ErrorCode {
@@ -51,6 +54,9 @@ impl ErrorCode {
             Self::ObjectIdMismatch => "object_id_mismatch",
             Self::UnsupportedFeature => "unsupported_feature",
             Self::Io => "io",
+            Self::OcrImageDecode => "ocr_image_decode",
+            Self::OcrModel => "ocr_model",
+            Self::OcrInference => "ocr_inference",
         }
     }
 }

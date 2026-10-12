@@ -176,6 +176,24 @@ pub fn extract_images(data: &[u8]) -> Result<JsValue, JsValue> {
     let images = document.extract_images().map_err(pdf_error)?;
     serde_wasm_bindgen::to_value(&images).map_err(serialization_error)
 }
+/// Analyze direct-image OCR candidates without page rasterization.
+///
+/// The returned image bytes and placement quad can be handed to a browser ONNX backend.
+///
+/// # Errors
+///
+/// Returns a structured JavaScript parser, option, geometry, or limit error.
+#[wasm_bindgen(js_name = analyzeDirectOcr)]
+pub fn analyze_direct_ocr(data: &[u8], min_page_coverage: Option<f64>) -> Result<JsValue, JsValue> {
+    let document = pdf_core::PdfDocument::parse(data).map_err(pdf_error)?;
+    let analysis = document
+        .analyze_direct_ocr(pdf_core::DirectOcrOptions {
+            min_page_coverage: min_page_coverage.unwrap_or(0.9),
+            ..pdf_core::DirectOcrOptions::default()
+        })
+        .map_err(pdf_error)?;
+    serde_wasm_bindgen::to_value(&analysis).map_err(serialization_error)
+}
 
 #[allow(clippy::needless_pass_by_value)] // map_err supplies owned option errors.
 fn option_deserialization_error(error: serde_wasm_bindgen::Error) -> JsValue {

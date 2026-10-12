@@ -97,6 +97,38 @@ enum Command {
         #[arg(long)]
         diagnostics: bool,
     },
+    /// Analyze pages eligible for direct-image OCR without rasterization.
+    OcrCandidates {
+        /// PDF file to analyze.
+        file: PathBuf,
+        /// Minimum fraction of page area covered by the single painted image.
+        #[arg(long, default_value_t = 0.9)]
+        min_page_coverage: f64,
+    },
+    /// Run RapidOCR-compatible detection and recognition ONNX models.
+    #[cfg(feature = "ocr-onnx")]
+    Ocr {
+        /// PDF file to OCR.
+        file: PathBuf,
+        /// PaddleOCR/RapidOCR detection model in ONNX format.
+        #[arg(long)]
+        det_model: PathBuf,
+        /// PaddleOCR/RapidOCR recognition model in ONNX format.
+        #[arg(long)]
+        rec_model: PathBuf,
+        /// Recognition dictionary matching the recognition model.
+        #[arg(long)]
+        dictionary: PathBuf,
+        /// Minimum fraction of page area covered by the single painted image.
+        #[arg(long, default_value_t = 0.9)]
+        min_page_coverage: f64,
+        /// Discard OCR blocks below this confidence.
+        #[arg(long, default_value_t = 0.0)]
+        min_confidence: f32,
+        /// Emit structured pages, quads, confidence, and text.
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -136,6 +168,7 @@ fn main() -> ExitCode {
     }
 }
 
+#[allow(clippy::too_many_lines)] // CLI dispatch remains a flat, auditable command table.
 fn run(cli: Cli) -> PdfResult<()> {
     match cli.command.unwrap_or(Command::Version { json: false }) {
         Command::Version { json: use_json } => {
@@ -229,6 +262,40 @@ fn run(cli: Cli) -> PdfResult<()> {
             json: use_json,
             diagnostics,
         } => validate_document(&file, use_json, diagnostics),
+        Command::OcrCandidates {
+            file,
+            min_page_coverage,
+        } => {
+            let document = open_document(&file)?;
+            let analysis = document.analyze_direct_ocr(pdf_core::DirectOcrOptions {
+                min_page_coverage,
+                ..pdf_core::DirectOcrOptions::default()
+            })?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&analysis)
+                    .map_err(|error| serialization_error(&error))?
+            );
+            Ok(())
+        }
+        #[cfg(feature = "ocr-onnx")]
+        Command::Ocr {
+            file,
+            det_model,
+            rec_model,
+            dictionary,
+            min_page_coverage,
+            min_confidence,
+            json,
+        } => print_ocr(
+            &file,
+            &det_model,
+            &rec_model,
+            &dictionary,
+            min_page_coverage,
+            min_confidence,
+            json,
+        ),
     }
 }
 
@@ -392,6 +459,85 @@ fn print_version(use_json: bool) {
     } else {
         println!("rust-pdf {} ({})", info.version, info.stage);
     }
+}
+
+#[cfg(feature = "ocr-onnx")]
+fn print_ocr(
+    file: &PathBuf,
+    det_model: &PathBuf,
+    rec_model: &PathBuf,
+    dictionary: &PathBuf,
+    min_page_coverage: f64,
+    min_confidence: f32,
+    use_json: bool,
+) -> PdfResult<()> {
+    let document = open_document(file)?;
+    let detection = read_bounded(det_model, 512 * 1024 * 1024)?;
+    let recognition = read_bounded(rec_model, 512 * 1024 * 1024)?;
+    let keys = read_bounded(dictionary, 16 * 1024 * 1024)?;
+    let engine =
+        pdf_ocr::RapidOcrOnnxEngine::new(&detection, &recognition, &keys).map_err(map_ocr_error)?;
+    let result = pdf_ocr::ocr_document(
+        &document,
+        &engine,
+        pdf_ocr::OcrOptions {
+            direct_image: pdf_core::DirectOcrOptions {
+                min_page_coverage,
+                ..pdf_core::DirectOcrOptions::default()
+            },
+            min_confidence,
+            ..pdf_ocr::OcrOptions::default()
+        },
+    )
+    .map_err(map_ocr_error)?;
+    if use_json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&result).map_err(|error| serialization_error(&error))?
+        );
+    } else {
+        println!("{}", result.text);
+    }
+    Ok(())
+}
+
+#[cfg(feature = "ocr-onnx")]
+fn read_bounded(path: &PathBuf, max_bytes: usize) -> PdfResult<Vec<u8>> {
+    let metadata = std::fs::metadata(path).map_err(|error| {
+        PdfError::new(
+            ErrorCode::Io,
+            None,
+            format!("cannot inspect {}: {error}", path.display()),
+        )
+    })?;
+    if metadata.len() > max_bytes as u64 {
+        return Err(PdfError::new(
+            ErrorCode::LimitExceeded,
+            None,
+            format!("{} exceeds the configured byte limit", path.display()),
+        ));
+    }
+    std::fs::read(path).map_err(|error| {
+        PdfError::new(
+            ErrorCode::Io,
+            None,
+            format!("cannot read {}: {error}", path.display()),
+        )
+    })
+}
+
+#[cfg(feature = "ocr-onnx")]
+fn map_ocr_error(error: pdf_ocr::OcrError) -> PdfError {
+    let code = match error.code {
+        pdf_ocr::OcrErrorCode::Pdf => ErrorCode::InvalidObject,
+        pdf_ocr::OcrErrorCode::ImageDecode | pdf_ocr::OcrErrorCode::UnsupportedImage => {
+            ErrorCode::OcrImageDecode
+        }
+        pdf_ocr::OcrErrorCode::Model => ErrorCode::OcrModel,
+        pdf_ocr::OcrErrorCode::Inference => ErrorCode::OcrInference,
+        pdf_ocr::OcrErrorCode::LimitExceeded => ErrorCode::LimitExceeded,
+    };
+    PdfError::new(code, None, error.message)
 }
 
 fn open_document(path: &PathBuf) -> PdfResult<PdfDocument> {

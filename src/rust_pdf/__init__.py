@@ -9,6 +9,7 @@ from typing import Any
 from ._native import (
     PdfParseError,
     LayoutJsonStream as _LayoutJsonStream,
+    analyze_direct_ocr_json as _analyze_direct_ocr_json,
     extract_images_json as _extract_images_json,
     extract_json as _extract_json,
     extract_layout_json as _extract_layout_json,
@@ -18,6 +19,11 @@ from ._native import (
     inspect_json as _inspect_json,
     version_info,
 )
+try:
+    from ._native import ocr_direct_json as _ocr_direct_json
+except ImportError:
+    _ocr_direct_json = None
+
 
 
 def extract(
@@ -122,6 +128,39 @@ def extract_images(data: bytes) -> list[dict[str, Any]]:
     """Extract image XObjects without rendering pages."""
     return json.loads(_extract_images_json(data))
 
+def analyze_direct_ocr(
+    data: bytes,
+    *,
+    min_page_coverage: float = 0.9,
+) -> dict[str, Any]:
+    """Return pages eligible for direct-image OCR without page rasterization."""
+    return json.loads(_analyze_direct_ocr_json(data, min_page_coverage))
+
+
+
+def ocr_direct(
+    data: bytes,
+    detection_model: bytes,
+    recognition_model: bytes,
+    dictionary: bytes,
+    *,
+    min_page_coverage: float = 0.9,
+    min_confidence: float = 0.0,
+) -> dict[str, Any]:
+    """Run the optional RapidOCR-compatible native ONNX backend."""
+    if _ocr_direct_json is None:
+        raise RuntimeError("rust_pdf was built without the ocr-onnx feature")
+    return json.loads(
+        _ocr_direct_json(
+            data,
+            detection_model,
+            recognition_model,
+            dictionary,
+            min_page_coverage,
+            min_confidence,
+        )
+    )
+
 
 def inspect(data: bytes) -> dict[str, Any]:
     """Return the parsed PDF version and cross-reference summary."""
@@ -130,6 +169,8 @@ def inspect(data: bytes) -> dict[str, Any]:
 
 __all__ = [
     "PdfParseError",
+    "analyze_direct_ocr",
+    "ocr_direct",
     "extract",
     "extract_text",
     "extract_v2",

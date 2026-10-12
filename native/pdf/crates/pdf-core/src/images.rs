@@ -39,6 +39,8 @@ pub struct ExtractedImage {
     pub width: u32,
     pub height: u32,
     pub bits_per_component: u8,
+    pub image_mask: bool,
+    pub has_soft_mask: bool,
     pub color_space: Option<String>,
     pub filter: Option<String>,
     pub format: ImageDataFormat,
@@ -242,7 +244,8 @@ fn extract_image(
     if format == ImageDataFormat::RawSamples {
         validate_raw_sample_length(
             data.len(),
-            pixels,
+            width,
+            height,
             bits_per_component,
             color_space.as_deref(),
             &mut warnings,
@@ -255,6 +258,8 @@ fn extract_image(
         width,
         height,
         bits_per_component,
+        image_mask,
+        has_soft_mask: stream.dictionary.contains_key(&PdfName(b"SMask".to_vec())),
         color_space,
         filter,
         format,
@@ -292,7 +297,8 @@ fn validate_jpeg_dimensions(
 
 fn validate_raw_sample_length(
     actual: usize,
-    pixels: usize,
+    width: u32,
+    height: u32,
     bits_per_component: u8,
     color_space: Option<&str>,
     warnings: &mut Vec<ImageWarning>,
@@ -303,12 +309,18 @@ fn validate_raw_sample_length(
         Some("DeviceCMYK") => 4,
         _ => return,
     };
-    let expected_bits = pixels
-        .checked_mul(components)
+    let row_bits = usize::try_from(width)
+        .ok()
+        .and_then(|width| width.checked_mul(components))
         .and_then(|samples| samples.checked_mul(usize::from(bits_per_component)));
-    let expected = expected_bits
+    // Each image row starts on a byte boundary, including sub-byte samples.
+    let expected = row_bits
         .and_then(|bits| bits.checked_add(7))
-        .map(|bits| bits / 8);
+        .and_then(|bits| {
+            usize::try_from(height)
+                .ok()
+                .and_then(|height| (bits / 8).checked_mul(height))
+        });
     if expected.is_some_and(|expected| expected != actual) {
         warnings.push(ImageWarning {
             code: "raw_sample_length_mismatch".to_owned(),
@@ -403,4 +415,35 @@ fn resolve_dictionary(document: &PdfDocument, object: &PdfObject) -> PdfResult<P
             "expected resource dictionary",
         )
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn raw_sample_lengths_include_per_row_padding() {
+        for bits in [1, 2, 4, 8, 16] {
+            let row_bytes = (3 * usize::from(bits)).div_ceil(8);
+            let mut warnings = Vec::new();
+            validate_raw_sample_length(
+                row_bytes * 2,
+                3,
+                2,
+                bits,
+                Some("DeviceGray"),
+                &mut warnings,
+            );
+            assert!(warnings.is_empty());
+            validate_raw_sample_length(
+                row_bytes * 2 - 1,
+                3,
+                2,
+                bits,
+                Some("DeviceGray"),
+                &mut warnings,
+            );
+            assert_eq!(warnings[0].code, "raw_sample_length_mismatch");
+        }
+    }
 }

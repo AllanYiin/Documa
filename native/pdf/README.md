@@ -5,7 +5,8 @@
 `pdf-core` 支援 Rust library、`rust-pdf` CLI、Python wheel 與 browser WASM package。
 
 目前版本：`0.2.0`（Stage 11）。適合需要 Unicode 內文、來源／閱讀順序、文字品質
-metadata 或 Image XObject 擷取，但不需要頁面渲染、OCR、加密或編輯 PDF 的開發者。
+metadata、Image XObject 擷取，或以可選 ONNX 後端處理全頁掃描影像，但不需要一般頁面
+渲染、加密或編輯 PDF 的開發者。
 
 ## Overview／概覽
 
@@ -31,8 +32,9 @@ character F1 0.960813 不再當作 parser text truth。預設 provider 仍未切
 human-order 雙人 gold 尚未完成、tagged-order proxy 0.940546 僅屬診斷證據，且私有
 table/image gold 尚未滿足 Go/No-Go 條件。Stage 7.3 的 validator/scorer、公開 gold 與
 7 文件／28 頁私人審閱包及本機 annotation workbench 均已完成；工作台提供鎖定的
-Reviewer A／B 獨立標註、點選閱讀順序、頁首頁尾／頁碼分類、manifest 匯入合併與
-coded adjudication，draft 正確回報 `human_order_review_incomplete`；Stage 7.4 禁止開始。
+Reviewer A／B 獨立的 block-brush 標註、區塊先後關係、頁首頁尾／頁碼分類、manifest
+匯入合併與 coded adjudication；舊版逐節點點選工作台僅保留作歷史證據。Stage 7.3D
+timed-pilot 工具也已完成，但真人雙人審閱、裁決與計時試跑仍未完成；Stage 7.4 禁止開始。
 
 ## Prerequisites／Requirements／前置條件
 
@@ -193,7 +195,8 @@ Legacy `rust_pdf.extract_text(data)` 與 `rust_pdf.extract(data, layout=True)` �
 `rust_pdf.extract_images(data)` 回傳 image metadata 與 bytes。
 目前 `extract_layout_stream()` 使用真正逐頁的 `native_events_v2`；頁面迭代結束後
 `stream.metadata` 才是最終值，跨頁 furniture patches 可由 `stream.finalizations()`
-逐頁取出。完整 adapter RSS 與品質 gate 尚未通過，因此這不代表可切換預設 provider。
+逐頁取出。歷史量測的完整 adapter RSS 已通過門檻，但 human-order 與私有 table/image
+gold 尚未完成，因此這不代表可切換預設 provider。
 ## Usage：Browser WASM
 
 建立 web-target package：
@@ -273,7 +276,8 @@ object-stream cache 64 MiB／256 entries；完整欄位見
 
 明確不支援：
 
-- 頁面渲染、OCR、PDF 編輯。
+- 一般頁面 rasterization 與 PDF 編輯；OCR 僅支援保守的 direct-image 快速路徑，
+  詳見 [Direct-image OCR](docs/ocr.md)。
 - 加密或密碼保護 PDF。
 - 損毀 xref 的猜測式 repair。
 - LZW、ASCII85、RunLength、CCITT、JBIG2、JPEG 2000 解碼。
@@ -323,6 +327,7 @@ Stage 11 acceptance、private corpus、benchmark、fuzz、MSRV 與 supply-chain 
 | Path | Responsibility |
 |---|---|
 | `crates/pdf-core` | 所有 PDF syntax、xref、page、font、text、image 與 limits 規則 |
+| `crates/pdf-ocr` | 通用影像解碼、OCR 編排與可選 ONNX 後端 |
 | `crates/pdf-cli` | 檔案 I/O、參數與 plain／JSON 輸出 |
 | `bindings/python` | Python type、error、result 轉換 |
 | `bindings/wasm` | JavaScript type、error、result 轉換 |

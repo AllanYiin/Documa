@@ -1,6 +1,7 @@
 # Compatibility reference
 
-Version／版本：`0.2.0`／Stage 11。此 reference 只描述已有 fixture、regression 或 private-corpus 證據的
+Version／版本：`0.2.0`／`version_info().stage = stage-11`，包含工作區 Stage 12 與 direct-image OCR 增量。
+此 reference 只描述已有 fixture、regression 或 private-corpus 證據的
 行為，不代表完整 ISO 32000 或 PDF 2.0 normative conformance。
 
 ## Overview／概覽
@@ -21,7 +22,7 @@ Version／版本：`0.2.0`／Stage 11。此 reference 只描述已有 fixture、
 | Filters | Partial | FlateDecode/Fl only；single-stream、ratio、document-lifetime limits |
 | Predictors | Supported | TIFF 2；PNG 10–15；BPC 1/2/4/8/16 |
 | Page tree | Supported | `/Kids` order、cycle/depth/page limits |
-| Inherited page attributes | Partial | Resources、MediaBox、Rotate |
+| Inherited page attributes | Partial | Resources、MediaBox、CropBox、Rotate；另提供 UserUnit 與座標轉換 |
 | Page contents | Supported | single stream、array、indirect streams |
 | Content operators | Text-focused | text state、CTM/text matrix、inline image skip |
 | Form XObject | Supported for text | nested resources/matrix/cycle protection |
@@ -30,14 +31,20 @@ Version／版本：`0.2.0`／Stage 11。此 reference 只描述已有 fixture、
 | Type0/composite fonts | Partial | ToUnicode authoritative；Identity fallback warned；W/DW supported |
 | Vertical font metrics | Partial | writing mode retained；W2/DW2 not implemented |
 | Marked content／ActualText | Partial | BMC/BDC/EMC、direct/named/indirect properties、nested replacement、MCID |
-| Tagged structure tree | Unsupported | no structure-tree logical-order navigation |
+| Tagged structure tree | Partial | StructTreeRoot、RoleMap、ParentTree、MCID、Alt、Artifact、tagged order；非完整 PDF 2.0 conformance |
+| Layout IR / streaming | Supported subset | versioned nodes/spans、四種 order、Rust lazy events、Python page stream 與 finalization patches |
+| Tables | Heuristic / tagged | tagged topology、vector lattice、保守 borderless detection；真人 gold 尚未完整驗收 |
+| Image placements / figures | Partial | painted XObject quad/BBox、Figure/Alt、保守 caption anchors |
+| Navigation | Partial | Link、URI/GoTo、named destinations、outlines；不執行 action |
+| Visual reading graph | Heuristic | simultaneous blocks、focus candidates、continue/skip/regression edges；未經真人 gold 校準 |
 | Legacy text layout | Approximate | 0.1.x coordinate sort／separator compatibility path |
 | Auto text layout | Approximate | script/metrics/rotation aware；bounded ambiguity fallback |
 | JPEG Image XObject | Supported extraction | original bytes retained；header dimensions validated |
 | Flate image samples | Supported extraction | decoded raw samples + metadata |
 | Other image codecs | Preserved only | encoded bytes + `unsupported_image_codec` warning |
 | Encryption | Unsupported | password-protected input fails |
-| Rendering/OCR/editing | Out of scope | intentionally absent |
+| Direct-image OCR | Partial / optional | 單張全頁 JPEG/raw image；native ONNX 可選，WASM 僅提供 candidates；見 [OCR reference](ocr.md) |
+| Rendering/editing | Out of scope | intentionally absent |
 | Damaged-file repair | Unsupported | no speculative xref reconstruction |
 
 ## Parameters／public API

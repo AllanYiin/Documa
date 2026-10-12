@@ -300,6 +300,69 @@ fn extract_images_json(data: &[u8]) -> PyResult<String> {
     })
 }
 
+#[pyfunction]
+#[pyo3(signature = (data, min_page_coverage=0.9))]
+fn analyze_direct_ocr_json(data: &[u8], min_page_coverage: f64) -> PyResult<String> {
+    let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
+    let analysis = document
+        .analyze_direct_ocr(pdf_core::DirectOcrOptions {
+            min_page_coverage,
+            ..pdf_core::DirectOcrOptions::default()
+        })
+        .map_err(to_python_error)?;
+    serde_json::to_string(&analysis).map_err(serialization_error)
+}
+
+#[cfg(feature = "ocr-onnx")]
+#[pyfunction]
+#[pyo3(signature = (
+    data,
+    detection_model,
+    recognition_model,
+    dictionary,
+    min_page_coverage=0.9,
+    min_confidence=0.0
+))]
+fn ocr_direct_json(
+    data: &[u8],
+    detection_model: &[u8],
+    recognition_model: &[u8],
+    dictionary: &[u8],
+    min_page_coverage: f64,
+    min_confidence: f32,
+) -> PyResult<String> {
+    let document = pdf_core::PdfDocument::parse(data).map_err(to_python_error)?;
+    let engine = pdf_ocr::RapidOcrOnnxEngine::new(detection_model, recognition_model, dictionary)
+        .map_err(to_python_ocr_error)?;
+    let result = pdf_ocr::ocr_document(
+        &document,
+        &engine,
+        pdf_ocr::OcrOptions {
+            direct_image: pdf_core::DirectOcrOptions {
+                min_page_coverage,
+                ..pdf_core::DirectOcrOptions::default()
+            },
+            min_confidence,
+            ..pdf_ocr::OcrOptions::default()
+        },
+    )
+    .map_err(to_python_ocr_error)?;
+    serde_json::to_string(&result).map_err(serialization_error)
+}
+
+#[cfg(feature = "ocr-onnx")]
+#[allow(clippy::needless_pass_by_value)] // map_err supplies owned OCR errors.
+fn to_python_ocr_error(error: pdf_ocr::OcrError) -> PyErr {
+    PdfParseError::new_err(
+        serde_json::json!({
+            "code": error.code.as_str(),
+            "offset": null,
+            "message": error.message,
+        })
+        .to_string(),
+    )
+}
+
 fn parse_extraction_mode(value: &str) -> pdf_core::PdfResult<pdf_core::ExtractionMode> {
     match value {
         "content-order" => Ok(pdf_core::ExtractionMode::ContentOrder),
@@ -351,5 +414,9 @@ fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(extract_layout_stream, module)?)?;
     module.add_function(wrap_pyfunction!(inspect_json, module)?)?;
     module.add_function(wrap_pyfunction!(extract_images_json, module)?)?;
+    module.add_function(wrap_pyfunction!(analyze_direct_ocr_json, module)?)?;
+    #[cfg(feature = "ocr-onnx")]
+    module.add_function(wrap_pyfunction!(ocr_direct_json, module)?)?;
+
     Ok(())
 }

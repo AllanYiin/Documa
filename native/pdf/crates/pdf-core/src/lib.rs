@@ -22,6 +22,7 @@ mod navigation;
 mod object;
 mod object_stream;
 mod object_stream_cache;
+mod ocr;
 mod page;
 mod parser;
 mod reading_order;
@@ -59,6 +60,10 @@ pub use layout_ir::{
 pub use lexer::{Lexer, SpannedToken, Token};
 pub use limits::ParseLimits;
 pub use object::{ObjectId, PdfDictionary, PdfName, PdfObject, PdfStream, PdfString};
+pub use ocr::{
+    DirectOcrAnalysis, DirectOcrCandidate, DirectOcrOptions, DirectOcrPage, DirectOcrReason,
+    OcrImageQuad, OcrLayoutBlock, OcrPixelBlock,
+};
 pub use page::PdfPage;
 pub use parser::{IndirectObject, parse_object, parse_object_with_limits};
 pub use text::{

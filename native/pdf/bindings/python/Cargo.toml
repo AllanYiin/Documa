@@ -7,6 +7,10 @@ license.workspace = true
 repository.workspace = true
 description = "Python bindings for the from-scratch Rust PDF parser"
 
+[features]
+default = []
+ocr-onnx = ["dep:pdf-ocr", "pdf-ocr/rapidocr-onnx"]
+
 [lib]
 name = "_native"
 crate-type = ["cdylib", "rlib"]
@@ -14,6 +18,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 pdf-core.workspace = true
 pyo3 = { version = "0.29" }
+pdf-ocr = { workspace = true, optional = true }
 serde_json.workspace = true
 
 [lints.clippy]
