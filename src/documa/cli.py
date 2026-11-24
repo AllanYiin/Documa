@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from documa import __version__
+from documa.codegraph import CodeGraphError, clear_code_graph, code_graph_status, watch_code_graph
+from documa.codegraph.tour import render_tour_markdown
 from documa.core.ir import to_plain_data
 from documa.demo import run_block_reading_demo
 from documa.interfaces import (
@@ -329,19 +331,30 @@ def build_parser() -> argparse.ArgumentParser:
     context_read_cmd.add_argument("--total-max-bytes", type=int)
 
     code_sync_cmd = subparsers.add_parser("code-graph-sync", help="Incrementally index a Python repository graph.")
-    code_sync_cmd.add_argument("root")
-    code_sync_cmd.add_argument("--source-root", action="append", dest="source_roots")
-    code_sync_cmd.add_argument("--include", action="append")
-    code_sync_cmd.add_argument("--exclude", action="append")
-    code_sync_cmd.add_argument("--analysis-profile", choices=["hybrid", "syntax"], default="hybrid")
-    code_sync_cmd.add_argument("--store-dir", default=".documa")
+    code_watch_cmd = subparsers.add_parser("code-graph-watch", help="Refresh an explicit repository until interrupted.")
+    for command in (code_sync_cmd, code_watch_cmd):
+        command.add_argument("root")
+        command.add_argument("--source-root", action="append", dest="source_roots")
+        command.add_argument("--include", action="append")
+        command.add_argument("--exclude", action="append")
+        command.add_argument("--analysis-profile", choices=["hybrid", "syntax"], default="hybrid")
+        command.add_argument("--store-dir", default=".documa")
+        command.add_argument("--document-path", action="append", dest="document_paths")
+        command.add_argument("--language", action="append", choices=["python", "rust"], dest="languages")
+
+    code_status_cmd = subparsers.add_parser("code-graph-status", help="Inspect the indexed scope and source freshness.")
+    code_clear_cmd = subparsers.add_parser("code-graph-clear", help="Clear one workspace's derived code graph records.")
+    for command in (code_status_cmd, code_clear_cmd):
+        command.add_argument("workspace_id")
+        command.add_argument("--store-dir", default=".documa")
+    code_clear_cmd.add_argument("--confirm", action="store_true", help="Confirm removal of the derived index records.")
 
     code_query_cmd = subparsers.add_parser("code-graph-query", help="Query code, dependency, call, cycle, or impact paths.")
     code_query_cmd.add_argument("workspace_id")
     code_query_cmd.add_argument("query", nargs="?")
     code_query_cmd.add_argument(
         "--intent",
-        choices=["lookup", "dependencies", "callers", "callees", "trace", "impact", "cycles", "overview", "diff"],
+        choices=["lookup", "explore", "dependencies", "callers", "callees", "trace", "impact", "cycles", "overview", "diff", "git_diff", "tour"],
         default="lookup",
     )
     code_query_cmd.add_argument("--symbol", action="append", dest="symbols")
@@ -353,6 +366,10 @@ def build_parser() -> argparse.ArgumentParser:
     code_query_cmd.add_argument("--expected-generation")
     code_query_cmd.add_argument("--max-navigation-tokens", type=int)
     code_query_cmd.add_argument("--max-navigation-bytes", type=int)
+    code_query_cmd.add_argument("--max-response-tokens", type=int, help="Limit the full explore response.")
+    code_query_cmd.add_argument("--base-ref", default="HEAD")
+    code_query_cmd.add_argument("--head-ref", default="worktree")
+    code_query_cmd.add_argument("--format", choices=["json", "markdown"], default="json")
     code_query_cmd.add_argument("--store-dir", default=".documa")
 
     code_read_cmd = subparsers.add_parser("code-graph-read", help="Read hash-verified code evidence blocks.")
@@ -732,10 +749,39 @@ def main(argv: list[str] | None = None) -> int:
             exclude=args.exclude,
             analysis_profile=args.analysis_profile,
             store_dir=args.store_dir,
+            document_paths=args.document_paths,
+            languages=args.languages,
         )
         return _emit_json(payload, exit_code=0 if payload.get("status") in {"ok", "warning"} else 1)
 
+    if args.command in {"code-graph-status", "code-graph-clear", "code-graph-watch"}:
+        try:
+            if args.command == "code-graph-status":
+                return _emit_json(code_graph_status(args.workspace_id, args.store_dir))
+            if args.command == "code-graph-clear":
+                if not args.confirm:
+                    raise CodeGraphError("CODE_GRAPH_CONFIRMATION_REQUIRED", "Pass --confirm to clear the derived index.")
+                return _emit_json(clear_code_graph(args.workspace_id, args.store_dir))
+            for update in watch_code_graph(
+                args.root,
+                source_roots=args.source_roots,
+                include=args.include,
+                exclude=args.exclude,
+                analysis_profile=args.analysis_profile,
+                store_dir=args.store_dir,
+                document_paths=args.document_paths,
+                languages=args.languages,
+            ):
+                sys.stderr.write(json.dumps(update, ensure_ascii=False) + "\n")
+                sys.stderr.flush()
+        except KeyboardInterrupt:
+            return _emit_json({"status": "stopped"})
+        except CodeGraphError as exc:
+            return _emit_json({"status": "error", "code": exc.code, "message": str(exc)}, exit_code=1)
+
     if args.command == "code-graph-query":
+        if args.format == "markdown" and args.intent != "tour":
+            return _emit_json({"status": "error", "code": "CODE_GRAPH_FORMAT_INVALID", "message": "Markdown output requires --intent tour."}, exit_code=1)
         payload = query_code_graph_tool(
             args.workspace_id,
             query=args.query,
@@ -749,8 +795,14 @@ def main(argv: list[str] | None = None) -> int:
             expected_generation=args.expected_generation,
             max_navigation_tokens=args.max_navigation_tokens,
             max_navigation_bytes=args.max_navigation_bytes,
+            max_response_tokens=args.max_response_tokens,
+            base_ref=args.base_ref,
+            head_ref=args.head_ref,
             store_dir=args.store_dir,
         )
+        if args.format == "markdown" and payload.get("status") == "ok":
+            sys.stdout.write(render_tour_markdown(payload))
+            return 0
         return _emit_json(payload, exit_code=0 if payload.get("status") == "ok" else 1)
 
     if args.command == "code-graph-read":

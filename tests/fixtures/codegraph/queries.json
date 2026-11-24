@@ -1,0 +1,14 @@
+[
+  {"id":"exact-adapter","mode":"exact","query":"PDF adapter selection","symbol":"documa.adapters.registry.adapter_for_source","expected":["src/documa/adapters/registry.py"],"rg":"def adapter_for_source"},
+  {"id":"exact-sync","mode":"exact","query":"Repository graph synchronization","symbol":"documa.codegraph.store.sync_code_graph","expected":["src/documa/codegraph/store.py"],"rg":"def sync_code_graph"},
+  {"id":"exact-evidence","mode":"exact","query":"Read hash-bound code evidence","symbol":"documa.codegraph.service.read_code_evidence","expected":["src/documa/codegraph/service.py"],"rg":"def read_code_evidence"},
+  {"id":"exact-context","mode":"exact","query":"Build ContextIR from DocumentIR","symbol":"documa.context.adapters.context_from_document","expected":["src/documa/context/adapters.py"],"rg":"def context_from_document"},
+  {"id":"text-pdf-provider","mode":"text","query":"PDF parser provider fallback","expected":["src/documa/adapters/registry.py"],"rg":"pdf_provider|pdf provider"},
+  {"id":"text-office-provider","mode":"text","query":"Python Office adapter provider fallback for DOCX","expected":["src/documa/adapters/registry.py"],"rg":"office_provider|python.*office.*adapter"},
+  {"id":"text-sqlite-uri","mode":"text","query":"open code graph SQLite readonly database","expected":["src/documa/codegraph/store.py"],"rg":"sqlite3[.]connect|mode=ro"},
+  {"id":"text-scip","mode":"text","query":"SCIP occurrence span decoded index","expected":["src/documa/codegraph/scip.py"],"rg":"scip|occurrence_span"},
+  {"id":"text-lexer","mode":"text","query":"ContextService lexical search query terms","expected":["src/documa/context/service.py"],"rg":"class ContextService|def _lexical"},
+  {"id":"text-tokenizer","mode":"text","query":"TiktokenCounter local tokenizer for token budget","expected":["src/documa/interfaces/token_counting.py"],"rg":"class TiktokenCounter|tiktoken[.]get_encoding"},
+  {"id":"dependency-store","mode":"dependency","query":"Which adapters does sync_code_graph use?","symbol":"documa.codegraph.store.sync_code_graph","expected":["src/documa/codegraph/python_adapter.py"],"rg":"PythonCodeAdapter"},
+  {"id":"cross-source-spec","mode":"cross_source","query":"Where is the code graph source authority contract documented?","expected":["plugins/codex-documa/skills/documa-codegraph/SKILL.md","plugins/claude-code-documa/skills/documa-codegraph/SKILL.md"],"rg":"graph paths are not final evidence|source file as evidence"}
+]

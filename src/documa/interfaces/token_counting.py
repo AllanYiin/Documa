@@ -21,10 +21,18 @@ from __future__ import annotations
 
 import hashlib
 import os
+import tempfile
+from pathlib import Path
 from typing import Any, Protocol
 
 DEFAULT_TIKTOKEN_ENCODING = "o200k_base"
 DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5"
+_LOCAL_BPE_HASHES = {
+    "o200k_base": "446a9538cb6c348e3516120d7c08b09f57c36495e2acfffe59a5bf8b0cfb1a2d",
+    "cl100k_base": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+    "p50k_base": "94b5ca7dff4d00767bc256fdd1b27e5b17361d7b8a5f968547f9f23eb70d2069",
+    "r50k_base": "306cd27f03c1a714eca7108e03d66b7dc042abe8c258b44c199a7ed9838dd930",
+}
 UNAVAILABLE_MESSAGE = (
     "TOKEN_COUNTER_UNAVAILABLE: no token counter is configured. Install the "
     "'tokens' extra (tiktoken), set DOCUMA_TOKEN_COUNTER, or call "
@@ -54,12 +62,12 @@ class TiktokenCounter:
     def count(self, text: str) -> int:
         if not text:
             return 0
-        return len(self._encoding.encode(text))
+        return len(self._encoding.encode_ordinary(text))
 
     def truncate(self, text: str, max_tokens: int) -> tuple[str, bool]:
         if not text:
             return text, False
-        tokens = self._encoding.encode(text)
+        tokens = self._encoding.encode_ordinary(text)
         if len(tokens) <= max_tokens:
             return text, False
         return self._encoding.decode(tokens[:max_tokens]), True
@@ -174,3 +182,29 @@ def get_token_counter() -> TokenCounter | None:
             _resolved = candidate
         return candidate
     return _resolved
+
+
+def get_local_token_counter() -> TokenCounter | None:
+    """Select a tokenizer that counts source text locally, even on remote-counter hosts."""
+    if _override is not _UNSET:
+        return None if isinstance(_override, AnthropicTokenCounter) else _override
+    kind, _, encoding = os.environ.get("DOCUMA_TOKEN_COUNTER", "").strip().partition(":")
+    if kind.casefold() == "none":
+        return None
+    encoding = encoding if kind.casefold() == "tiktoken" and encoding else DEFAULT_TIKTOKEN_ENCODING
+    try:
+        from tiktoken import registry
+
+        if encoding not in registry.ENCODINGS:
+            # tiktoken would otherwise fetch a missing or corrupt vocabulary on first use.
+            asset = {"o200k_harmony": "o200k_base", "p50k_edit": "p50k_base"}.get(encoding, encoding)
+            expected = _LOCAL_BPE_HASHES.get(asset)
+            cache_dir = os.environ.get("TIKTOKEN_CACHE_DIR", os.environ.get("DATA_GYM_CACHE_DIR", str(Path(tempfile.gettempdir()) / "data-gym-cache")))
+            if not expected or not cache_dir:
+                return None
+            key = hashlib.sha1(f"https://openaipublic.blob.core.windows.net/encodings/{asset}.tiktoken".encode()).hexdigest()
+            if hashlib.sha256((Path(cache_dir) / key).read_bytes()).hexdigest() != expected:
+                return None
+        return TiktokenCounter(encoding)
+    except (ImportError, OSError, ValueError):
+        return None

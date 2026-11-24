@@ -85,7 +85,7 @@ class PackagingContractTests(unittest.TestCase):
         requirements = _array(self.optional, "code")
         self.assertEqual(
             {_distribution_name(item) for item in requirements},
-            {"tree-sitter", "protobuf"},
+            {"tree-sitter", "tree-sitter-rust", "tomli", "protobuf"},
         )
 
     def test_plugin_mcp_launch_avoids_locked_console_script(self):

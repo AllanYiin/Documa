@@ -9,12 +9,17 @@ from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any, Protocol
 
+from documa.codegraph.document_adapter import block_body, read_local_document
 from documa.codegraph.models import CodeEdgeType, CodeNodeKind, EdgeResolution, sha256_bytes, sha256_text
-from documa.codegraph.store import CodeGraphError, _metadata, open_code_graph
+from documa.codegraph.search import rank_entries
+from documa.codegraph.store import CodeGraphError, _freshness, _metadata, graph_coverage, open_code_graph
+from documa.codegraph.tour import tour_entries, tour_steps
+from documa.core.errors import DocumaError
 
 
 QUERY_INTENTS = {
     "lookup",
+    "explore",
     "dependencies",
     "callers",
     "callees",
@@ -23,18 +28,23 @@ QUERY_INTENTS = {
     "cycles",
     "overview",
     "diff",
+    "git_diff",
+    "tour",
 }
 HARD_RESOLUTIONS = {EdgeResolution.EXACT.value, EdgeResolution.RESOLVED.value}
 CALL_EDGE_TYPES = {
     CodeEdgeType.CALLS.value,
     CodeEdgeType.CONSTRUCTS.value,
     CodeEdgeType.REGISTERS_CALLBACK.value,
+    CodeEdgeType.BINDS.value,
 }
-DEPENDENCY_EDGE_TYPES = {CodeEdgeType.IMPORTS_MODULE.value, CodeEdgeType.IMPORTS_SYMBOL.value}
+DEPENDENCY_EDGE_TYPES = {CodeEdgeType.IMPORTS_MODULE.value, CodeEdgeType.IMPORTS_SYMBOL.value, CodeEdgeType.DEPENDS_ON_CRATE.value}
 IMPACT_EDGE_TYPES = CALL_EDGE_TYPES | DEPENDENCY_EDGE_TYPES | {
     CodeEdgeType.INHERITS.value,
     CodeEdgeType.IMPLEMENTS.value,
     CodeEdgeType.EXPORTS.value,
+    CodeEdgeType.DOCUMENTS.value,
+    CodeEdgeType.TESTS.value,
 }
 TRACE_EDGE_TYPES = IMPACT_EDGE_TYPES | {CodeEdgeType.DECORATES.value}
 
@@ -153,7 +163,8 @@ def _eligible_edges(
     resolution_placeholders = ",".join("?" for _ in resolutions)
     return list(
         connection.execute(
-            f"SELECT * FROM edges WHERE type IN ({placeholders}) AND resolution IN ({resolution_placeholders}) ORDER BY type,edge_id",
+            f"SELECT * FROM edges WHERE type IN ({placeholders}) AND resolution IN ({resolution_placeholders}) "
+            "ORDER BY CASE WHEN type = 'tests' THEN 0 ELSE 1 END,type,edge_id",
             [*sorted(edge_types), *resolutions],
         )
     )
@@ -232,6 +243,8 @@ def query_code_graph(
     max_navigation_bytes: int | None = None,
     token_counter: TokenCounter | None = None,
     store_dir: str | Path = ".documa",
+    base_ref: str = "HEAD",
+    head_ref: str = "worktree",
 ) -> dict[str, Any]:
     """Return a bounded proof-carrying repository graph slice."""
 
@@ -241,14 +254,37 @@ def query_code_graph(
         raise CodeGraphError("CODE_GRAPH_LIMIT_INVALID", "Code graph query limits are outside the supported range.")
     if max_navigation_tokens is not None and token_counter is None:
         raise CodeGraphError("TOKEN_COUNTER_UNAVAILABLE", "A real token counter is required for a token hard cap.")
+    if intent == "git_diff":
+        from documa.codegraph.git_review import git_diff_context
+
+        return git_diff_context(workspace_id, base_ref=base_ref, head_ref=head_ref, expected_generation=expected_generation,
+                                max_nodes=max_nodes, max_hops=max_hops, store_dir=store_dir)
     connection = open_code_graph(workspace_id, store_dir)
     try:
         metadata = _metadata(connection)
         generation = metadata.get("active_generation")
         if expected_generation is not None and expected_generation != generation:
             raise CodeGraphError("CODE_GRAPH_STALE", "Code graph generation changed before query.")
+        if intent in {"explore", "tour"}:
+            freshness = _freshness(connection, metadata)
+            if freshness["state"] != "fresh":
+                return {
+                    "status": "error", "code": "CODE_GRAPH_STALE", "workspaceId": workspace_id,
+                    "generation": generation, "freshness": freshness,
+                    "nextAction": {"tool": "documa_sync_code_graph", "arguments": {"root": metadata["workspace_root"], **{
+                        key: value for key, value in _json(metadata.get("scope")).items() if key != "adapters"
+                    }, "store_dir": str(store_dir)}},
+                }
         selector_values = list(dict.fromkeys(symbols or []))
-        seed_ids = _find_nodes(connection, selector_values, query)
+        if intent in {"explore", "tour"}:
+            seed_ids = _find_nodes(connection, selector_values)
+            if not seed_ids:
+                if intent == "tour" and not query and not selector_values:
+                    seed_ids = tour_entries(connection, min(max_nodes, 3))
+                else:
+                    seed_ids = rank_entries(connection, query or "", limit=1 if intent == "tour" else min(max_nodes, 3))
+        else:
+            seed_ids = _find_nodes(connection, selector_values, query)
         target_ids = _find_nodes(connection, list(dict.fromkeys(targets or [])))
         if intent == "trace" and (not seed_ids or not target_ids):
             raise CodeGraphError("CODE_GRAPH_TRACE_ENDPOINTS_REQUIRED", "Trace requires resolvable source and target symbols.")
@@ -299,9 +335,15 @@ def query_code_graph(
                     edge_types, direction = IMPACT_EDGE_TYPES, "incoming"
                 elif intent == "trace":
                     edge_types, direction = TRACE_EDGE_TYPES, "outgoing"
+                elif intent == "explore":
+                    edge_types, direction = TRACE_EDGE_TYPES, "both"
+                elif intent == "tour":
+                    edge_types, direction = TRACE_EDGE_TYPES, "outgoing"
                 else:
                     edge_types, direction = TRACE_EDGE_TYPES | {CodeEdgeType.CONTAINS.value}, "outgoing"
                 eligible = _eligible_edges(connection, edge_types, include_possible)
+                if intent == "tour":
+                    eligible.sort(key=lambda edge: (edge["start_line"] or 0, edge["start_column"] or 0, edge["edge_id"]))
                 selected_ids, paths, edge_rows = _traverse(
                     seed_ids,
                     eligible,
@@ -354,14 +396,34 @@ def query_code_graph(
             node["nodeId"]
             for node in nodes
             if node.get("sourceLocator")
+            and not (node["kind"] == CodeNodeKind.FILE.value and node["metadata"].get("language") == "document")
             and node["kind"] in {
                 CodeNodeKind.METHOD.value,
                 CodeNodeKind.FUNCTION.value,
                 CodeNodeKind.CLASS.value,
                 CodeNodeKind.FILE.value,
                 CodeNodeKind.MODULE.value,
+                CodeNodeKind.DOCUMENT_BLOCK.value,
+                CodeNodeKind.CRATE.value,
+                CodeNodeKind.RUST_MODULE.value,
             }
-        ][:max_evidence_blocks]
+        ]
+        if intent == "explore" and readable:
+            callsites = [
+                str(edge["evidence"]["occurrenceId"]) for edge in edges
+                if edge["type"] in CALL_EDGE_TYPES and edge["evidence"].get("occurrenceId")
+                and readable[0] in {edge["sourceNodeId"], edge["targetNodeId"]}
+            ]
+            binding = next((
+                edge for edge in edges if edge["type"] == CodeEdgeType.BINDS.value
+                and readable[0] in {edge["sourceNodeId"], edge["targetNodeId"]}
+            ), None)
+            if binding:
+                readable = [binding["targetNodeId"], binding["evidence"]["occurrenceId"], binding["metadata"]["registrationId"], *readable]
+            else:
+                readable = [readable[0], *callsites[:1], *readable[1:]]
+            readable = list(dict.fromkeys(readable))
+        readable = readable[:max_evidence_blocks]
         file_ids = [str(rows_by_id[node_id]["file_id"]) for node_id in selected_ids if node_id in rows_by_id and rows_by_id[node_id]["file_id"]]
         if file_ids:
             placeholders = ",".join("?" for _ in set(file_ids))
@@ -392,6 +454,7 @@ def query_code_graph(
             "previousGeneration": metadata.get("previous_generation") or None,
             "sourceTreeHash": metadata.get("source_tree_hash"),
             "graphFreshness": "verified",
+            **({"freshness": freshness, "coverage": graph_coverage(connection)} if intent in {"explore", "tour"} else {}),
             "intent": intent,
             "includePossible": include_possible,
             "nodes": nodes,
@@ -404,6 +467,10 @@ def query_code_graph(
                     "impactReceipt": {
                         "affectedPublicApis": [node["nodeId"] for node in nodes if _is_public_api(node)],
                         "candidateTests": [node["nodeId"] for node in nodes if node.get("role") == "test"],
+                        "candidateTestEvidence": [
+                            {"nodeId": node["nodeId"], "reason": "static_dependency_path", "edgeIds": paths[node["nodeId"]]}
+                            for node in nodes if node.get("role") == "test" and paths.get(node["nodeId"])
+                        ],
                         "hardPathCount": sum(
                             1 for edge in edges if edge["resolution"] in HARD_RESOLUTIONS
                         ),
@@ -428,6 +495,14 @@ def query_code_graph(
             if readable
             else [],
         }
+        if intent == "tour":
+            digests = {}
+            if file_ids:
+                placeholders = ",".join("?" for _ in set(file_ids))
+                digests = dict(connection.execute(
+                    f"SELECT relative_path,digest FROM files WHERE file_id IN ({placeholders})", sorted(set(file_ids))
+                ))
+            result["tour"] = tour_steps(result, digests)
         serialized = json.dumps(result, ensure_ascii=False, separators=(",", ":"))
         if max_navigation_tokens is not None and token_counter and token_counter.count(serialized) > max_navigation_tokens:
             raise CodeGraphError("CODE_GRAPH_NAVIGATION_BUDGET_EXCEEDED", "Code graph navigation exceeds the token budget.")
@@ -447,12 +522,15 @@ def read_code_evidence(
     total_max_bytes: int | None = None,
     token_counter: TokenCounter | None = None,
     store_dir: str | Path = ".documa",
+    max_block_lines: int | None = None,
 ) -> dict[str, Any]:
     """Read one to three source blocks and fail closed on any hash drift."""
 
     requested = list(dict.fromkeys(block_ids))
     if not requested or len(requested) > 3:
         raise CodeGraphError("CODE_GRAPH_BLOCK_LIMIT", "Read one to three code evidence blocks.")
+    if max_block_lines is not None and max_block_lines < 1:
+        raise CodeGraphError("CODE_GRAPH_LIMIT_INVALID", "Evidence line limit must be positive.")
     if total_max_tokens is not None and token_counter is None:
         raise CodeGraphError("TOKEN_COUNTER_UNAVAILABLE", "A real token counter is required for a token hard cap.")
     connection = open_code_graph(workspace_id, store_dir)
@@ -465,7 +543,20 @@ def read_code_evidence(
         placeholders = ",".join("?" for _ in requested)
         rows = list(connection.execute(f"SELECT * FROM nodes WHERE node_id IN ({placeholders})", requested))
         by_id = {str(row["node_id"]): row for row in rows}
-        missing = [block_id for block_id in requested if block_id not in by_id]
+        historical = {block_id for block_id in requested if block_id.startswith("git-proof:")}
+        missing = [block_id for block_id in requested if block_id not in by_id and block_id not in historical]
+        if missing:
+            placeholders = ",".join("?" for _ in missing)
+            sites = connection.execute(f"""
+                SELECT o.occurrence_id AS node_id, o.file_id, o.text AS qualified_name, 'callsite' AS kind,
+                       f.relative_path AS source_locator, o.start_line, o.end_line, o.start_column, o.end_column,
+                       o.metadata_json, o.role AS occurrence_role
+                FROM occurrences o JOIN files f ON f.file_id = o.file_id
+                WHERE o.role IN ('call','callback','import','rust_call','rust_export','cargo_dependency')
+                  AND o.occurrence_id IN ({placeholders})
+            """, missing)
+            by_id.update({str(row["node_id"]): row for row in sites})
+            missing = [block_id for block_id in missing if block_id not in by_id]
         if missing:
             raise CodeGraphError("CODE_GRAPH_BLOCK_NOT_FOUND", f"Unknown code graph blocks: {', '.join(missing)}")
         evidence: list[dict[str, Any]] = []
@@ -473,9 +564,30 @@ def read_code_evidence(
         spent_bytes = 0
         spent_tokens = 0
         for block_id in requested:
+            if block_id in historical:
+                from documa.codegraph.git_review import read_historical_evidence
+
+                if "scope" not in metadata:
+                    raise CodeGraphError("CODE_GRAPH_STALE", "Synchronize the repository scope before reading Git evidence.")
+                block = read_historical_evidence(root, _json(metadata["scope"]), block_id)
+                size = len(block["body"].encode("utf-8"))
+                tokens = token_counter.count(block["body"]) if token_counter else 0
+                if ((total_max_bytes is not None and spent_bytes + size > total_max_bytes)
+                        or (total_max_tokens is not None and spent_tokens + tokens > total_max_tokens)):
+                    unread.append(block_id)
+                else:
+                    evidence.append({**block, "bytes": size, **({"tokens": tokens} if token_counter else {})})
+                    spent_bytes += size
+                    spent_tokens += tokens
+                continue
             row = by_id[block_id]
             locator = row["source_locator"]
-            if not locator or row["kind"] in {CodeNodeKind.WORKSPACE.value, CodeNodeKind.PACKAGE.value, CodeNodeKind.EXTERNAL_MODULE.value, CodeNodeKind.EXTERNAL_SYMBOL.value}:
+            indexed_metadata = _json(row["metadata_json"])
+            if (
+                not locator
+                or row["kind"] in {CodeNodeKind.WORKSPACE.value, CodeNodeKind.PACKAGE.value, CodeNodeKind.EXTERNAL_MODULE.value, CodeNodeKind.EXTERNAL_SYMBOL.value}
+                or (row["kind"] == CodeNodeKind.FILE.value and indexed_metadata.get("language") == "document")
+            ):
                 raise CodeGraphError("CODE_GRAPH_BLOCK_UNREADABLE", f"Code graph node has no readable source: {block_id}")
             source = (root / str(locator)).resolve()
             if root not in source.parents or not source.is_file():
@@ -484,16 +596,43 @@ def read_code_evidence(
             file_row = connection.execute("SELECT digest FROM files WHERE file_id = ?", (row["file_id"],)).fetchone()
             if file_row is None or sha256_bytes(raw) != file_row["digest"]:
                 raise CodeGraphError("CODE_GRAPH_SOURCE_STALE", f"Code source changed after indexing: {locator}")
-            text = raw.decode("utf-8")
-            if row["kind"] in {CodeNodeKind.FILE.value, CodeNodeKind.MODULE.value}:
-                body = text
+            callsite = row["kind"] == "callsite"
+            document_block = row["kind"] == CodeNodeKind.DOCUMENT_BLOCK.value
+            span = _span(row)
+            if document_block and span is None:
+                try:
+                    document = read_local_document(source)
+                except (DocumaError, ValueError, OSError) as exc:
+                    raise CodeGraphError("CODE_GRAPH_BLOCK_UNREADABLE", f"Could not reread indexed document: {locator}") from exc
+                body = next((
+                    block_body(block) for page in document.pages if page.page_number == indexed_metadata["page"]
+                    for block in page.blocks if block.id == indexed_metadata["blockId"]
+                ), "")
+                if sha256_bytes(source.read_bytes()) != file_row["digest"]:
+                    raise CodeGraphError("CODE_GRAPH_SOURCE_STALE", f"Document changed while reading evidence: {locator}")
+                actual_hash = sha256_text(body)
+            elif row["kind"] in {CodeNodeKind.FILE.value, CodeNodeKind.MODULE.value}:
+                body = raw.decode("utf-8")
                 actual_hash = sha256_bytes(raw)
             else:
-                lines = text.splitlines()
+                lines = raw.decode("utf-8").splitlines()
                 body = "\n".join(lines[int(row["start_line"]) - 1 : int(row["end_line"])])
                 actual_hash = sha256_text(body)
-            if actual_hash != row["content_hash"]:
+            if callsite:
+                if indexed_metadata.get("sourceDigest") != file_row["digest"]:
+                    raise CodeGraphError("CODE_GRAPH_BODY_HASH_MISMATCH", f"Callsite source hash mismatch: {block_id}")
+                span = {"startLine": span["startLine"], "endLine": span["endLine"]}
+            elif actual_hash != row["content_hash"]:
                 raise CodeGraphError("CODE_GRAPH_BODY_HASH_MISMATCH", f"Code evidence body hash mismatch: {block_id}")
+            complete = True
+            if max_block_lines is not None:
+                body_lines = body.splitlines()
+                if len(body_lines) > max_block_lines:
+                    body = "\n".join(body_lines[:max_block_lines])
+                    if span:
+                        span = {"startLine": span["startLine"], "endLine": span["startLine"] + max_block_lines - 1}
+                    actual_hash = sha256_text(body)
+                    complete = False
             body_bytes = len(body.encode("utf-8"))
             body_tokens = token_counter.count(body) if token_counter else None
             exceeds = (total_max_bytes is not None and spent_bytes + body_bytes > total_max_bytes) or (
@@ -508,10 +647,17 @@ def read_code_evidence(
                     "title": str(row["qualified_name"]),
                     "body": body,
                     "sourceLocator": str(locator),
-                    "sourceSpan": _span(row),
+                    "sourceSpan": span,
                     "sourceFreshness": "fresh",
-                    "authority": "developer",
+                    "authority": "tool" if document_block else "developer",
                     "contentHash": actual_hash,
+                    **({"sourceHash": file_row["digest"], "revision": generation} if callsite or document_block or max_block_lines else {}),
+                    **({"evidenceKind": {
+                        "import": "import", "rust_export": "registration", "cargo_dependency": "dependency",
+                    }.get(row["occurrence_role"], "callsite")} if callsite else {}),
+                    **({"evidenceKind": "document", "documentBlockId": indexed_metadata["blockId"],
+                        "page": indexed_metadata["page"]} if document_block else {}),
+                    **({"completeBlock": False} if not complete else {}),
                     "bytes": body_bytes,
                     **({"tokens": body_tokens} if body_tokens is not None else {}),
                 }
@@ -531,6 +677,72 @@ def read_code_evidence(
         connection.close()
 
 
+def _drop_explore_node(result: dict[str, Any]) -> None:
+    removed = result["nodes"].pop()["nodeId"]
+    edges = [edge for edge in result["edges"] if removed not in {edge["sourceNodeId"], edge["targetNodeId"]}]
+    available_edges = {edge["edgeId"] for edge in edges}
+    result["edges"] = edges
+    result["proofPaths"] = [path for path in result["proofPaths"] if set(path["edgeIds"]) <= available_edges]
+
+
+def _fit_explore_response(result: dict[str, Any], limit: int, counter: TokenCounter, store_dir: str | Path) -> dict[str, Any]:
+    nodes = result["nodes"]
+    summary_keys = {"nodeId", "kind", "qualifiedName", "sourceLocator", "sourceSpan", "contentHash"}
+    result["nodes"] = [{key: value for key, value in node.items() if key in summary_keys} for node in nodes]
+    edge_keys = {"edgeId", "sourceNodeId", "targetNodeId", "type", "resolution", "evidence"}
+    result["edges"] = [
+        {key: value for key, value in edge.items() if key in edge_keys or (key == "metadata" and edge["type"] == "binds")}
+        for edge in result["edges"]
+    ]
+    result["uncertaintyReceipt"]["items"] = result["uncertaintyReceipt"]["items"][:3]
+    evidence = result["evidence"]
+    for field in ("workspaceId", "generation", "sourceTreeHash"):
+        evidence.pop(field, None)
+    blocks = evidence["blocks"]
+    omitted = evidence["unreadBlockIds"]
+    limited = len(result["uncertaintyReceipt"]["items"]) != result["uncertaintyReceipt"]["count"]
+    receipt = {"tokenizer": counter.name, "limit": limit, "used": 0, "truncated": False}
+    result["budgetReceipt"] = receipt
+
+    while True:
+        next_blocks = list(dict.fromkeys([*omitted, *(block["blockId"] for block in blocks if not block.get("completeBlock", True))]))
+        result.pop("nextAction", None)
+        if next_blocks:
+            result["nextAction"] = {"tool": "documa_read_code_evidence", "arguments": {
+                "workspace_id": result["workspaceId"], "block_ids": next_blocks[:3],
+                "expected_generation": result["generation"], "store_dir": str(store_dir),
+            }}
+        evidence["totalBytes"] = sum(block["bytes"] for block in blocks)
+        evidence["totalTokens"] = sum(block.get("tokens", 0) for block in blocks)
+        receipt["truncated"] = limited or bool(next_blocks)
+        receipt["used"] = 0
+        for _ in range(4):
+            count = counter.count(json.dumps({"status": "ok", **result}, ensure_ascii=False, separators=(",", ":")))
+            if count == receipt["used"]:
+                if count <= limit:
+                    return result
+                break
+            receipt["used"] = count
+
+        limited = True
+        if len(result["nodes"]) > 3:
+            _drop_explore_node(result)
+        elif result["uncertaintyReceipt"]["items"]:
+            result["uncertaintyReceipt"]["items"].pop()
+        elif len(result["edges"]) > 1:
+            sites = {block["blockId"] for block in blocks if block.get("evidenceKind") in {"callsite", "import", "registration"}}
+            removable = [edge for edge in result["edges"] if edge["evidence"].get("occurrenceId") not in sites]
+            edge = (removable or result["edges"])[-1]
+            result["edges"].remove(edge)
+            result["proofPaths"] = [path for path in result["proofPaths"] if edge["edgeId"] not in path["edgeIds"]]
+        elif blocks:
+            omitted.insert(0, blocks.pop()["blockId"])
+        elif len(result["nodes"]) > 1:
+            _drop_explore_node(result)
+        else:
+            raise CodeGraphError("CODE_GRAPH_RESPONSE_BUDGET_EXCEEDED", "Response budget is too small for verified code context.")
+
+
 def code_context(
     workspace_id: str,
     query: str,
@@ -543,11 +755,24 @@ def code_context(
     expected_generation: str | None = None,
     total_max_tokens: int | None = None,
     total_max_bytes: int | None = None,
+    max_response_tokens: int | None = None,
+    max_nodes: int = 12,
+    max_evidence_blocks: int = 3,
+    max_navigation_tokens: int | None = None,
+    max_navigation_bytes: int | None = None,
     token_counter: TokenCounter | None = None,
     store_dir: str | Path = ".documa",
+    base_ref: str = "HEAD",
+    head_ref: str = "worktree",
 ) -> dict[str, Any]:
     """One-call agent workflow: bounded navigation plus verified source evidence."""
 
+    response_limit = 2000 if max_response_tokens is None else max_response_tokens
+    if intent == "explore":
+        if token_counter is None:
+            raise CodeGraphError("TOKEN_COUNTER_UNAVAILABLE", "A local tokenizer is required for explore.")
+        if response_limit < 1:
+            raise CodeGraphError("CODE_GRAPH_LIMIT_INVALID", "Response token budget must be positive.")
     navigation = query_code_graph(
         workspace_id,
         query=query,
@@ -555,13 +780,19 @@ def code_context(
         symbols=symbols,
         targets=targets,
         max_hops=max_hops,
-        max_nodes=12,
-        max_evidence_blocks=3,
+        max_nodes=max_nodes,
+        max_evidence_blocks=max_evidence_blocks,
         include_possible=include_possible,
         expected_generation=expected_generation,
+        max_navigation_tokens=max_navigation_tokens,
+        max_navigation_bytes=max_navigation_bytes,
         token_counter=token_counter,
         store_dir=store_dir,
+        base_ref=base_ref,
+        head_ref=head_ref,
     )
+    if navigation.get("status") == "error" or intent == "git_diff":
+        return navigation
     actions = navigation.get("recommendedNext") or []
     block_ids = actions[0]["arguments"]["block_ids"] if actions else []
     evidence = (
@@ -573,10 +804,13 @@ def code_context(
             total_max_bytes=total_max_bytes,
             token_counter=token_counter,
             store_dir=store_dir,
+            max_block_lines=24 if intent in {"explore", "tour"} else None,
         )
         if block_ids
         else {"blocks": [], "totalBytes": 0, "unreadBlockIds": []}
     )
     navigation["evidence"] = evidence
     navigation["recommendedNext"] = []
+    if intent == "explore" and token_counter is not None:
+        return _fit_explore_response(navigation, response_limit, token_counter, store_dir)
     return navigation

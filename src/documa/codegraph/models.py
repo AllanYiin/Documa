@@ -20,6 +20,9 @@ class CodeNodeKind(str, Enum):
     CLASS = "class"
     FUNCTION = "function"
     METHOD = "method"
+    DOCUMENT_BLOCK = "document_block"
+    CRATE = "crate"
+    RUST_MODULE = "rust_module"
     EXTERNAL_MODULE = "external_module"
     EXTERNAL_SYMBOL = "external_symbol"
 
@@ -36,6 +39,10 @@ class CodeEdgeType(str, Enum):
     CALLS = "calls"
     CONSTRUCTS = "constructs"
     REGISTERS_CALLBACK = "registers_callback"
+    DOCUMENTS = "documents"
+    TESTS = "tests"
+    DEPENDS_ON_CRATE = "depends_on_crate"
+    BINDS = "binds"
 
 
 class EdgeResolution(str, Enum):

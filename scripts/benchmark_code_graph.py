@@ -10,12 +10,14 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import time
 from pathlib import Path
 
-from documa.codegraph import query_code_graph, sync_code_graph
+from documa.codegraph import code_context, query_code_graph, sync_code_graph
+from documa.interfaces.token_counting import TiktokenCounter
 
 
 def _peak_rss_bytes() -> int | None:
@@ -86,6 +88,84 @@ def _timed(function):
     return result, time.perf_counter() - started
 
 
+def _query_sample(root: Path, store: Path, suite: Path, intent: str) -> dict:
+    cases = json.loads(suite.read_text(encoding="utf-8"))
+    counter = TiktokenCounter("o200k_base")
+    documents = [path for case in cases if case["mode"] == "cross_source" for path in case["expected"]]
+    sync = sync_code_graph(root, source_roots=["src"], document_paths=documents, store_dir=store)
+    results = []
+    for case in cases:
+        expected = set(case["expected"])
+        missing = sorted(path for path in expected if not (root / path).is_file())
+        if missing:
+            raise ValueError(f"{case['id']}: expected locator missing: {missing}")
+        result, elapsed = _timed(
+            lambda: code_context(
+                sync["workspace_id"],
+                case["query"],
+                intent="dependencies" if intent == "lookup" and case["mode"] == "dependency" else intent,
+                symbols=[case["symbol"]] if "symbol" in case else None,
+                store_dir=store,
+                token_counter=counter,
+            )
+        )
+        ranked_nodes = result["nodes"][:3]
+        locators = list(dict.fromkeys(node["sourceLocator"] for node in ranked_nodes if node.get("sourceLocator")))
+        evidence = result["evidence"]["blocks"]
+        evidence_locators = [block["sourceLocator"] for block in evidence]
+        serialized = json.dumps({"status": "ok", **result}, ensure_ascii=False, separators=(",", ":"))
+
+        def rg_read():
+            completed = subprocess.run(
+                [
+                    "rg", "--files-with-matches", "--sort", "path", "-i", "-g", "*.py", "-g", "*.md",
+                    "-e", case["rg"], "src", "docs", "plugins",
+                ],
+                cwd=root,
+                capture_output=True,
+                encoding="utf-8",
+                check=False,
+            )
+            if completed.returncode > 1:
+                raise RuntimeError(completed.stderr.strip())
+            paths = [Path(line).as_posix() for line in completed.stdout.splitlines()[:3]]
+            bodies = [(root / path).read_text(encoding="utf-8") for path in paths]
+            return paths, counter.count("\n".join([*paths, *bodies]))
+
+        (rg_paths, rg_tokens), rg_seconds = _timed(rg_read)
+        results.append({
+            "id": case["id"],
+            "mode": case["mode"],
+            "expected": sorted(expected),
+            "graph": {
+                "top3": locators,
+                "hit": bool(expected.intersection(locators)),
+                "exactHit": bool(case.get("symbol") and ranked_nodes and ranked_nodes[0]["qualifiedName"] == case["symbol"]),
+                "evidenceHit": bool(expected.intersection(evidence_locators)),
+                "seconds": round(elapsed, 6),
+                "calls": 1,
+                "tokens": counter.count(serialized),
+            },
+            "rgRead": {
+                "top3": rg_paths,
+                "hit": bool(expected.intersection(rg_paths)),
+                "seconds": round(rg_seconds, 6),
+                "calls": 1 + len(rg_paths),
+                "tokens": rg_tokens,
+            },
+        })
+    stage2 = [case for case in results if case["mode"] in {"exact", "text"}]
+    gates = {
+        "top3": sum(case["graph"]["hit"] for case in stage2) / len(stage2) >= 0.8,
+        "exactFirst": all(case["graph"]["exactHit"] for case in stage2 if case["mode"] == "exact"),
+        "pdfProviderEvidence": all(
+            case["graph"]["hit"] and case["graph"]["evidenceHit"] for case in stage2 if case["id"] == "text-pdf-provider"
+        ),
+        "responseBudget": all(case["graph"]["tokens"] <= 2000 for case in stage2),
+    }
+    return {"intent": intent, "tokenizer": counter.name, "coldMs": sync["duration_ms"], "cases": results, "stage2Gates": gates}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--lines", type=int, default=1_000_000)
@@ -96,12 +176,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--query-max-seconds", type=float, default=0.3)
     parser.add_argument("--rss-max-bytes", type=int, default=2_000_000_000)
     parser.add_argument("--report-only", action="store_true")
+    parser.add_argument("--scratch-dir", type=Path, help="Parent for the temporary benchmark directory.")
+    parser.add_argument("--query-suite", type=Path, help="Measure repository queries instead of the synthetic scale gate.")
+    parser.add_argument("--repository", type=Path, default=Path.cwd())
+    parser.add_argument("--query-intent", choices=("lookup", "explore"), default="lookup")
+    parser.add_argument("--check-query-quality", action="store_true", help="Require the Stage 2 explore gates.")
     args = parser.parse_args(argv)
     if args.lines < 1 or args.files < 1:
         parser.error("--lines and --files must be positive")
 
-    with tempfile.TemporaryDirectory(prefix="documa-codegraph-benchmark-") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="documa-codegraph-benchmark-", dir=args.scratch_dir) as temp_dir:
         root = Path(temp_dir)
+        if args.query_suite is not None:
+            report = _query_sample(args.repository.resolve(), root, args.query_suite, args.query_intent)
+            sys.stdout.write(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
+            return int(args.check_query_quality and not all(report["stage2Gates"].values()))
         actual_lines, changed_file = _write_corpus(root, args.lines, args.files)
         store = root / ".documa"
         cold, cold_seconds = _timed(lambda: sync_code_graph(root, store_dir=store))

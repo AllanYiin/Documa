@@ -6,6 +6,7 @@ import fnmatch
 import hashlib
 import json
 import os
+import re
 import sqlite3
 import subprocess
 import time
@@ -15,6 +16,7 @@ from typing import Any, Iterable
 
 from filelock import FileLock, Timeout
 
+from documa.codegraph.document_adapter import RepositoryDocumentAdapter, is_repository_markdown
 from documa.codegraph.models import (
     CODE_GRAPH_ANALYZER_VERSION,
     CODE_GRAPH_SCHEMA_VERSION,
@@ -25,12 +27,15 @@ from documa.codegraph.models import (
     CodeOccurrence,
     CodeSpan,
     EdgeResolution,
+    ParsedCodeFile,
     ParseStatus,
     edge_id,
     sha256_bytes,
     stable_id,
 )
 from documa.codegraph.python_adapter import PythonCodeAdapter
+from documa.codegraph.rust_adapter import RustCodeAdapter
+from documa.codegraph.rust_graph import resolved_rust_edges
 
 
 DEFAULT_EXCLUDED_DIRS = {
@@ -70,6 +75,8 @@ def codegraph_root(store_dir: str | Path = ".documa") -> Path:
 
 
 def index_path(workspace_id: str, store_dir: str | Path = ".documa") -> Path:
+    if not re.fullmatch(r"cw_[0-9a-f]{24}", workspace_id):
+        raise CodeGraphError("CODE_GRAPH_NOT_FOUND", "Code graph workspace ID is invalid.")
     return codegraph_root(store_dir) / workspace_id / "graph.sqlite"
 
 
@@ -180,6 +187,8 @@ def _ensure_schema(connection: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS edges_source_idx ON edges(source_node_id, type);
         CREATE INDEX IF NOT EXISTS edges_target_idx ON edges(target_node_id, type);
         CREATE INDEX IF NOT EXISTS edges_type_idx ON edges(type, resolution);
+        CREATE INDEX IF NOT EXISTS edges_file_idx ON edges(file_id);
+        CREATE INDEX IF NOT EXISTS edges_occurrence_idx ON edges(occurrence_id);
         CREATE TABLE IF NOT EXISTS metrics (
             node_id TEXT PRIMARY KEY,
             fan_in INTEGER NOT NULL DEFAULT 0,
@@ -254,7 +263,9 @@ def _normalize_source_roots(root: Path, source_roots: Iterable[str | Path] | Non
     return sorted(set(roots), key=lambda value: (-len(value.parts), value.as_posix()))
 
 
-def _is_selected(relative: str, include: list[str] | None, exclude: list[str] | None) -> bool:
+def _is_selected(
+    relative: str, include: list[str] | None, exclude: list[str] | None, document_paths: set[str], languages: set[str],
+) -> bool:
     parts = PurePathParts(relative)
     if any(part in DEFAULT_EXCLUDED_DIRS for part in parts):
         return False
@@ -262,15 +273,28 @@ def _is_selected(relative: str, include: list[str] | None, exclude: list[str] | 
         return False
     if exclude and any(fnmatch.fnmatch(relative, pattern) for pattern in exclude):
         return False
-    return relative.endswith(".py")
+    return (
+        ("python" in languages and relative.endswith(".py"))
+        or ("rust" in languages and (relative.endswith(".rs") or parts[-1] == "Cargo.toml"))
+        or is_repository_markdown(relative) or relative in document_paths
+    )
 
 
 def PurePathParts(relative: str) -> tuple[str, ...]:
     return tuple(part for part in relative.replace("\\", "/").split("/") if part)
 
 
-def _discover(root: Path, include: list[str] | None, exclude: list[str] | None) -> list[Path]:
-    paths: list[Path] = []
+def _discover(root: Path, scope: dict[str, Any]) -> list[Path]:
+    include, exclude = scope["include"], scope["exclude"]
+    document_paths = set(scope["document_paths"])
+    languages = set(scope["languages"])
+    paths: set[Path] = set()
+    for relative in document_paths:
+        document = root / relative
+        if document.resolve() != document:
+            raise CodeGraphError("CODE_DOCUMENT_OUTSIDE_SCOPE", f"Document location changed: {relative}")
+        if document.is_file() and _is_selected(relative, include, exclude, document_paths, languages):
+            paths.add(document)
     try:
         probe = subprocess.run(
             ["git", "-C", str(root), "rev-parse", "--is-inside-work-tree"],
@@ -278,23 +302,29 @@ def _discover(root: Path, include: list[str] | None, exclude: list[str] | None) 
             check=False,
             timeout=10,
         )
-        if probe.returncode == 0:
+    except FileNotFoundError:
+        probe = None
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise CodeGraphError("CODE_GRAPH_DISCOVERY_FAILED", "Could not inspect the selected repository with Git.") from exc
+    if probe is not None and probe.returncode == 0 and probe.stdout.strip() == b"true":
+        try:
             listed = subprocess.run(
                 ["git", "-C", str(root), "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-                capture_output=True,
-                check=True,
-                timeout=60,
+                capture_output=True, check=True, timeout=60,
             )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise CodeGraphError("CODE_GRAPH_DISCOVERY_FAILED", "Could not read the repository's Git file scope.") from exc
+        else:
             for raw in listed.stdout.split(b"\0"):
                 if not raw:
                     continue
                 relative = raw.decode("utf-8", errors="surrogateescape").replace("\\", "/")
                 candidate = (root / relative).resolve()
-                if _inside(root, candidate) and candidate.is_file() and _is_selected(relative, include, exclude):
-                    paths.append(candidate)
-            return sorted(set(paths), key=lambda value: value.as_posix().casefold())
-    except (OSError, subprocess.SubprocessError):
-        pass
+                if _inside(root, candidate) and candidate.is_file() and _is_selected(
+                    candidate.relative_to(root).as_posix(), include, exclude, document_paths, languages
+                ):
+                    paths.add(candidate)
+            return sorted(paths, key=lambda value: value.as_posix())
     for directory, names, files in os.walk(root):
         names[:] = [name for name in names if name not in DEFAULT_EXCLUDED_DIRS]
         base = Path(directory)
@@ -303,9 +333,9 @@ def _discover(root: Path, include: list[str] | None, exclude: list[str] | None) 
             if not _inside(root, candidate):
                 continue
             relative = candidate.relative_to(root).as_posix()
-            if _is_selected(relative, include, exclude):
-                paths.append(candidate)
-    return sorted(set(paths), key=lambda value: value.as_posix().casefold())
+            if _is_selected(relative, include, exclude, document_paths, languages):
+                paths.add(candidate)
+    return sorted(paths, key=lambda value: value.as_posix())
 
 
 def _source_root_for(path: Path, source_roots: list[Path]) -> Path:
@@ -313,6 +343,50 @@ def _source_root_for(path: Path, source_roots: list[Path]) -> Path:
         if path == root or root in path.parents:
             return root
     raise CodeGraphError("CODE_SOURCE_OUTSIDE_ROOTS", f"Python source is outside configured roots: {path}")
+
+
+def _source_manifest(root: Path, scope: dict[str, Any]) -> dict[str, str]:
+    try:
+        return {
+            candidate.relative_to(root).as_posix(): sha256_bytes(candidate.read_bytes())
+            for candidate in _discover(root, scope)
+        }
+    except OSError as exc:
+        raise CodeGraphError("CODE_GRAPH_SOURCE_UNAVAILABLE", "Could not read the selected source manifest.") from exc
+
+
+def _index_scope(
+    root: Path,
+    source_roots: list[Path],
+    include: list[str] | None,
+    exclude: list[str] | None,
+    analysis_profile: str,
+    document_paths: Iterable[str] | None,
+    languages: Iterable[str] | None,
+) -> dict[str, Any]:
+    documents: set[str] = set()
+    for path in document_paths or ():
+        candidate = (root / path).resolve()
+        if root not in candidate.parents or candidate.is_dir():
+            raise CodeGraphError("CODE_DOCUMENT_OUTSIDE_SCOPE", f"Document must be a file within the repository: {path}")
+        documents.add(candidate.relative_to(root).as_posix())
+    selected = set(languages if languages is not None else ["python"])
+    if not selected or selected - {"python", "rust"}:
+        raise CodeGraphError("CODE_LANGUAGE_INVALID", "Choose one or more supported code languages: python, rust.")
+    adapters = {RepositoryDocumentAdapter.name: RepositoryDocumentAdapter.version}
+    if "python" in selected:
+        adapters[PythonCodeAdapter.name] = PythonCodeAdapter.version
+    if "rust" in selected:
+        adapters[RustCodeAdapter.name] = RustCodeAdapter.capability_version()
+    return {
+        "source_roots": [value.relative_to(root).as_posix() for value in source_roots],
+        "include": sorted(set(include or [])),
+        "exclude": sorted(set(exclude or [])),
+        "analysis_profile": analysis_profile,
+        "document_paths": sorted(documents),
+        "languages": sorted(selected),
+        "adapters": adapters,
+    }
 
 
 def _snapshot_nodes(connection: sqlite3.Connection) -> dict[str, dict[str, Any]]:
@@ -521,17 +595,85 @@ def _relative_import(current_module: str, locator: str, module: str, level: int)
 
 
 def _node_rows(connection: sqlite3.Connection) -> list[sqlite3.Row]:
-    return list(connection.execute("SELECT * FROM nodes"))
+    return list(connection.execute("SELECT * FROM nodes ORDER BY qualified_name,node_id"))
 
 
-def _resolve_graph(connection: sqlite3.Connection, workspace_id: str, workspace_node_id: str) -> None:
-    connection.execute("DELETE FROM edges")
-    connection.execute("DELETE FROM metrics")
-    connection.execute("DELETE FROM blindspots WHERE code LIKE 'UNRESOLVED_%'")
-    connection.execute("DELETE FROM nodes WHERE file_id IS NULL AND kind IN ('external_module','external_symbol','package')")
-    connection.execute("INSERT INTO edges SELECT * FROM structural_edges")
+def _python_binding_nodes(connection: sqlite3.Connection) -> list[sqlite3.Row]:
+    return [row for row in _node_rows(connection) if json.loads(row["metadata_json"]).get("language") in {None, "python"}]
 
-    rows = _node_rows(connection)
+
+def _local_resolution_files(connection: sqlite3.Connection, parsed_files: list[ParsedCodeFile]) -> set[str] | None:
+    """Use reverse dependencies when the global Python binding namespace is unchanged."""
+    dirty = {parsed.file_id for parsed in parsed_files}
+    for parsed in parsed_files:
+        nodes = {
+            (node.node_id, node.kind.value, node.qualified_name, node.display_name, node.parent_id)
+            for node in parsed.nodes if node.kind != CodeNodeKind.FILE
+        }
+        previous_nodes = {
+            tuple(row)
+            for row in connection.execute(
+                "SELECT node_id,kind,qualified_name,display_name,parent_id FROM nodes WHERE file_id = ? AND kind != 'file'",
+                (parsed.file_id,),
+            )
+        }
+        if parsed.parse_status != ParseStatus.OK or nodes != previous_nodes:
+            return None
+        # Binding order can affect aliases and inheritance. Compare it without evidence offsets or digests.
+        previous_bindings = [
+            (row["role"], row["source_node_id"], row["text"], json.loads(row["metadata_json"]))
+            for row in connection.execute(
+                "SELECT * FROM occurrences WHERE file_id = ? AND role IN ('import','base','decorator') "
+                "ORDER BY start_line,occurrence_id", (parsed.file_id,),
+            )
+        ]
+        bindings = [
+            (item.role, item.source_node_id, item.text, item.metadata)
+            for item in sorted(parsed.occurrences, key=lambda item: (item.span.start_line, item.occurrence_id))
+            if item.role in {"import", "base", "decorator"}
+        ]
+        if len(previous_bindings) != len(bindings):
+            return None
+        for old, new in zip(previous_bindings, bindings):
+            if old[:3] != new[:3] or {k: v for k, v in old[3].items() if k != "sourceDigest"} != {
+                k: v for k, v in new[3].items() if k != "sourceDigest"
+            }:
+                return None
+
+    inbound: dict[str, set[str]] = defaultdict(set)
+    for row in connection.execute("""
+        SELECT DISTINCT target.file_id AS dependency, edges.file_id AS dependent
+        FROM edges JOIN nodes target ON target.node_id = edges.target_node_id
+        WHERE edges.file_id IS NOT NULL AND target.file_id IS NOT NULL AND edges.file_id != target.file_id
+    """):
+        inbound[row["dependency"]].add(row["dependent"])
+    pending = list(dirty)
+    while pending:
+        dependents = inbound[pending.pop()] - dirty
+        dirty.update(dependents)
+        pending.extend(dependents)
+    return dirty
+
+
+def _resolve_graph(
+    connection: sqlite3.Connection,
+    root: Path,
+    workspace_id: str,
+    workspace_node_id: str,
+    dirty_files: set[str] | None = None,
+) -> None:
+    if dirty_files is None:
+        connection.execute("DELETE FROM edges")
+        connection.execute("DELETE FROM blindspots WHERE code LIKE 'UNRESOLVED_%'")
+        connection.execute("DELETE FROM nodes WHERE file_id IS NULL AND kind IN ('external_module','external_symbol','package')")
+        connection.execute("INSERT INTO edges SELECT * FROM structural_edges")
+    else:
+        for file_id in sorted(dirty_files):
+            connection.execute("DELETE FROM edges WHERE file_id = ?", (file_id,))
+            connection.execute("DELETE FROM blindspots WHERE file_id = ? AND code LIKE 'UNRESOLVED_%'", (file_id,))
+            connection.execute("INSERT INTO edges SELECT * FROM structural_edges WHERE file_id = ?", (file_id,))
+
+    rows = _python_binding_nodes(connection)
     by_id = {str(row["node_id"]): row for row in rows}
     modules = {str(row["qualified_name"]): row for row in rows if row["kind"] == CodeNodeKind.MODULE.value}
     files = {str(row["file_id"]): row for row in connection.execute("SELECT * FROM files")}
@@ -546,7 +688,7 @@ def _resolve_graph(connection: sqlite3.Connection, workspace_id: str, workspace_
             children[str(row["parent_id"])][str(row["display_name"])].append(row)
 
     package_nodes: dict[str, str] = {}
-    for module_name, module_row in sorted(modules.items()):
+    for module_name, module_row in (sorted(modules.items()) if dirty_files is None else []):
         parts = module_name.split(".")[:-1]
         parent_id = workspace_node_id
         for index in range(1, len(parts) + 1):
@@ -595,7 +737,7 @@ def _resolve_graph(connection: sqlite3.Connection, workspace_id: str, workspace_
                     resolver=CODE_GRAPH_ANALYZER_VERSION,
                 ),
             )
-    for file_row in files.values():
+    for file_row in (files.values() if dirty_files is None else []):
         _insert_edge(
             connection,
             "edges",
@@ -608,6 +750,10 @@ def _resolve_graph(connection: sqlite3.Connection, workspace_id: str, workspace_
                 resolver=CODE_GRAPH_ANALYZER_VERSION,
             ),
         )
+
+    def write_resolution(edge: CodeEdge) -> None:
+        if dirty_files is None or edge.evidence_file_id in dirty_files:
+            _insert_edge(connection, "edges", edge)
 
     imports_by_file: dict[str, dict[str, tuple[str, str | None]]] = defaultdict(dict)
     occurrences = list(connection.execute("SELECT * FROM occurrences ORDER BY file_id, start_line, occurrence_id"))
@@ -653,9 +799,7 @@ def _resolve_graph(connection: sqlite3.Connection, workspace_id: str, workspace_
             "importedModule": imported_module,
             **({"importedName": imported_name} if imported_name else {}),
         }
-        _insert_edge(
-            connection,
-            "edges",
+        write_resolution(
             CodeEdge(
                 edge_id=edge_id(str(module_row["node_id"]), target_module_id, CodeEdgeType.IMPORTS_MODULE, occurrence["occurrence_id"]),
                 source_node_id=str(module_row["node_id"]),
@@ -681,9 +825,7 @@ def _resolve_graph(connection: sqlite3.Connection, workspace_id: str, workspace_
                 )
             )
             imports_by_file[file_id][alias] = (target_symbol_id, str(imported_name))
-            _insert_edge(
-                connection,
-                "edges",
+            write_resolution(
                 CodeEdge(
                     edge_id=edge_id(str(module_row["node_id"]), target_symbol_id, CodeEdgeType.IMPORTS_SYMBOL, occurrence["occurrence_id"]),
                     source_node_id=str(module_row["node_id"]),
@@ -701,7 +843,7 @@ def _resolve_graph(connection: sqlite3.Connection, workspace_id: str, workspace_
             )
 
     # Refresh lookup maps after package/external nodes were created.
-    rows = _node_rows(connection)
+    rows = _python_binding_nodes(connection)
     by_id = {str(row["node_id"]): row for row in rows}
     by_qname = defaultdict(list)
     by_display = defaultdict(list)
@@ -835,6 +977,9 @@ def _resolve_graph(connection: sqlite3.Connection, workspace_id: str, workspace_
         role = str(occurrence["role"])
         if role not in reference_roles:
             continue
+        affected = dirty_files is None or occurrence["file_id"] in dirty_files
+        if not affected and role != "base":
+            continue
         source_row = by_id.get(str(occurrence["source_node_id"]))
         if source_row is None:
             continue
@@ -863,9 +1008,7 @@ def _resolve_graph(connection: sqlite3.Connection, workspace_id: str, workspace_
             actual_type = edge_type
             if role == "call" and target["kind"] == CodeNodeKind.CLASS.value:
                 actual_type = CodeEdgeType.CONSTRUCTS
-            _insert_edge(
-                connection,
-                "edges",
+            write_resolution(
                 CodeEdge(
                     edge_id=edge_id(str(source_row["node_id"]), str(target["node_id"]), actual_type, occurrence["occurrence_id"]),
                     source_node_id=str(source_row["node_id"]),
@@ -884,9 +1027,7 @@ def _resolve_graph(connection: sqlite3.Connection, workspace_id: str, workspace_
             if role == "base" and target["kind"] == CodeNodeKind.CLASS.value:
                 class_bases[str(source_row["qualified_name"])].append(str(target["node_id"]))
                 if str(target["display_name"]).endswith(("Protocol", "ABC")):
-                    _insert_edge(
-                        connection,
-                        "edges",
+                    write_resolution(
                         CodeEdge(
                             edge_id=edge_id(str(source_row["node_id"]), str(target["node_id"]), CodeEdgeType.IMPLEMENTS, occurrence["occurrence_id"]),
                             source_node_id=str(source_row["node_id"]),
@@ -901,7 +1042,7 @@ def _resolve_graph(connection: sqlite3.Connection, workspace_id: str, workspace_
                             confidence=1.0,
                         ),
                     )
-        if not targets or resolution == EdgeResolution.POSSIBLE:
+        if affected and (not targets or resolution == EdgeResolution.POSSIBLE):
             code = "UNRESOLVED_CALL" if role in {"call", "callback"} else "UNRESOLVED_REFERENCE"
             _insert_blindspot(
                 connection,
@@ -920,7 +1061,90 @@ def _resolve_graph(connection: sqlite3.Connection, workspace_id: str, workspace_
                     "metadata": {"candidateCount": len(targets)},
                 },
             )
+    _resolve_document_relationships(connection, dirty_files)
+    if connection.execute("SELECT 1 FROM files WHERE language IN ('rust','cargo') LIMIT 1").fetchone():
+        for edge in resolved_rust_edges(connection, root, imports_by_file):
+            write_resolution(edge)
     _rebuild_metrics(connection)
+
+
+def _document_link_targets(rows: list[sqlite3.Row], anchor: str) -> list[sqlite3.Row]:
+    if not anchor:
+        return [row for row in rows if row["kind"] == CodeNodeKind.FILE.value]
+    line_anchor = re.fullmatch(r"L(\d+)(?:-L(\d+))?", anchor, flags=re.IGNORECASE)
+    if line_anchor:
+        start = int(line_anchor[1])
+        end = int(line_anchor[2] or start)
+        targets = [row for row in rows if row["start_line"] and row["start_line"] <= start <= end <= row["end_line"]]
+        if targets:
+            width = min(row["end_line"] - row["start_line"] for row in targets)
+            return [row for row in targets if row["end_line"] - row["start_line"] == width]
+        return []
+    return [
+        row for row in rows
+        if anchor in {row["qualified_name"], row["display_name"],
+                      re.sub(r"[^\w -]", "", row["display_name"].casefold()).replace(" ", "-")}
+        and (row["kind"] != CodeNodeKind.DOCUMENT_BLOCK.value or json.loads(row["metadata_json"]).get("blockType") == "heading")
+    ]
+
+
+def _resolve_document_relationships(connection: sqlite3.Connection, dirty_files: set[str] | None) -> None:
+    file_nodes: dict[str, list[sqlite3.Row]] = defaultdict(list)
+    named_symbols: dict[str, list[sqlite3.Row]] = defaultdict(list)
+    for row in _node_rows(connection):
+        if row["source_locator"]:
+            file_nodes[row["source_locator"]].append(row)
+        if row["kind"] in {"module", "class", "function", "method"} and row["file_id"]:
+            for name in {row["display_name"], row["qualified_name"]}:
+                named_symbols[name].append(row)
+    for occurrence in connection.execute("SELECT * FROM occurrences WHERE role = 'document' ORDER BY occurrence_id"):
+        file_id = occurrence["file_id"]
+        if dirty_files is not None and file_id not in dirty_files:
+            continue
+        source_id = occurrence["source_node_id"]
+        metadata = json.loads(occurrence["metadata_json"])
+        path_target = metadata.get("targetPath")
+        if path_target:
+            candidates = _document_link_targets(file_nodes.get(path_target, []), metadata["anchor"])
+        else:
+            candidates = named_symbols.get(metadata["targetName"], [])
+        candidates = [row for row in candidates if row["node_id"] != source_id]
+        explicit = bool(path_target or "." in metadata.get("targetName", ""))
+        resolution = EdgeResolution.EXACT if explicit and len(candidates) == 1 else EdgeResolution.POSSIBLE
+        span = CodeSpan(occurrence["start_line"], occurrence["end_line"])
+        for target in candidates[:8]:
+            _insert_edge(connection, "edges", CodeEdge(
+                edge_id(source_id, target["node_id"], CodeEdgeType.DOCUMENTS, occurrence["occurrence_id"]),
+                source_id, target["node_id"], CodeEdgeType.DOCUMENTS, resolution, RepositoryDocumentAdapter.version,
+                evidence_occurrence_id=occurrence["occurrence_id"], evidence_file_id=file_id,
+                evidence_span=span if metadata["hasLineSpan"] else None, evidence_hash=metadata["sourceDigest"],
+                metadata={"documentBlockId": metadata["indexedBlockId"], "reference": occurrence["text"]},
+            ))
+        if not candidates and explicit:
+            _insert_blindspot(connection, {
+                "blindspot_id": stable_id("cb", occurrence["occurrence_id"], "document"),
+                "file_id": file_id, "code": "UNRESOLVED_DOCUMENT_REFERENCE",
+                "source_locator": metadata["sourceLocator"],
+                "span": {"startLine": span.start_line, "endLine": span.end_line} if metadata["hasLineSpan"] else {},
+                "expression": occurrence["text"], "metadata": {"candidateCount": 0},
+            })
+
+    calls = list(connection.execute("""
+        SELECT edges.* FROM edges JOIN nodes source ON source.node_id = edges.source_node_id
+        WHERE source.role = 'test' AND source.kind IN ('function','method') AND source.display_name GLOB 'test_*'
+          AND edges.type IN ('calls','constructs') AND edges.resolution IN ('EXACT','RESOLVED')
+    """))
+    for call in calls:
+        if dirty_files is not None and call["file_id"] not in dirty_files:
+            continue
+        source_id, target_id = call["source_node_id"], call["target_node_id"]
+        _insert_edge(connection, "edges", CodeEdge(
+            edge_id(source_id, target_id, CodeEdgeType.TESTS, call["occurrence_id"]),
+            source_id, target_id, CodeEdgeType.TESTS, EdgeResolution(call["resolution"]), CODE_GRAPH_ANALYZER_VERSION,
+            evidence_occurrence_id=call["occurrence_id"], evidence_file_id=call["file_id"],
+            evidence_span=CodeSpan(call["start_line"], call["end_line"], call["start_column"], call["end_column"]),
+            evidence_hash=call["evidence_hash"], metadata={"callEdgeId": call["edge_id"]},
+        ))
 
 
 def _tarjan(adjacency: dict[str, set[str]]) -> list[list[str]]:
@@ -1104,6 +1328,8 @@ def sync_code_graph(
     store_dir: str | Path = ".documa",
     lock_timeout: float = SYNC_LOCK_TIMEOUT_SECONDS,
     enrichment_provider: Any = None,
+    document_paths: Iterable[str] | None = None,
+    languages: Iterable[str] | None = None,
 ) -> dict[str, Any]:
     """Incrementally synchronize one Python repository into its derived graph."""
 
@@ -1113,6 +1339,8 @@ def sync_code_graph(
     if not root_path.is_dir():
         raise CodeGraphError("CODE_ROOT_INVALID", f"Repository root is missing: {root_path}")
     normalized_roots = _normalize_source_roots(root_path, source_roots)
+    scope = _index_scope(root_path, normalized_roots, include, exclude, analysis_profile, document_paths, languages)
+    scope_json = json.dumps(scope, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     workspace_id = workspace_id_for_root(root_path)
     workspace_node_id = stable_id("cws", workspace_id)
     path = index_path(workspace_id, store_dir)
@@ -1120,20 +1348,20 @@ def sync_code_graph(
     started = time.monotonic()
     try:
         with lock:
-            files = _discover(root_path, include, exclude)
-            digests = {candidate.relative_to(root_path).as_posix(): sha256_bytes(candidate.read_bytes()) for candidate in files}
+            digests = _source_manifest(root_path, scope)
             source_signature = "\n".join(f"{name}\0{digests[name]}" for name in sorted(digests))
             generation = hashlib.sha256(
-                f"{CODE_GRAPH_ANALYZER_VERSION}\0{analysis_profile}\0{source_signature}".encode("utf-8")
+                f"{CODE_GRAPH_ANALYZER_VERSION}\0{scope_json}\0{source_signature}".encode("utf-8")
             ).hexdigest()[:24]
             connection = _connect(path)
             try:
                 current_metadata = _metadata(connection)
                 previous_files = {
-                    str(row["relative_path"]): str(row["digest"])
-                    for row in connection.execute("SELECT relative_path,digest FROM files")
+                    str(row["relative_path"]): row
+                    for row in connection.execute("SELECT relative_path,digest,source_root FROM files")
                 }
-                if current_metadata.get("active_generation") == generation and previous_files == digests:
+                previous_digests = {name: row["digest"] for name, row in previous_files.items()}
+                if current_metadata.get("active_generation") == generation and previous_digests == digests:
                     with connection:
                         enriched = _apply_summary_enrichment(connection, enrichment_provider)
                     counts = graph_counts(connection)
@@ -1145,23 +1373,52 @@ def sync_code_graph(
                         "index_path": str(path),
                         "changed": False,
                         "parsed": 0,
-                        "unchanged": len(files),
+                        "unchanged": len(digests),
                         "deleted": 0,
                         "enriched": enriched,
+                        "coverage": graph_coverage(connection),
                         "duration_ms": round((time.monotonic() - started) * 1000, 3),
                         **counts,
                     }
-                changed_paths = [name for name, digest in digests.items() if previous_files.get(name) != digest]
+                previous_scope = json.loads(current_metadata.get("scope", "{}"))
+                reparse = (
+                    current_metadata.get("analyzer_version") != CODE_GRAPH_ANALYZER_VERSION
+                    or previous_scope.get("adapters") != scope["adapters"]
+                    or current_metadata.get("analysis_profile") != analysis_profile
+                )
                 deleted_paths = sorted(set(previous_files) - set(digests))
                 adapter = PythonCodeAdapter()
-                parsed_files: list[tuple[Any, Path]] = []
+                documents = RepositoryDocumentAdapter()
+                rust_adapter = RustCodeAdapter() if "rust" in scope["languages"] else None
+                changed_manifests = any(
+                    name.endswith("Cargo.toml") and previous_digests.get(name) != digests.get(name)
+                    for name in previous_digests.keys() | digests.keys()
+                )
+                parsed_files: list[tuple[ParsedCodeFile, Path]] = []
                 warnings: list[dict[str, Any]] = []
-                by_relative = {candidate.relative_to(root_path).as_posix(): candidate for candidate in files}
-                for relative in changed_paths:
-                    candidate = by_relative[relative]
+                for relative, digest in digests.items():
+                    candidate = root_path / relative
                     source_root = _source_root_for(candidate, normalized_roots)
-                    parsed = adapter.parse(str(root_path), str(source_root), str(candidate), workspace_id)
-                    if sha256_bytes(candidate.read_bytes()) != parsed.digest:
+                    previous = previous_files.get(relative)
+                    if (
+                        not reparse and not (changed_manifests and relative.endswith(".rs")) and previous is not None
+                        and previous["digest"] == digest and previous["source_root"] == source_root.as_posix()
+                    ):
+                        continue
+                    try:
+                        if rust_adapter is not None and rust_adapter.supports(relative):
+                            parsed = rust_adapter.parse(str(root_path), str(source_root), str(candidate), workspace_id)
+                        elif "python" in scope["languages"] and adapter.supports(relative):
+                            parsed = adapter.parse(str(root_path), str(source_root), str(candidate), workspace_id)
+                        else:
+                            parsed = documents.parse(root_path, candidate, workspace_id)
+                    except FileNotFoundError as exc:
+                        raise CodeGraphError(
+                            "CODE_SOURCE_CHANGED_DURING_SYNC", f"Source disappeared during graph sync: {relative}"
+                        ) from exc
+                    except OSError as exc:
+                        raise CodeGraphError("CODE_GRAPH_SOURCE_UNAVAILABLE", f"Could not read source: {relative}") from exc
+                    if digest != parsed.digest:
                         raise CodeGraphError("CODE_SOURCE_CHANGED_DURING_SYNC", f"Source changed during graph sync: {relative}")
                     parsed_files.append((parsed, source_root))
                     if parsed.parse_status == ParseStatus.UNAVAILABLE:
@@ -1170,6 +1427,22 @@ def sync_code_graph(
                         )
                 old_nodes = _snapshot_nodes(connection)
                 old_edges = _snapshot_edges(connection)
+                dirty_files = None
+                resolution_reason = "initial_or_analyzer_changed"
+                if not reparse:
+                    if deleted_paths or digests.keys() - previous_files.keys():
+                        resolution_reason = "source_membership_changed"
+                    elif not parsed_files:
+                        dirty_files = set()
+                        resolution_reason = "bindings_unchanged"
+                    elif any(
+                        parsed.language in {"rust", "cargo"} or (rust_adapter and parsed.relative_path == "setup.py")
+                        for parsed, _ in parsed_files
+                    ):
+                        resolution_reason = "rust_or_cargo_changed"
+                    else:
+                        dirty_files = _local_resolution_files(connection, [parsed for parsed, _ in parsed_files])
+                        resolution_reason = "global_bindings_changed" if dirty_files is None else "reverse_dependencies"
                 with connection:
                     _insert_node(
                         connection,
@@ -1192,9 +1465,12 @@ def sync_code_graph(
                             connection.execute("DELETE FROM files WHERE file_id = ?", (file_id,))
                     for parsed, source_root in parsed_files:
                         _insert_parsed(connection, parsed, source_root, workspace_node_id)
-                    _resolve_graph(connection, workspace_id, workspace_node_id)
+                    if dirty_files is None or dirty_files:
+                        _resolve_graph(connection, root_path, workspace_id, workspace_node_id, dirty_files)
                     enriched = _apply_summary_enrichment(connection, enrichment_provider)
                     change_counts = _record_changes(connection, generation, old_nodes, old_edges)
+                    if _source_manifest(root_path, scope) != digests:
+                        raise CodeGraphError("CODE_SOURCE_CHANGED_DURING_SYNC", "Source manifest changed during graph sync.")
                     _set_metadata(
                         connection,
                         {
@@ -1203,6 +1479,7 @@ def sync_code_graph(
                             "workspace_id": workspace_id,
                             "workspace_root": str(root_path),
                             "analysis_profile": analysis_profile,
+                            "scope": scope_json,
                             "previous_generation": current_metadata.get("active_generation", ""),
                             "active_generation": generation,
                             "source_tree_hash": f"sha256:{hashlib.sha256(source_signature.encode('utf-8')).hexdigest()}",
@@ -1219,12 +1496,18 @@ def sync_code_graph(
                     "index_path": str(path),
                     "changed": True,
                     "parsed": len(parsed_files),
-                    "unchanged": len(files) - len(parsed_files),
+                    "unchanged": len(digests) - len(parsed_files),
                     "deleted": len(deleted_paths),
                     "warnings": warnings,
                     "enriched": enriched,
                     "changes": change_counts,
+                    "resolution": {
+                        "mode": "full" if dirty_files is None else "scoped" if dirty_files else "unchanged",
+                        "files": len(digests) if dirty_files is None else len(dirty_files),
+                        "reason": resolution_reason,
+                    },
                     "duration_ms": round((time.monotonic() - started) * 1000, 3),
+                    "coverage": graph_coverage(connection),
                     **counts,
                 }
             finally:
@@ -1244,21 +1527,116 @@ def graph_counts(connection: sqlite3.Connection) -> dict[str, int]:
     }
 
 
+def graph_coverage(connection: sqlite3.Connection) -> dict[str, dict[str, int]]:
+    coverage = {
+        str(row["language"]): {
+            "discovered": row["discovered"], "parsed": row["parsed"],
+            "skipped": row["discovered"] - row["parsed"], "unresolved": 0,
+        }
+        for row in connection.execute("""
+            SELECT language,COUNT(*) AS discovered,SUM(parse_status = 'ok') AS parsed
+            FROM files GROUP BY language ORDER BY language
+        """)
+    }
+    for row in connection.execute("""
+        SELECT files.language, COUNT(*) AS unresolved FROM blindspots JOIN files USING(file_id) GROUP BY files.language
+    """):
+        coverage[row["language"]]["unresolved"] = row["unresolved"]
+    if "rust" in coverage:
+        coverage["rust"]["unresolved"] += connection.execute("""
+            SELECT COUNT(*) FROM occurrences o WHERE o.role IN ('rust_call','rust_export')
+            AND NOT EXISTS (SELECT 1 FROM edges WHERE occurrence_id = o.occurrence_id)
+        """).fetchone()[0]
+    return coverage
+
+
 def open_code_graph(workspace_id: str, store_dir: str | Path = ".documa") -> sqlite3.Connection:
     path = index_path(workspace_id, store_dir)
     if not path.is_file():
         raise CodeGraphError("CODE_GRAPH_NOT_FOUND", f"Code graph index not found for workspace: {workspace_id}")
-    connection = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)
+    connection = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
     connection.row_factory = sqlite3.Row
+    connection.execute("BEGIN")
     if int(connection.execute("PRAGMA user_version").fetchone()[0]) != CODE_GRAPH_SCHEMA_VERSION:
         connection.close()
         raise CodeGraphError("CODE_GRAPH_VERSION_OUTDATED", "Code graph index version is not supported; rebuild it.")
+    if not connection.execute("SELECT 1 FROM metadata WHERE key = 'active_generation'").fetchone():
+        connection.close()
+        raise CodeGraphError("CODE_GRAPH_NOT_FOUND", f"Code graph index is empty for workspace: {workspace_id}")
     return connection
+
+
+def _freshness(connection: sqlite3.Connection, metadata: dict[str, str]) -> dict[str, Any]:
+    if "scope" not in metadata:
+        return {"state": "stale", "reason": "index_scope_missing"}
+    root = Path(metadata["workspace_root"])
+    scope = json.loads(metadata["scope"])
+    try:
+        roots = _normalize_source_roots(root, scope["source_roots"])
+        current = _index_scope(
+            root, roots, scope["include"], scope["exclude"], scope["analysis_profile"],
+            scope.get("document_paths"), scope.get("languages"),
+        )
+        if current["adapters"] != scope["adapters"]:
+            return {"state": "stale", "reason": "adapter_version_changed"}
+        if current != scope:
+            return {"state": "stale", "reason": "scope_changed"}
+        observed = _source_manifest(root, current)
+    except CodeGraphError as exc:
+        return {"state": "stale", "reason": exc.code}
+    indexed = {row["relative_path"]: row["digest"] for row in connection.execute("SELECT relative_path,digest FROM files")}
+    if indexed == observed:
+        return {"state": "fresh"}
+    return {
+        "state": "stale",
+        "reason": "source_manifest_changed",
+        "added": len(observed.keys() - indexed.keys()),
+        "removed": len(indexed.keys() - observed.keys()),
+        "modified": sum(indexed[name] != observed[name] for name in observed.keys() & indexed.keys()),
+    }
 
 
 def code_graph_status(workspace_id: str, store_dir: str | Path = ".documa") -> dict[str, Any]:
     connection = open_code_graph(workspace_id, store_dir)
     try:
-        return {"status": "ok", **_metadata(connection), **graph_counts(connection)}
+        metadata = _metadata(connection)
+        return {"status": "ok", **metadata, **graph_counts(connection),
+                "coverage": graph_coverage(connection), "freshness": _freshness(connection, metadata)}
     finally:
         connection.close()
+
+
+def clear_code_graph(workspace_id: str, store_dir: str | Path = ".documa") -> dict[str, Any]:
+    """Atomically clear only a registered workspace's derived records."""
+    path = index_path(workspace_id, Path(store_dir).resolve())
+    if not path.is_file():
+        return {"status": "ok", "workspace_id": workspace_id, "cleared": False}
+    if path.resolve() != path:
+        raise CodeGraphError("CODE_GRAPH_STORE_INVALID", "Code graph index path resolves outside its registered location.")
+    try:
+        with FileLock(str(path.with_suffix(".lock")), timeout=SYNC_LOCK_TIMEOUT_SECONDS):
+            try:
+                reader = open_code_graph(workspace_id, store_dir)
+            except CodeGraphError as exc:
+                if exc.code == "CODE_GRAPH_NOT_FOUND":
+                    return {"status": "ok", "workspace_id": workspace_id, "cleared": False}
+                raise
+            try:
+                if _metadata(reader).get("workspace_id") != workspace_id:
+                    raise CodeGraphError("CODE_GRAPH_STORE_INVALID", "Index metadata does not match the requested workspace.")
+            finally:
+                reader.close()
+            connection = _connect(path)
+            try:
+                with connection:
+                    connection.execute("BEGIN IMMEDIATE")
+                    for table in (
+                        "edges", "structural_edges", "metrics", "blindspots", "changes",
+                        "enrichments", "occurrences", "nodes", "files", "metadata",
+                    ):
+                        connection.execute(f"DELETE FROM {table}")
+                return {"status": "ok", "workspace_id": workspace_id, "cleared": True}
+            finally:
+                connection.close()
+    except Timeout as exc:
+        raise CodeGraphError("CODE_GRAPH_LOCK_TIMEOUT", f"Timed out waiting for code graph lock: {path}") from exc

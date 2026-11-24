@@ -686,6 +686,8 @@ def create_mcp_server(profile: str | None = None) -> Any:
         exclude: list[str] | None = None,
         analysis_profile: str = "hybrid",
         store_dir: str = ".documa",
+        document_paths: list[str] | None = None,
+        languages: list[str] | None = None,
     ) -> dict[str, Any]:
         """Incrementally synchronize a local Python repository graph."""
 
@@ -696,6 +698,8 @@ def create_mcp_server(profile: str | None = None) -> Any:
             exclude=exclude,
             analysis_profile=analysis_profile,
             store_dir=store_dir,
+            document_paths=document_paths,
+            languages=languages,
         )
 
     @_documa_tool
@@ -713,6 +717,9 @@ def create_mcp_server(profile: str | None = None) -> Any:
         max_navigation_tokens: int | None = None,
         max_navigation_bytes: int | None = None,
         store_dir: str = ".documa",
+        max_response_tokens: int | None = None,
+        base_ref: str = "HEAD",
+        head_ref: str = "worktree",
     ) -> dict[str, Any]:
         """Query code, dependency, call, cycle, impact, or generation-diff paths."""
 
@@ -730,6 +737,9 @@ def create_mcp_server(profile: str | None = None) -> Any:
             max_navigation_tokens=max_navigation_tokens,
             max_navigation_bytes=max_navigation_bytes,
             store_dir=store_dir,
+            max_response_tokens=max_response_tokens,
+            base_ref=base_ref,
+            head_ref=head_ref,
         )
 
     @_documa_tool
@@ -765,6 +775,9 @@ def create_mcp_server(profile: str | None = None) -> Any:
         total_max_tokens: int | None = 2000,
         total_max_bytes: int | None = None,
         store_dir: str = ".documa",
+        max_response_tokens: int | None = None,
+        base_ref: str = "HEAD",
+        head_ref: str = "worktree",
     ) -> dict[str, Any]:
         """Return bounded proof paths and verified code evidence in one agent call."""
 
@@ -780,6 +793,9 @@ def create_mcp_server(profile: str | None = None) -> Any:
             total_max_tokens=total_max_tokens,
             total_max_bytes=total_max_bytes,
             store_dir=store_dir,
+            max_response_tokens=max_response_tokens,
+            base_ref=base_ref,
+            head_ref=head_ref,
         )
 
     @_documa_tool

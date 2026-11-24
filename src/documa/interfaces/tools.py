@@ -2424,6 +2424,8 @@ def sync_code_graph_tool(
     exclude: list[str] | None = None,
     analysis_profile: str = "hybrid",
     store_dir: str = ".documa",
+    document_paths: list[str] | None = None,
+    languages: list[str] | None = None,
 ) -> ToolPayload:
     from documa.codegraph import CodeGraphError, sync_code_graph
 
@@ -2435,6 +2437,8 @@ def sync_code_graph_tool(
             exclude=exclude,
             analysis_profile=analysis_profile,
             store_dir=store_dir,
+            document_paths=document_paths,
+            languages=languages,
         )
     except CodeGraphError as exc:
         return {"status": "error", "code": exc.code, "message": str(exc)}
@@ -2456,10 +2460,22 @@ def query_code_graph_tool(
     max_navigation_tokens: int | None = None,
     max_navigation_bytes: int | None = None,
     store_dir: str = ".documa",
+    max_response_tokens: int | None = None,
+    base_ref: str = "HEAD",
+    head_ref: str = "worktree",
 ) -> ToolPayload:
-    from documa.codegraph import CodeGraphError, query_code_graph
+    from documa.codegraph import CodeGraphError, code_context, query_code_graph
 
     try:
+        if intent in {"explore", "tour"}:
+            return {"status": "ok", **code_context(
+                workspace_id, query or "", intent=intent, symbols=symbols, targets=targets,
+                max_hops=max_hops, max_nodes=max_nodes, max_evidence_blocks=max_evidence_blocks,
+                include_possible=include_possible, expected_generation=expected_generation,
+                max_response_tokens=max_response_tokens, max_navigation_tokens=max_navigation_tokens,
+                max_navigation_bytes=max_navigation_bytes, token_counter=token_counting.get_local_token_counter(),
+                store_dir=store_dir,
+            )}
         return {
             "status": "ok",
             **query_code_graph(
@@ -2475,6 +2491,8 @@ def query_code_graph_tool(
                 expected_generation=expected_generation,
                 max_navigation_tokens=max_navigation_tokens,
                 max_navigation_bytes=max_navigation_bytes,
+                base_ref=base_ref,
+                head_ref=head_ref,
                 token_counter=token_counting.get_token_counter(),
                 store_dir=store_dir,
             ),
@@ -2526,6 +2544,9 @@ def code_context_tool(
     total_max_tokens: int | None = 2000,
     total_max_bytes: int | None = None,
     store_dir: str = ".documa",
+    max_response_tokens: int | None = None,
+    base_ref: str = "HEAD",
+    head_ref: str = "worktree",
 ) -> ToolPayload:
     from documa.codegraph import CodeGraphError, code_context
 
@@ -2543,7 +2564,10 @@ def code_context_tool(
                 expected_generation=expected_generation,
                 total_max_tokens=total_max_tokens,
                 total_max_bytes=total_max_bytes,
-                token_counter=token_counting.get_token_counter(),
+                max_response_tokens=max_response_tokens,
+                base_ref=base_ref,
+                head_ref=head_ref,
+                token_counter=(token_counting.get_local_token_counter() if intent in {"explore", "tour"} else token_counting.get_token_counter()),
                 store_dir=store_dir,
             ),
         }

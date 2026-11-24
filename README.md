@@ -485,6 +485,7 @@ documa benchmark --mode quality
 | 主題 | 文件 |
 | --- | --- |
 | 架構分層與設計 | [docs/documa/architecture.md](docs/documa/architecture.md) |
+| Code graph | [程式庫圖譜操作與驗收](docs/documa/code-graph.md) |
 | Metadata 與後續篩選 | [docs/documa/metadata-and-filtering.md](docs/documa/metadata-and-filtering.md) |
 | IR 相容性契約 | [docs/spec/ir-compatibility.md](docs/spec/ir-compatibility.md) |
 | PDF gold fixtures 與品質門檻 | [fixtures/pdf/gold/README.md](fixtures/pdf/gold/README.md) |
